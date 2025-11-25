@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
+
 
 interface MatchupCardProps {
   id: string;
@@ -46,14 +46,6 @@ const MatchupCard = ({
     }
   };
 
-  const handleViewCode = () => {
-    navigate("/payment", {
-      state: {
-        type: "match",
-        id: id,
-      },
-    });
-  };
 
   return (
     <Card className="bg-gradient-card border-bet-border overflow-hidden hover:shadow-bet transition-all duration-300 animate-fade-in">
@@ -144,23 +136,14 @@ const MatchupCard = ({
           </button>
         </div>
 
-        {/* Blurred Betting Code */}
-        <div className="relative mb-4">
+        {/* Betting Code - Fully Visible */}
+        <div className="mb-4">
           <div className="text-center py-6 bg-secondary/50 rounded-lg border-2 border-bet-border">
             <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Betting Code</p>
-            <p className="text-2xl font-black text-primary blur-md select-none">
+            <p className="text-2xl font-black text-primary">
               {betCode}
             </p>
           </div>
-          
-          {/* Eye Icon to Reveal - Redirects to Payment */}
-          <button
-            onClick={handleViewCode}
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-primary hover:opacity-90 transition-all duration-300 p-3 rounded-full shadow-bet"
-            aria-label="Unlock betting code"
-          >
-            <Eye className="w-6 h-6 text-primary-foreground" />
-          </button>
         </div>
 
         <Button
