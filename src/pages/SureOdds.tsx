@@ -42,11 +42,7 @@ const SureOdds = () => {
               {notStartedOdds.map((odd) => (
                 <Card
                   key={odd.id}
-                  className={`p-6 hover:shadow-bet transition-all duration-300 animate-fade-in border-2 ${
-                    odd.status === "scored" 
-                      ? "bg-green-950/50 border-green-500/50" 
-                      : "bg-red-950/50 border-red-500/50"
-                  }`}
+                  className="p-6 hover:shadow-bet transition-all duration-300 animate-fade-in border-2 bg-gradient-card border-bet-border"
                 >
                   {/* Team Logos and Names - Always Visible */}
                   <div className="flex items-center justify-center gap-4 mb-6">
