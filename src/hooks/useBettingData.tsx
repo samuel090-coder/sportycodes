@@ -23,6 +23,7 @@ export interface SureOdd {
   odds: number;
   confidence: string;
   betCode: string;
+  status: "not-started" | "scored" | "lost";
 }
 
 const MATCHES_KEY = "sporty_codes_matches";
@@ -60,6 +61,7 @@ const defaultSureOdds: SureOdd[] = [
     odds: 1.75,
     confidence: "95%",
     betCode: "PSG5M2-GH8PL",
+    status: "not-started",
   },
   {
     id: "2",
@@ -69,6 +71,7 @@ const defaultSureOdds: SureOdd[] = [
     odds: 1.90,
     confidence: "92%",
     betCode: "INT0AC-KL3VN",
+    status: "not-started",
   },
   {
     id: "3",
@@ -78,6 +81,7 @@ const defaultSureOdds: SureOdd[] = [
     odds: 1.65,
     confidence: "88%",
     betCode: "ATL4SE-PQ7WM",
+    status: "not-started",
   },
 ];
 
