@@ -10,14 +10,19 @@ export interface Match {
   awayOdds: number;
   matchTime: string;
   status: "not-started" | "live" | "completed";
+  betCode: string;
 }
 
 export interface SureOdd {
   id: string;
-  match: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
   prediction: string;
   odds: number;
   confidence: string;
+  betCode: string;
 }
 
 const MATCHES_KEY = "sporty_codes_matches";
@@ -32,6 +37,7 @@ const defaultMatches: Match[] = [
     awayOdds: 1.8,
     matchTime: "Today 18:00",
     status: "not-started",
+    betCode: "MU2L8-45X9K",
   },
   {
     id: "2",
@@ -41,23 +47,37 @@ const defaultMatches: Match[] = [
     awayOdds: 2.3,
     matchTime: "Today 20:45",
     status: "live",
+    betCode: "BR1RM3-78Q2M",
   },
 ];
 
 const defaultSureOdds: SureOdd[] = [
   {
     id: "1",
-    match: "PSG vs Monaco",
+    homeTeam: "PSG",
+    awayTeam: "Monaco",
     prediction: "Over 2.5 Goals",
     odds: 1.75,
     confidence: "95%",
+    betCode: "PSG5M2-GH8PL",
   },
   {
     id: "2",
-    match: "Inter vs AC Milan",
+    homeTeam: "Inter",
+    awayTeam: "AC Milan",
     prediction: "Both Teams to Score",
     odds: 1.90,
     confidence: "92%",
+    betCode: "INT0AC-KL3VN",
+  },
+  {
+    id: "3",
+    homeTeam: "Atletico",
+    awayTeam: "Sevilla",
+    prediction: "Under 3.5 Goals",
+    odds: 1.65,
+    confidence: "88%",
+    betCode: "ATL4SE-PQ7WM",
   },
 ];
 

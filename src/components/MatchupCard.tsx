@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { Eye } from "lucide-react";
 
 interface MatchupCardProps {
   id: string;
@@ -13,6 +14,7 @@ interface MatchupCardProps {
   awayOdds: number;
   time: string;
   status: "not-started" | "live" | "completed";
+  betCode: string;
 }
 
 const MatchupCard = ({
@@ -25,6 +27,7 @@ const MatchupCard = ({
   awayOdds,
   time,
   status,
+  betCode,
 }: MatchupCardProps) => {
   const [selectedTeam, setSelectedTeam] = useState<"home" | "away" | null>(null);
   const navigate = useNavigate();
@@ -41,6 +44,15 @@ const MatchupCard = ({
         },
       });
     }
+  };
+
+  const handleViewCode = () => {
+    navigate("/payment", {
+      state: {
+        type: "match",
+        id: id,
+      },
+    });
   };
 
   return (
@@ -129,6 +141,25 @@ const MatchupCard = ({
             </div>
             <span className="text-sm font-bold text-center">{awayTeam}</span>
             <span className="text-xs font-semibold">{awayOdds.toFixed(2)}</span>
+          </button>
+        </div>
+
+        {/* Blurred Betting Code */}
+        <div className="relative mb-4">
+          <div className="text-center py-6 bg-secondary/50 rounded-lg border-2 border-bet-border">
+            <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Betting Code</p>
+            <p className="text-2xl font-black text-primary blur-md select-none">
+              {betCode}
+            </p>
+          </div>
+          
+          {/* Eye Icon to Reveal - Redirects to Payment */}
+          <button
+            onClick={handleViewCode}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-primary hover:opacity-90 transition-all duration-300 p-3 rounded-full shadow-bet"
+            aria-label="Unlock betting code"
+          >
+            <Eye className="w-6 h-6 text-primary-foreground" />
           </button>
         </div>
 
