@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Upload } from "lucide-react";
 import { useBettingData, Match, SureOdd } from "@/hooks/useBettingData";
 
 const Admin = () => {
@@ -30,6 +30,29 @@ const Admin = () => {
 
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [editingSureOdd, setEditingSureOdd] = useState<SureOdd | null>(null);
+  
+  const [matchHomeLogoPreview, setMatchHomeLogoPreview] = useState<string>("");
+  const [matchAwayLogoPreview, setMatchAwayLogoPreview] = useState<string>("");
+  const [sureOddHomeLogoPreview, setSureOddHomeLogoPreview] = useState<string>("");
+  const [sureOddAwayLogoPreview, setSureOddAwayLogoPreview] = useState<string>("");
+
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setPreview: (url: string) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size must be less than 5MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSaveAccount = () => {
     toast.success("Account details updated successfully!");
@@ -42,8 +65,8 @@ const Admin = () => {
     const matchData = {
       homeTeam: formData.get("homeTeam") as string,
       awayTeam: formData.get("awayTeam") as string,
-      homeTeamLogo: formData.get("homeTeamLogo") as string,
-      awayTeamLogo: formData.get("awayTeamLogo") as string,
+      homeTeamLogo: matchHomeLogoPreview || editingMatch?.homeTeamLogo || "",
+      awayTeamLogo: matchAwayLogoPreview || editingMatch?.awayTeamLogo || "",
       homeOdds: parseFloat(formData.get("homeOdds") as string),
       awayOdds: parseFloat(formData.get("awayOdds") as string),
       matchTime: formData.get("matchTime") as string,
@@ -60,10 +83,14 @@ const Admin = () => {
       toast.success("Match added successfully!");
     }
     (e.target as HTMLFormElement).reset();
+    setMatchHomeLogoPreview("");
+    setMatchAwayLogoPreview("");
   };
 
   const handleEditMatch = (match: Match) => {
     setEditingMatch(match);
+    setMatchHomeLogoPreview(match.homeTeamLogo || "");
+    setMatchAwayLogoPreview(match.awayTeamLogo || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -79,8 +106,8 @@ const Admin = () => {
     const sureOddData = {
       homeTeam: formData.get("homeTeam") as string,
       awayTeam: formData.get("awayTeam") as string,
-      homeTeamLogo: formData.get("homeTeamLogo") as string,
-      awayTeamLogo: formData.get("awayTeamLogo") as string,
+      homeTeamLogo: sureOddHomeLogoPreview || editingSureOdd?.homeTeamLogo || "",
+      awayTeamLogo: sureOddAwayLogoPreview || editingSureOdd?.awayTeamLogo || "",
       prediction: formData.get("prediction") as string,
       odds: parseFloat(formData.get("odds") as string),
       confidence: formData.get("confidence") as string,
@@ -96,10 +123,14 @@ const Admin = () => {
       toast.success("Sure Odd added successfully!");
     }
     (e.target as HTMLFormElement).reset();
+    setSureOddHomeLogoPreview("");
+    setSureOddAwayLogoPreview("");
   };
 
   const handleEditSureOdd = (sureOdd: SureOdd) => {
     setEditingSureOdd(sureOdd);
+    setSureOddHomeLogoPreview(sureOdd.homeTeamLogo || "");
+    setSureOddAwayLogoPreview(sureOdd.awayTeamLogo || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -223,27 +254,67 @@ const Admin = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="homeTeamLogo" className="text-foreground">
-                      Home Team Logo URL
+                      Home Team Logo
                     </Label>
-                    <Input
-                      id="homeTeamLogo"
-                      name="homeTeamLogo"
-                      placeholder="https://example.com/logo.png"
-                      defaultValue={editingMatch?.homeTeamLogo}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("homeTeamLogoInput")?.click()}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Logo
+                        </Button>
+                        <input
+                          id="homeTeamLogoInput"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e, setMatchHomeLogoPreview)}
+                        />
+                      </div>
+                      {matchHomeLogoPreview && (
+                        <img
+                          src={matchHomeLogoPreview}
+                          alt="Home team preview"
+                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                        />
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="awayTeamLogo" className="text-foreground">
-                      Away Team Logo URL
+                      Away Team Logo
                     </Label>
-                    <Input
-                      id="awayTeamLogo"
-                      name="awayTeamLogo"
-                      placeholder="https://example.com/logo.png"
-                      defaultValue={editingMatch?.awayTeamLogo}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("awayTeamLogoInput")?.click()}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Logo
+                        </Button>
+                        <input
+                          id="awayTeamLogoInput"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e, setMatchAwayLogoPreview)}
+                        />
+                      </div>
+                      {matchAwayLogoPreview && (
+                        <img
+                          src={matchAwayLogoPreview}
+                          alt="Away team preview"
+                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -450,27 +521,67 @@ const Admin = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="homeTeamLogo" className="text-foreground">
-                      Home Team Logo URL
+                      Home Team Logo
                     </Label>
-                    <Input
-                      id="homeTeamLogo"
-                      name="homeTeamLogo"
-                      placeholder="https://example.com/logo.png"
-                      defaultValue={editingSureOdd?.homeTeamLogo}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("sureOddHomeLogoInput")?.click()}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Logo
+                        </Button>
+                        <input
+                          id="sureOddHomeLogoInput"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e, setSureOddHomeLogoPreview)}
+                        />
+                      </div>
+                      {sureOddHomeLogoPreview && (
+                        <img
+                          src={sureOddHomeLogoPreview}
+                          alt="Home team preview"
+                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                        />
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="awayTeamLogo" className="text-foreground">
-                      Away Team Logo URL
+                      Away Team Logo
                     </Label>
-                    <Input
-                      id="awayTeamLogo"
-                      name="awayTeamLogo"
-                      placeholder="https://example.com/logo.png"
-                      defaultValue={editingSureOdd?.awayTeamLogo}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("sureOddAwayLogoInput")?.click()}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Logo
+                        </Button>
+                        <input
+                          id="sureOddAwayLogoInput"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e, setSureOddAwayLogoPreview)}
+                        />
+                      </div>
+                      {sureOddAwayLogoPreview && (
+                        <img
+                          src={sureOddAwayLogoPreview}
+                          alt="Away team preview"
+                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
 
