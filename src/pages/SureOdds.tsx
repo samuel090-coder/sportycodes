@@ -89,12 +89,20 @@ const SureOdds = () => {
 
                   {/* Status Badge */}
                   <div className="text-center mb-4">
-                    <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
-                      odd.status === "scored" 
-                        ? "bg-green-500 text-white" 
-                        : "bg-red-500 text-white"
-                    }`}>
-                      {odd.status === "scored" ? "WON ✓" : "LOST ✗"}
+                    <span
+                      className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
+                        odd.status === "scored"
+                          ? "bg-green-500 text-white"
+                          : odd.status === "lost"
+                          ? "bg-red-500 text-white"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {odd.status === "scored"
+                        ? "WON ✓"
+                        : odd.status === "lost"
+                        ? "LOST ✗"
+                        : "NOT STARTED"}
                     </span>
                   </div>
 
