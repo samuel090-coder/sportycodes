@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Pencil, Trash2, Upload } from "lucide-react";
+import { Pencil, Trash2, Upload, Loader2, Sparkles } from "lucide-react";
 import { useBettingData, Match, SureOdd } from "@/hooks/useBettingData";
 
 const Admin = () => {
@@ -35,6 +35,76 @@ const Admin = () => {
   const [matchAwayLogoPreview, setMatchAwayLogoPreview] = useState<string>("");
   const [sureOddHomeLogoPreview, setSureOddHomeLogoPreview] = useState<string>("");
   const [sureOddAwayLogoPreview, setSureOddAwayLogoPreview] = useState<string>("");
+  const [generatingLogo, setGeneratingLogo] = useState<{
+    match?: "home" | "away";
+    sureOdd?: "home" | "away";
+  }>({});
+
+  const generateTeamLogo = async (
+    teamName: string,
+    field: "homeTeamLogo" | "awayTeamLogo",
+    formType: "match" | "sureOdd"
+  ) => {
+    if (!teamName.trim()) {
+      toast.error("Please enter team name first");
+      return;
+    }
+
+    const logoField = field === "homeTeamLogo" ? "home" : "away";
+    setGeneratingLogo(prev => ({ ...prev, [formType]: logoField }));
+
+    try {
+      const prompt = `A professional circular football club logo for ${teamName}, modern design, clean and simple, vibrant colors, high quality, on white background`;
+      
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ""}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt,
+          n: 1,
+          size: "512x512",
+          quality: "high",
+          output_format: "png",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate logo");
+      }
+
+      const data = await response.json();
+      const imageUrl = data.data?.[0]?.url;
+
+      if (!imageUrl) {
+        throw new Error("No image URL received");
+      }
+
+      if (formType === "match") {
+        if (field === "homeTeamLogo") {
+          setMatchHomeLogoPreview(imageUrl);
+        } else {
+          setMatchAwayLogoPreview(imageUrl);
+        }
+      } else {
+        if (field === "homeTeamLogo") {
+          setSureOddHomeLogoPreview(imageUrl);
+        } else {
+          setSureOddAwayLogoPreview(imageUrl);
+        }
+      }
+
+      toast.success("Logo generated successfully!");
+    } catch (error) {
+      console.error("Error generating logo:", error);
+      toast.error("Failed to generate logo. Please try uploading manually.");
+    } finally {
+      setGeneratingLogo(prev => ({ ...prev, [formType]: undefined }));
+    }
+  };
 
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -112,6 +182,7 @@ const Admin = () => {
       odds: parseFloat(formData.get("odds") as string),
       confidence: formData.get("confidence") as string,
       betCode: formData.get("betCode") as string,
+      status: (formData.get("status") as "not-started" | "scored" | "lost") || "not-started",
     };
 
     if (editingSureOdd) {
@@ -267,6 +338,23 @@ const Admin = () => {
                           <Upload className="w-4 h-4 mr-2" />
                           Upload Logo
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
+                            generateTeamLogo(homeTeam, "homeTeamLogo", "match");
+                          }}
+                          disabled={generatingLogo.match === "home"}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          {generatingLogo.match === "home" ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 mr-2" />
+                          )}
+                          AI Generate
+                        </Button>
                         <input
                           id="homeTeamLogoInput"
                           type="file"
@@ -279,7 +367,7 @@ const Admin = () => {
                         <img
                           src={matchHomeLogoPreview}
                           alt="Home team preview"
-                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
                         />
                       )}
                     </div>
@@ -299,6 +387,23 @@ const Admin = () => {
                           <Upload className="w-4 h-4 mr-2" />
                           Upload Logo
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
+                            generateTeamLogo(awayTeam, "awayTeamLogo", "match");
+                          }}
+                          disabled={generatingLogo.match === "away"}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          {generatingLogo.match === "away" ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 mr-2" />
+                          )}
+                          AI Generate
+                        </Button>
                         <input
                           id="awayTeamLogoInput"
                           type="file"
@@ -311,7 +416,7 @@ const Admin = () => {
                         <img
                           src={matchAwayLogoPreview}
                           alt="Away team preview"
-                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
                         />
                       )}
                     </div>
@@ -534,6 +639,23 @@ const Admin = () => {
                           <Upload className="w-4 h-4 mr-2" />
                           Upload Logo
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
+                            generateTeamLogo(homeTeam, "homeTeamLogo", "sureOdd");
+                          }}
+                          disabled={generatingLogo.sureOdd === "home"}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          {generatingLogo.sureOdd === "home" ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 mr-2" />
+                          )}
+                          AI Generate
+                        </Button>
                         <input
                           id="sureOddHomeLogoInput"
                           type="file"
@@ -546,7 +668,7 @@ const Admin = () => {
                         <img
                           src={sureOddHomeLogoPreview}
                           alt="Home team preview"
-                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
                         />
                       )}
                     </div>
@@ -566,6 +688,23 @@ const Admin = () => {
                           <Upload className="w-4 h-4 mr-2" />
                           Upload Logo
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
+                            generateTeamLogo(awayTeam, "awayTeamLogo", "sureOdd");
+                          }}
+                          disabled={generatingLogo.sureOdd === "away"}
+                          className="border-bet-border text-foreground hover:bg-primary/20"
+                        >
+                          {generatingLogo.sureOdd === "away" ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 mr-2" />
+                          )}
+                          AI Generate
+                        </Button>
                         <input
                           id="sureOddAwayLogoInput"
                           type="file"
@@ -578,7 +717,7 @@ const Admin = () => {
                         <img
                           src={sureOddAwayLogoPreview}
                           alt="Away team preview"
-                          className="w-16 h-16 object-contain rounded border border-bet-border"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
                         />
                       )}
                     </div>
@@ -642,6 +781,22 @@ const Admin = () => {
                   </div>
                 </div>
 
+                <div>
+                  <Label htmlFor="status" className="text-foreground">
+                    Game Status
+                  </Label>
+                  <select
+                    id="status"
+                    name="status"
+                    defaultValue={editingSureOdd?.status || "not-started"}
+                    className="mt-2 w-full bg-secondary border border-bet-border text-foreground rounded-md px-3 py-2"
+                  >
+                    <option value="not-started">Not Started</option>
+                    <option value="scored">Scored (Won)</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </div>
+
                 <div className="flex gap-4">
                   <Button
                     type="submit"
@@ -673,6 +828,7 @@ const Admin = () => {
                       <TableHead className="text-foreground">Prediction</TableHead>
                       <TableHead className="text-foreground">Odds</TableHead>
                       <TableHead className="text-foreground">Confidence</TableHead>
+                      <TableHead className="text-foreground">Status</TableHead>
                       <TableHead className="text-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -688,6 +844,23 @@ const Admin = () => {
                         </TableCell>
                         <TableCell className="text-bet-success font-bold">
                           {sureOdd.confidence}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              sureOdd.status === "scored"
+                                ? "bg-green-500/20 text-green-500"
+                                : sureOdd.status === "lost"
+                                ? "bg-red-500/20 text-red-500"
+                                : "bg-yellow-500/20 text-yellow-500"
+                            }`}
+                          >
+                            {sureOdd.status === "scored"
+                              ? "WON"
+                              : sureOdd.status === "lost"
+                              ? "LOST"
+                              : "NOT STARTED"}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
