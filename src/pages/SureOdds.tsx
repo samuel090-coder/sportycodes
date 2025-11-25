@@ -1,31 +1,10 @@
 import BottomNav from "@/components/BottomNav";
 import { Card } from "@/components/ui/card";
 import { Trophy } from "lucide-react";
+import { useBettingData } from "@/hooks/useBettingData";
 
 const SureOdds = () => {
-  const sureOdds = [
-    {
-      id: "1",
-      match: "PSG vs Monaco",
-      prediction: "Over 2.5 Goals",
-      odds: 1.75,
-      confidence: "95%",
-    },
-    {
-      id: "2",
-      match: "Inter vs AC Milan",
-      prediction: "Both Teams to Score",
-      odds: 1.90,
-      confidence: "92%",
-    },
-    {
-      id: "3",
-      match: "Atletico vs Sevilla",
-      prediction: "Under 3.5 Goals",
-      odds: 1.65,
-      confidence: "88%",
-    },
-  ];
+  const { sureOdds } = useBettingData();
 
   return (
     <div className="min-h-screen bg-bet-dark pb-24">
