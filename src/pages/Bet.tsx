@@ -33,6 +33,7 @@ const Bet = () => {
               awayOdds={match.awayOdds}
               time={match.matchTime}
               status={match.status}
+              betCode={match.betCode}
             />
           ))}
         </div>

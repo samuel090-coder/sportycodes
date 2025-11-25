@@ -48,6 +48,7 @@ const Admin = () => {
       awayOdds: parseFloat(formData.get("awayOdds") as string),
       matchTime: formData.get("matchTime") as string,
       status: formData.get("status") as "not-started" | "live" | "completed",
+      betCode: formData.get("betCode") as string,
     };
 
     if (editingMatch) {
@@ -76,10 +77,14 @@ const Admin = () => {
     const formData = new FormData(e.target as HTMLFormElement);
     
     const sureOddData = {
-      match: formData.get("match") as string,
+      homeTeam: formData.get("homeTeam") as string,
+      awayTeam: formData.get("awayTeam") as string,
+      homeTeamLogo: formData.get("homeTeamLogo") as string,
+      awayTeamLogo: formData.get("awayTeamLogo") as string,
       prediction: formData.get("prediction") as string,
       odds: parseFloat(formData.get("odds") as string),
       confidence: formData.get("confidence") as string,
+      betCode: formData.get("betCode") as string,
     };
 
     if (editingSureOdd) {
@@ -304,6 +309,20 @@ const Admin = () => {
                   </div>
                 </div>
 
+                <div>
+                  <Label htmlFor="betCode" className="text-foreground">
+                    Betting Code
+                  </Label>
+                  <Input
+                    id="betCode"
+                    name="betCode"
+                    required
+                    placeholder="e.g., MU2L8-45X9K"
+                    defaultValue={editingMatch?.betCode}
+                    className="mt-2 bg-secondary border-bet-border text-foreground"
+                  />
+                </div>
+
                 <div className="flex gap-4">
                   <Button
                     type="submit"
@@ -399,18 +418,60 @@ const Admin = () => {
                 {editingSureOdd ? "Edit Sure Odd" : "Add New Sure Odd"}
               </h2>
               <form onSubmit={handleSaveSureOdd} className="space-y-4">
-                <div>
-                  <Label htmlFor="match" className="text-foreground">
-                    Match
-                  </Label>
-                  <Input
-                    id="match"
-                    name="match"
-                    required
-                    placeholder="e.g., PSG vs Monaco"
-                    defaultValue={editingSureOdd?.match}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="homeTeam" className="text-foreground">
+                      Home Team
+                    </Label>
+                    <Input
+                      id="homeTeam"
+                      name="homeTeam"
+                      required
+                      placeholder="e.g., PSG"
+                      defaultValue={editingSureOdd?.homeTeam}
+                      className="mt-2 bg-secondary border-bet-border text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="awayTeam" className="text-foreground">
+                      Away Team
+                    </Label>
+                    <Input
+                      id="awayTeam"
+                      name="awayTeam"
+                      required
+                      placeholder="e.g., Monaco"
+                      defaultValue={editingSureOdd?.awayTeam}
+                      className="mt-2 bg-secondary border-bet-border text-foreground"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="homeTeamLogo" className="text-foreground">
+                      Home Team Logo URL
+                    </Label>
+                    <Input
+                      id="homeTeamLogo"
+                      name="homeTeamLogo"
+                      placeholder="https://example.com/logo.png"
+                      defaultValue={editingSureOdd?.homeTeamLogo}
+                      className="mt-2 bg-secondary border-bet-border text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="awayTeamLogo" className="text-foreground">
+                      Away Team Logo URL
+                    </Label>
+                    <Input
+                      id="awayTeamLogo"
+                      name="awayTeamLogo"
+                      placeholder="https://example.com/logo.png"
+                      defaultValue={editingSureOdd?.awayTeamLogo}
+                      className="mt-2 bg-secondary border-bet-border text-foreground"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -427,7 +488,7 @@ const Admin = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="odds" className="text-foreground">
                       Odds
@@ -452,6 +513,19 @@ const Admin = () => {
                       required
                       placeholder="95%"
                       defaultValue={editingSureOdd?.confidence}
+                      className="mt-2 bg-secondary border-bet-border text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="betCode" className="text-foreground">
+                      Betting Code
+                    </Label>
+                    <Input
+                      id="betCode"
+                      name="betCode"
+                      required
+                      placeholder="PSG5M2-GH8PL"
+                      defaultValue={editingSureOdd?.betCode}
                       className="mt-2 bg-secondary border-bet-border text-foreground"
                     />
                   </div>
@@ -495,7 +569,7 @@ const Admin = () => {
                     {sureOdds.map((sureOdd) => (
                       <TableRow key={sureOdd.id}>
                         <TableCell className="text-foreground font-medium">
-                          {sureOdd.match}
+                          {sureOdd.homeTeam} vs {sureOdd.awayTeam}
                         </TableCell>
                         <TableCell className="text-foreground">{sureOdd.prediction}</TableCell>
                         <TableCell className="text-foreground font-bold">
