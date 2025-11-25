@@ -50,60 +50,8 @@ const Admin = () => {
       return;
     }
 
-    const logoField = field === "homeTeamLogo" ? "home" : "away";
-    setGeneratingLogo(prev => ({ ...prev, [formType]: logoField }));
-
-    try {
-      const prompt = `A professional circular football club logo for ${teamName}, modern design, clean and simple, vibrant colors, high quality, on white background`;
-      
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ""}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-image-1",
-          prompt,
-          n: 1,
-          size: "512x512",
-          quality: "high",
-          output_format: "png",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate logo");
-      }
-
-      const data = await response.json();
-      const imageUrl = data.data?.[0]?.url;
-
-      if (!imageUrl) {
-        throw new Error("No image URL received");
-      }
-
-      if (formType === "match") {
-        if (field === "homeTeamLogo") {
-          setMatchHomeLogoPreview(imageUrl);
-        } else {
-          setMatchAwayLogoPreview(imageUrl);
-        }
-      } else {
-        if (field === "homeTeamLogo") {
-          setSureOddHomeLogoPreview(imageUrl);
-        } else {
-          setSureOddAwayLogoPreview(imageUrl);
-        }
-      }
-
-      toast.success("Logo generated successfully!");
-    } catch (error) {
-      console.error("Error generating logo:", error);
-      toast.error("Failed to generate logo. Please try uploading manually.");
-    } finally {
-      setGeneratingLogo(prev => ({ ...prev, [formType]: undefined }));
-    }
+    toast.info("AI logo generation requires enabling Lovable Cloud backend. Please upload logos manually for now.");
+    return;
   };
 
   const handleImageUpload = (
