@@ -38,7 +38,7 @@ const SureOdds = () => {
               key={odd.id}
               className="bg-gradient-card border-bet-border p-6 hover:shadow-bet transition-all duration-300 animate-fade-in"
             >
-              {/* Team Logos */}
+              {/* Team Logos and Names - Always Visible */}
               <div className="flex items-center justify-center gap-4 mb-6">
                 <div className="flex flex-col items-center gap-2">
                   {odd.homeTeamLogo ? (
@@ -81,6 +81,13 @@ const SureOdds = () => {
                 </div>
               </div>
 
+              {/* Percentage Win - Always Visible */}
+              <div className="text-center mb-4">
+                <p className="text-2xl font-black text-bet-success">
+                  {odd.confidence} Sure Win
+                </p>
+              </div>
+
               {/* Blurred Betting Code - Main Element */}
               <div className="relative mb-6">
                 <div className="text-center py-8 bg-secondary/50 rounded-lg border-2 border-bet-border">
@@ -100,11 +107,10 @@ const SureOdds = () => {
                 </button>
               </div>
 
-              {/* Hidden Info - Only shown after payment */}
+              {/* Hidden Market Info - Only shown after payment */}
               <div className="text-center opacity-30 blur-sm select-none pointer-events-none">
-                <p className="text-sm text-muted-foreground mb-2">Market & Prediction</p>
-                <p className="text-lg font-bold text-foreground mb-1">{odd.prediction}</p>
-                <p className="text-sm text-bet-success font-semibold">{odd.confidence} Sure Win</p>
+                <p className="text-sm text-muted-foreground mb-2">Market</p>
+                <p className="text-lg font-bold text-foreground">{odd.prediction}</p>
               </div>
             </Card>
           ))}
