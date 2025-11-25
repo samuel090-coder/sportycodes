@@ -1,41 +1,9 @@
 import MatchupCard from "@/components/MatchupCard";
 import BottomNav from "@/components/BottomNav";
+import { useBettingData } from "@/hooks/useBettingData";
 
 const Bet = () => {
-  const matches = [
-    {
-      id: "1",
-      homeTeam: "Man City",
-      awayTeam: "Arsenal",
-      homeOdds: 2.15,
-      awayOdds: 3.40,
-      time: "Today 18:00",
-    },
-    {
-      id: "2",
-      homeTeam: "Liverpool",
-      awayTeam: "Chelsea",
-      homeOdds: 1.85,
-      awayOdds: 4.20,
-      time: "Today 20:30",
-    },
-    {
-      id: "3",
-      homeTeam: "Barcelona",
-      awayTeam: "Real Madrid",
-      homeOdds: 2.50,
-      awayOdds: 2.80,
-      time: "Tomorrow 21:00",
-    },
-    {
-      id: "4",
-      homeTeam: "Bayern",
-      awayTeam: "Dortmund",
-      homeOdds: 1.95,
-      awayOdds: 3.75,
-      time: "Tomorrow 19:30",
-    },
-  ];
+  const { matches } = useBettingData();
 
   return (
     <div className="min-h-screen bg-bet-dark pb-24">
@@ -54,7 +22,18 @@ const Bet = () => {
 
         <div className="grid gap-4 md:grid-cols-2">
           {matches.map((match) => (
-            <MatchupCard key={match.id} {...match} />
+            <MatchupCard
+              key={match.id}
+              id={match.id}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+              homeTeamLogo={match.homeTeamLogo}
+              awayTeamLogo={match.awayTeamLogo}
+              homeOdds={match.homeOdds}
+              awayOdds={match.awayOdds}
+              time={match.matchTime}
+              status={match.status}
+            />
           ))}
         </div>
       </main>

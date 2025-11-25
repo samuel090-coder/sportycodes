@@ -7,12 +7,25 @@ interface MatchupCardProps {
   id: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
   homeOdds: number;
   awayOdds: number;
   time: string;
+  status: "not-started" | "live" | "completed";
 }
 
-const MatchupCard = ({ id, homeTeam, awayTeam, homeOdds, awayOdds, time }: MatchupCardProps) => {
+const MatchupCard = ({
+  id,
+  homeTeam,
+  awayTeam,
+  homeTeamLogo,
+  awayTeamLogo,
+  homeOdds,
+  awayOdds,
+  time,
+  status,
+}: MatchupCardProps) => {
   const [selectedTeam, setSelectedTeam] = useState<"home" | "away" | null>(null);
   const navigate = useNavigate();
 
@@ -35,7 +48,17 @@ const MatchupCard = ({ id, homeTeam, awayTeam, homeOdds, awayOdds, time }: Match
       <div className="p-4">
         <div className="text-xs text-muted-foreground mb-3 flex items-center justify-between">
           <span className="font-semibold">{time}</span>
-          <span className="text-primary">LIVE</span>
+          {status === "live" && (
+            <div className="flex items-center gap-2 bg-bet-success/20 px-2 py-1 rounded-full animate-pulse-glow">
+              <div className="w-2 h-2 bg-bet-success rounded-full animate-pulse" />
+              <span className="text-xs font-bold text-bet-success">LIVE</span>
+            </div>
+          )}
+          {status === "completed" && (
+            <span className="text-xs font-bold text-muted-foreground px-2 py-1 rounded-full bg-muted/50">
+              COMPLETED
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-4 items-center mb-4">
@@ -48,7 +71,23 @@ const MatchupCard = ({ id, homeTeam, awayTeam, homeOdds, awayOdds, time }: Match
                 : "bg-secondary hover:bg-secondary/80"
             }`}
           >
-            <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl">
+            {homeTeamLogo ? (
+              <img
+                src={homeTeamLogo}
+                alt={`${homeTeam} logo`}
+                className="w-12 h-12 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  const fallback = e.currentTarget.parentElement?.querySelector(".fallback-icon");
+                  if (fallback) (fallback as HTMLElement).style.display = "flex";
+                }}
+              />
+            ) : (
+              <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl">
+                ⚽
+              </div>
+            )}
+            <div className="fallback-icon w-12 h-12 bg-bet-dark rounded-full items-center justify-center text-2xl" style={{ display: "none" }}>
               ⚽
             </div>
             <span className="text-sm font-bold text-center">{homeTeam}</span>
@@ -69,7 +108,23 @@ const MatchupCard = ({ id, homeTeam, awayTeam, homeOdds, awayOdds, time }: Match
                 : "bg-secondary hover:bg-secondary/80"
             }`}
           >
-            <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl">
+            {awayTeamLogo ? (
+              <img
+                src={awayTeamLogo}
+                alt={`${awayTeam} logo`}
+                className="w-12 h-12 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  const fallback = e.currentTarget.parentElement?.querySelector(".fallback-icon");
+                  if (fallback) (fallback as HTMLElement).style.display = "flex";
+                }}
+              />
+            ) : (
+              <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl">
+                ⚽
+              </div>
+            )}
+            <div className="fallback-icon w-12 h-12 bg-bet-dark rounded-full items-center justify-center text-2xl" style={{ display: "none" }}>
               ⚽
             </div>
             <span className="text-sm font-bold text-center">{awayTeam}</span>
