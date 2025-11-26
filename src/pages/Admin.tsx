@@ -93,6 +93,24 @@ const Admin = () => {
     }
   };
 
+  const generateBothLogos = async (homeTeamName: string, awayTeamName: string, formType: "match" | "sureOdd") => {
+    if (!homeTeamName.trim() || !awayTeamName.trim()) {
+      toast.error("Please enter both team names first");
+      return;
+    }
+
+    toast.info("Generating both team logos...");
+    
+    // Generate home team logo
+    await generateTeamLogo(homeTeamName, "homeTeamLogo", formType);
+    
+    // Small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Generate away team logo
+    await generateTeamLogo(awayTeamName, "awayTeamLogo", formType);
+  };
+
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setPreview: (url: string) => void
@@ -365,7 +383,7 @@ const Admin = () => {
                           className="border-bet-border text-foreground hover:bg-primary/20"
                         >
                           <Upload className="w-4 h-4 mr-2" />
-                          Upload Logo
+                          Upload
                         </Button>
                         <Button
                           type="button"
@@ -382,7 +400,7 @@ const Admin = () => {
                           ) : (
                             <Sparkles className="w-4 h-4 mr-2" />
                           )}
-                          AI Generate
+                          AI
                         </Button>
                         <input
                           id="homeTeamLogoInput"
@@ -414,7 +432,7 @@ const Admin = () => {
                           className="border-bet-border text-foreground hover:bg-primary/20"
                         >
                           <Upload className="w-4 h-4 mr-2" />
-                          Upload Logo
+                          Upload
                         </Button>
                         <Button
                           type="button"
@@ -431,7 +449,7 @@ const Admin = () => {
                           ) : (
                             <Sparkles className="w-4 h-4 mr-2" />
                           )}
-                          AI Generate
+                          AI
                         </Button>
                         <input
                           id="awayTeamLogoInput"
@@ -450,6 +468,23 @@ const Admin = () => {
                       )}
                     </div>
                   </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
+                      const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
+                      generateBothLogos(homeTeam, awayTeam, "match");
+                    }}
+                    disabled={generatingLogo.match !== undefined}
+                    className="bg-gradient-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Both Team Logos
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -666,7 +701,7 @@ const Admin = () => {
                           className="border-bet-border text-foreground hover:bg-primary/20"
                         >
                           <Upload className="w-4 h-4 mr-2" />
-                          Upload Logo
+                          Upload
                         </Button>
                         <Button
                           type="button"
@@ -683,7 +718,7 @@ const Admin = () => {
                           ) : (
                             <Sparkles className="w-4 h-4 mr-2" />
                           )}
-                          AI Generate
+                          AI
                         </Button>
                         <input
                           id="sureOddHomeLogoInput"
@@ -715,7 +750,7 @@ const Admin = () => {
                           className="border-bet-border text-foreground hover:bg-primary/20"
                         >
                           <Upload className="w-4 h-4 mr-2" />
-                          Upload Logo
+                          Upload
                         </Button>
                         <Button
                           type="button"
@@ -732,7 +767,7 @@ const Admin = () => {
                           ) : (
                             <Sparkles className="w-4 h-4 mr-2" />
                           )}
-                          AI Generate
+                          AI
                         </Button>
                         <input
                           id="sureOddAwayLogoInput"
@@ -751,6 +786,23 @@ const Admin = () => {
                       )}
                     </div>
                   </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
+                      const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
+                      generateBothLogos(homeTeam, awayTeam, "sureOdd");
+                    }}
+                    disabled={generatingLogo.sureOdd !== undefined}
+                    className="bg-gradient-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Both Team Logos
+                  </Button>
                 </div>
 
                 <div>

@@ -39,7 +39,19 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `Create a circular football/soccer team logo for "${teamName}". The logo should be professional, modern, and suitable for a sports betting app. Include team colors, football elements, and the team name incorporated into the design. Make it look like an official club badge or crest.`
+            content: `Create a realistic, professional circular football team logo for "${teamName}". 
+            
+Requirements:
+- Must look like an authentic official football club badge/crest
+- Circular emblem design with clean borders
+- Include traditional football crest elements: shield, ribbons, stars, laurels
+- Use the actual team colors if this is a real team
+- Professional typography with team name
+- High detail and photorealistic style
+- Should look like it belongs in FIFA or Premier League
+- No cartoonish or abstract styles - must be traditional and professional
+
+Style: Photorealistic official football club badge`
           }
         ],
         modalities: ['image', 'text']
