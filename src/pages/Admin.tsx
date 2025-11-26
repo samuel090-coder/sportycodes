@@ -172,7 +172,7 @@ const Admin = () => {
     fetchPayments();
   }, []);
 
-  const handleSaveMatch = (e: React.FormEvent) => {
+  const handleSaveMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     
@@ -189,17 +189,22 @@ const Admin = () => {
       price: parseFloat(formData.get("price") as string) || 0,
     };
 
-    if (editingMatch) {
-      updateMatch(editingMatch.id, matchData);
-      toast.success("Match updated successfully!");
-      setEditingMatch(null);
-    } else {
-      addMatch(matchData);
-      toast.success("Match added successfully!");
+    try {
+      if (editingMatch) {
+        await updateMatch(editingMatch.id, matchData);
+        toast.success("Match updated successfully!");
+        setEditingMatch(null);
+      } else {
+        await addMatch(matchData);
+        toast.success("Match added successfully!");
+      }
+      (e.target as HTMLFormElement).reset();
+      setMatchHomeLogoPreview("");
+      setMatchAwayLogoPreview("");
+    } catch (error) {
+      console.error('Save match error:', error);
+      toast.error("Failed to save match. Please try again.");
     }
-    (e.target as HTMLFormElement).reset();
-    setMatchHomeLogoPreview("");
-    setMatchAwayLogoPreview("");
   };
 
   const handleEditMatch = (match: Match) => {
@@ -209,12 +214,17 @@ const Admin = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDeleteMatch = (id: string) => {
-    deleteMatch(id);
-    toast.success("Match deleted successfully!");
+  const handleDeleteMatch = async (id: string) => {
+    try {
+      await deleteMatch(id);
+      toast.success("Match deleted successfully!");
+    } catch (error) {
+      console.error('Delete match error:', error);
+      toast.error("Failed to delete match. Please try again.");
+    }
   };
 
-  const handleSaveSureOdd = (e: React.FormEvent) => {
+  const handleSaveSureOdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     
@@ -232,17 +242,22 @@ const Admin = () => {
       matchCount: parseInt(formData.get("matchCount") as string) || 1,
     };
 
-    if (editingSureOdd) {
-      updateSureOdd(editingSureOdd.id, sureOddData);
-      toast.success("Sure Odd updated successfully!");
-      setEditingSureOdd(null);
-    } else {
-      addSureOdd(sureOddData);
-      toast.success("Sure Odd added successfully!");
+    try {
+      if (editingSureOdd) {
+        await updateSureOdd(editingSureOdd.id, sureOddData);
+        toast.success("Sure Odd updated successfully!");
+        setEditingSureOdd(null);
+      } else {
+        await addSureOdd(sureOddData);
+        toast.success("Sure Odd added successfully!");
+      }
+      (e.target as HTMLFormElement).reset();
+      setSureOddHomeLogoPreview("");
+      setSureOddAwayLogoPreview("");
+    } catch (error) {
+      console.error('Save sure odd error:', error);
+      toast.error("Failed to save sure odd. Please try again.");
     }
-    (e.target as HTMLFormElement).reset();
-    setSureOddHomeLogoPreview("");
-    setSureOddAwayLogoPreview("");
   };
 
   const handleEditSureOdd = (sureOdd: SureOdd) => {
@@ -252,9 +267,14 @@ const Admin = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDeleteSureOdd = (id: string) => {
-    deleteSureOdd(id);
-    toast.success("Sure Odd deleted successfully!");
+  const handleDeleteSureOdd = async (id: string) => {
+    try {
+      await deleteSureOdd(id);
+      toast.success("Sure Odd deleted successfully!");
+    } catch (error) {
+      console.error('Delete sure odd error:', error);
+      toast.error("Failed to delete sure odd. Please try again.");
+    }
   };
 
   return (

@@ -225,6 +225,21 @@ const SureOdds = () => {
           </div>
         )}
 
+        {/* Show empty state if no data */}
+        {notStartedOdds.length === 0 && wonGames.length === 0 && lostGames.length === 0 && (
+          <div className="text-center py-16">
+            <div className="mb-4">
+              <div className="w-20 h-20 mx-auto bg-muted rounded-full flex items-center justify-center">
+                <span className="text-4xl">📊</span>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">No Sure Odds Yet</h2>
+            <p className="text-muted-foreground">
+              Check back soon for expert predictions and betting codes
+            </p>
+          </div>
+        )}
+
         {/* Pass Games Section - Past Results at Bottom */}
         {(wonGames.length > 0 || lostGames.length > 0) && (
           <div>
