@@ -30,78 +30,33 @@ export interface SureOdd {
   matchCount: number; // 1 = single match, >1 = multiple matches
 }
 
-const defaultMatches: Match[] = [
-  {
-    id: "1",
-    homeTeam: "Man United",
-    awayTeam: "Liverpool",
-    homeOdds: 2.5,
-    awayOdds: 1.8,
-    matchTime: "Today 18:00",
-    status: "not-started",
-    betCode: "MU2L8-45X9K",
-    price: 1000,
-  },
-  {
-    id: "2",
-    homeTeam: "Barcelona",
-    awayTeam: "Real Madrid",
-    homeOdds: 2.1,
-    awayOdds: 2.3,
-    matchTime: "Today 20:45",
-    status: "live",
-    betCode: "BR1RM3-78Q2M",
-    price: 1000,
-  },
-];
-
-const defaultSureOdds: SureOdd[] = [
-  {
-    id: "1",
-    homeTeam: "Arsenal",
-    awayTeam: "Chelsea",
-    prediction: "Over 2.5 Goals",
-    odds: 1.85,
-    confidence: "92%",
-    betCode: "SPC456",
-    status: "not-started",
-    price: 500,
-    matchCount: 1,
-  },
-  {
-    id: "2",
-    homeTeam: "Liverpool",
-    awayTeam: "Man United",
-    prediction: "Both Teams to Score",
-    odds: 1.75,
-    confidence: "88%",
-    betCode: "SPC789",
-    status: "scored",
-    price: 500,
-    matchCount: 1,
-  },
-  {
-    id: "3",
-    homeTeam: "Barcelona",
-    awayTeam: "Real Madrid",
-    prediction: "Home Win",
-    odds: 2.10,
-    confidence: "85%",
-    betCode: "SPC101",
-    status: "lost",
-    price: 500,
-    matchCount: 1,
-  },
-];
+// Empty defaults - admin will add data
+const defaultMatches: Match[] = [];
+const defaultSureOdds: SureOdd[] = [];
 
 export const useBettingData = () => {
-  const [matches, setMatches] = useState<Match[]>(defaultMatches);
-  const [sureOdds, setSureOdds] = useState<SureOdd[]>(defaultSureOdds);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [sureOdds, setSureOdds] = useState<SureOdd[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Clear old localStorage data on mount (one-time cleanup)
+  useEffect(() => {
+    const hasCleared = sessionStorage.getItem('localStorage_cleared');
+    if (!hasCleared) {
+      localStorage.removeItem('matches');
+      localStorage.removeItem('sure_odds');
+      sessionStorage.setItem('localStorage_cleared', 'true');
+    }
+  }, []);
 
   // Load data on mount
   useEffect(() => {
-    loadMatches();
-    loadSureOdds();
+    const loadData = async () => {
+      setIsLoading(true);
+      await Promise.all([loadMatches(), loadSureOdds()]);
+      setIsLoading(false);
+    };
+    loadData();
   }, []);
 
   const loadMatches = async () => {
@@ -113,28 +68,24 @@ export const useBettingData = () => {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const formattedData: Match[] = data.map(item => ({
-          id: item.id,
-          homeTeam: item.home_team,
-          awayTeam: item.away_team,
-          homeTeamLogo: item.home_team_logo || undefined,
-          awayTeamLogo: item.away_team_logo || undefined,
-          homeOdds: item.home_odds,
-          awayOdds: item.away_odds,
-          matchTime: item.match_time,
-          status: item.status as "not-started" | "live" | "completed",
-          betCode: item.bet_code,
-          price: item.price || 0,
-        }));
-        setMatches(formattedData);
-        localStorage.setItem('matches', JSON.stringify(formattedData));
-      }
+      const formattedData: Match[] = (data || []).map(item => ({
+        id: item.id,
+        homeTeam: item.home_team,
+        awayTeam: item.away_team,
+        homeTeamLogo: item.home_team_logo || undefined,
+        awayTeamLogo: item.away_team_logo || undefined,
+        homeOdds: item.home_odds,
+        awayOdds: item.away_odds,
+        matchTime: item.match_time,
+        status: item.status as "not-started" | "live" | "completed",
+        betCode: item.bet_code,
+        price: item.price || 0,
+      }));
+      setMatches(formattedData);
+      localStorage.removeItem('matches'); // Clear old localStorage data
     } catch (error) {
       console.error('Error loading matches:', error);
-      // Use default data from localStorage if DB fails
-      const stored = localStorage.getItem('matches');
-      if (stored) setMatches(JSON.parse(stored));
+      setMatches([]);
     }
   };
 
@@ -147,29 +98,25 @@ export const useBettingData = () => {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const formattedData: SureOdd[] = data.map(item => ({
-          id: item.id,
-          homeTeam: item.home_team,
-          awayTeam: item.away_team,
-          homeTeamLogo: item.home_team_logo || undefined,
-          awayTeamLogo: item.away_team_logo || undefined,
-          prediction: item.prediction,
-          odds: item.odds,
-          confidence: item.confidence,
-          betCode: item.bet_code,
-          status: item.status as "not-started" | "scored" | "lost",
-          price: item.price || 0,
-          matchCount: item.match_count || 1,
-        }));
-        setSureOdds(formattedData);
-        localStorage.setItem('sure_odds', JSON.stringify(formattedData));
-      }
+      const formattedData: SureOdd[] = (data || []).map(item => ({
+        id: item.id,
+        homeTeam: item.home_team,
+        awayTeam: item.away_team,
+        homeTeamLogo: item.home_team_logo || undefined,
+        awayTeamLogo: item.away_team_logo || undefined,
+        prediction: item.prediction,
+        odds: item.odds,
+        confidence: item.confidence,
+        betCode: item.bet_code,
+        status: item.status as "not-started" | "scored" | "lost",
+        price: item.price || 0,
+        matchCount: item.match_count || 1,
+      }));
+      setSureOdds(formattedData);
+      localStorage.removeItem('sure_odds'); // Clear old localStorage data
     } catch (error) {
       console.error('Error loading sure odds:', error);
-      // Use default data from localStorage if DB fails
-      const stored = localStorage.getItem('sure_odds');
-      if (stored) setSureOdds(JSON.parse(stored));
+      setSureOdds([]);
     }
   };
 
@@ -210,14 +157,9 @@ export const useBettingData = () => {
 
       const updated = [...matches, newMatch];
       setMatches(updated);
-      localStorage.setItem('matches', JSON.stringify(updated));
     } catch (error) {
       console.error('Error adding match:', error);
-      // Fallback to localStorage if DB fails
-      const newMatch: Match = { ...match, id: Date.now().toString(), price: match.price || 0 };
-      const updated = [...matches, newMatch];
-      setMatches(updated);
-      localStorage.setItem('matches', JSON.stringify(updated));
+      throw error; // Let the caller handle the error
     }
   };
 
@@ -245,15 +187,9 @@ export const useBettingData = () => {
         match.id === id ? { ...match, ...updates } : match
       );
       setMatches(updated);
-      localStorage.setItem('matches', JSON.stringify(updated));
     } catch (error) {
       console.error('Error updating match:', error);
-      // Fallback to localStorage if DB fails
-      const updated = matches.map((match) =>
-        match.id === id ? { ...match, ...updates } : match
-      );
-      setMatches(updated);
-      localStorage.setItem('matches', JSON.stringify(updated));
+      throw error;
     }
   };
 
@@ -268,13 +204,9 @@ export const useBettingData = () => {
 
       const updated = matches.filter((match) => match.id !== id);
       setMatches(updated);
-      localStorage.setItem('matches', JSON.stringify(updated));
     } catch (error) {
       console.error('Error deleting match:', error);
-      // Fallback to localStorage if DB fails
-      const updated = matches.filter((match) => match.id !== id);
-      setMatches(updated);
-      localStorage.setItem('matches', JSON.stringify(updated));
+      throw error;
     }
   };
 
@@ -317,19 +249,9 @@ export const useBettingData = () => {
 
       const updated = [...sureOdds, newSureOdd];
       setSureOdds(updated);
-      localStorage.setItem('sure_odds', JSON.stringify(updated));
     } catch (error) {
       console.error('Error adding sure odd:', error);
-      // Fallback to localStorage if DB fails
-      const newSureOdd: SureOdd = { 
-        ...sureOdd, 
-        id: Date.now().toString(),
-        price: sureOdd.price || 0,
-        matchCount: sureOdd.matchCount || 1,
-      };
-      const updated = [...sureOdds, newSureOdd];
-      setSureOdds(updated);
-      localStorage.setItem('sure_odds', JSON.stringify(updated));
+      throw error;
     }
   };
 
@@ -358,15 +280,9 @@ export const useBettingData = () => {
         sureOdd.id === id ? { ...sureOdd, ...updates } : sureOdd
       );
       setSureOdds(updated);
-      localStorage.setItem('sure_odds', JSON.stringify(updated));
     } catch (error) {
       console.error('Error updating sure odd:', error);
-      // Fallback to localStorage if DB fails
-      const updated = sureOdds.map((sureOdd) =>
-        sureOdd.id === id ? { ...sureOdd, ...updates } : sureOdd
-      );
-      setSureOdds(updated);
-      localStorage.setItem('sure_odds', JSON.stringify(updated));
+      throw error;
     }
   };
 
@@ -381,13 +297,9 @@ export const useBettingData = () => {
 
       const updated = sureOdds.filter((sureOdd) => sureOdd.id !== id);
       setSureOdds(updated);
-      localStorage.setItem('sure_odds', JSON.stringify(updated));
     } catch (error) {
       console.error('Error deleting sure odd:', error);
-      // Fallback to localStorage if DB fails
-      const updated = sureOdds.filter((sureOdd) => sureOdd.id !== id);
-      setSureOdds(updated);
-      localStorage.setItem('sure_odds', JSON.stringify(updated));
+      throw error;
     }
   };
 
