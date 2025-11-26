@@ -97,11 +97,19 @@ export const useBettingData = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
+    try {
+      localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
+    } catch (error) {
+      console.warn("Failed to persist matches to localStorage", error);
+    }
   }, [matches]);
 
   useEffect(() => {
-    localStorage.setItem(SURE_ODDS_KEY, JSON.stringify(sureOdds));
+    try {
+      localStorage.setItem(SURE_ODDS_KEY, JSON.stringify(sureOdds));
+    } catch (error) {
+      console.warn("Failed to persist sure odds to localStorage", error);
+    }
   }, [sureOdds]);
 
   const addMatch = (match: Omit<Match, "id">) => {

@@ -97,18 +97,39 @@ const SureOdds = () => {
                     </p>
                   </div>
 
-                  <div className="mb-3">
-                    <div className="text-center py-3 bg-secondary/50 rounded-lg border border-current">
-                      <p className="text-xs text-muted-foreground mb-1 uppercase">Code</p>
-                      <p className="text-xl font-black text-primary">
-                        {odd.betCode}
-                      </p>
+                  <div className="space-y-3">
+                    {/* Blurred Code with Eye Icon Overlay */}
+                    <div className="relative">
+                      <div className="text-center py-3 bg-secondary/50 rounded-lg border border-current overflow-hidden">
+                        <p className="text-xs text-muted-foreground mb-1 uppercase">Code</p>
+                        <p className="text-xl font-black text-primary filter blur-sm select-none">
+                          {odd.betCode}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleViewCode(odd.id)}
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bet-dark/70 text-primary-foreground text-xs font-semibold"
+                     >
+                        <Eye className="w-5 h-5" />
+                        <span>Tap to pay &amp; view code</span>
+                      </button>
                     </div>
-                  </div>
 
-                  <div className="text-center py-2 bg-secondary/50 rounded-lg border border-current">
-                    <p className="text-xs text-muted-foreground mb-1 uppercase">Market</p>
-                    <p className="text-sm font-bold text-foreground">{odd.prediction}</p>
+                    {/* Blurred Market Info */}
+                    <div className="relative">
+                      <div className="text-center py-2 bg-secondary/50 rounded-lg border border-current overflow-hidden">
+                        <p className="text-xs text-muted-foreground mb-1 uppercase">Market</p>
+                        <p className="text-sm font-bold text-foreground filter blur-sm select-none">
+                          {odd.prediction}
+                        </p>
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-bet-dark/60 pointer-events-none">
+                        <span className="text-[11px] text-primary-foreground/80 font-semibold">
+                          Complete payment to reveal market
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </Card>
               ))}
