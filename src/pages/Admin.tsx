@@ -186,6 +186,7 @@ const Admin = () => {
       matchTime: formData.get("matchTime") as string,
       status: formData.get("status") as "not-started" | "live" | "completed",
       betCode: formData.get("betCode") as string,
+      price: parseFloat(formData.get("price") as string) || 0,
     };
 
     if (editingMatch) {
@@ -227,6 +228,7 @@ const Admin = () => {
       confidence: formData.get("confidence") as string,
       betCode: formData.get("betCode") as string,
       status: (formData.get("status") as "not-started" | "scored" | "lost") || "not-started",
+      price: parseFloat(formData.get("price") as string) || 0,
     };
 
     if (editingSureOdd) {
@@ -563,6 +565,22 @@ const Admin = () => {
                   />
                 </div>
 
+                <div>
+                  <Label htmlFor="price" className="text-foreground">
+                    Price (₦)
+                  </Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="1000"
+                    defaultValue={editingMatch?.price || 0}
+                    className="mt-2 bg-secondary border-bet-border text-foreground"
+                  />
+                </div>
+
                 <div className="flex gap-4">
                   <Button
                     type="submit"
@@ -847,19 +865,35 @@ const Admin = () => {
                       className="mt-2 bg-secondary border-bet-border text-foreground"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="betCode" className="text-foreground">
-                      Betting Code
-                    </Label>
-                    <Input
-                      id="betCode"
-                      name="betCode"
-                      required
-                      placeholder="PSG5M2-GH8PL"
-                      defaultValue={editingSureOdd?.betCode}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="betCode" className="text-foreground">
+                    Betting Code
+                  </Label>
+                  <Input
+                    id="betCode"
+                    name="betCode"
+                    required
+                    placeholder="PSG5M2-GH8PL"
+                    defaultValue={editingSureOdd?.betCode}
+                    className="mt-2 bg-secondary border-bet-border text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="price" className="text-foreground">
+                    Price (₦)
+                  </Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="500"
+                    defaultValue={editingSureOdd?.price || 0}
+                    className="mt-2 bg-secondary border-bet-border text-foreground"
+                  />
+                </div>
                 </div>
 
                 <div>
@@ -1019,14 +1053,21 @@ const Admin = () => {
                         </TableCell>
                         <TableCell>
                           {payment.screenshot_url && (
-                            <a
-                              href={payment.screenshot_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline text-sm"
+                            <button
+                              onClick={() => {
+                                const modal = document.createElement('div');
+                                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+                                modal.onclick = () => modal.remove();
+                                const img = document.createElement('img');
+                                img.src = payment.screenshot_url;
+                                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain';
+                                modal.appendChild(img);
+                                document.body.appendChild(modal);
+                              }}
+                              className="text-primary hover:underline text-sm cursor-pointer"
                             >
-                              View
-                            </a>
+                              View Screenshot
+                            </button>
                           )}
                         </TableCell>
                         <TableCell className="text-foreground text-sm">
