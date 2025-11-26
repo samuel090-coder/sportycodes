@@ -57,7 +57,9 @@ const Payment = () => {
             sure_odd_id: location.state?.id || 'bet-payment',
             screenshot_url: base64Screenshot,
             amount: betAmount || 0,
-            status: 'pending'
+            status: 'pending',
+            item_type: location.state?.type || 'sure-odd',
+            item_id: location.state?.id || null
           });
 
         if (error) {
@@ -66,6 +68,9 @@ const Payment = () => {
           setIsSubmitting(false);
           return;
         }
+
+        // Store user email in localStorage for access control
+        localStorage.setItem('user_payment_email', userEmail);
 
         setIsSubmitted(true);
         toast.success("Payment submitted successfully!");

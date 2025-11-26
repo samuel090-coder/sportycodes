@@ -11,6 +11,7 @@ export interface Match {
   matchTime: string;
   status: "not-started" | "live" | "completed";
   betCode: string;
+  price: number;
 }
 
 export interface SureOdd {
@@ -24,6 +25,7 @@ export interface SureOdd {
   confidence: string;
   betCode: string;
   status: "not-started" | "scored" | "lost";
+  price: number;
 }
 
 const MATCHES_KEY = "sporty_codes_matches";
@@ -39,6 +41,7 @@ const defaultMatches: Match[] = [
     matchTime: "Today 18:00",
     status: "not-started",
     betCode: "MU2L8-45X9K",
+    price: 1000,
   },
   {
     id: "2",
@@ -49,6 +52,7 @@ const defaultMatches: Match[] = [
     matchTime: "Today 20:45",
     status: "live",
     betCode: "BR1RM3-78Q2M",
+    price: 1000,
   },
 ];
 
@@ -62,6 +66,7 @@ const defaultSureOdds: SureOdd[] = [
     confidence: "95%",
     betCode: "PSG5M2-GH8PL",
     status: "not-started",
+    price: 500,
   },
   {
     id: "2",
@@ -72,6 +77,7 @@ const defaultSureOdds: SureOdd[] = [
     confidence: "92%",
     betCode: "INT0AC-KL3VN",
     status: "not-started",
+    price: 500,
   },
   {
     id: "3",
@@ -82,6 +88,7 @@ const defaultSureOdds: SureOdd[] = [
     confidence: "88%",
     betCode: "ATL4SE-PQ7WM",
     status: "not-started",
+    price: 500,
   },
 ];
 
