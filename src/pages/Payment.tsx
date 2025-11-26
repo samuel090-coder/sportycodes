@@ -3,8 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { ArrowLeft, Upload, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Payment = () => {
   const location = useLocation();
@@ -12,7 +14,9 @@ const Payment = () => {
   const { betAmount, potentialWin, selectedTeamName, homeTeam, awayTeam } = location.state || {};
 
   const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [userEmail, setUserEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const accountDetails = {
     accountNumber: "1234567890",
@@ -26,14 +30,54 @@ const Payment = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!screenshot) {
       toast.error("Please upload payment screenshot");
       return;
     }
 
-    setIsSubmitted(true);
-    toast.success("Payment submitted successfully!");
+    if (!userEmail) {
+      toast.error("Please enter your email");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Convert screenshot to base64 for storage
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Screenshot = reader.result as string;
+
+        // Insert payment record
+        const { error } = await supabase
+          .from('payments')
+          .insert({
+            user_email: userEmail,
+            sure_odd_id: location.state?.id || 'bet-payment',
+            screenshot_url: base64Screenshot,
+            amount: betAmount || 0,
+            status: 'pending'
+          });
+
+        if (error) {
+          console.error('Payment submission error:', error);
+          toast.error("Failed to submit payment. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        setIsSubmitted(true);
+        toast.success("Payment submitted successfully!");
+        setIsSubmitting(false);
+      };
+
+      reader.readAsDataURL(screenshot);
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error("An error occurred. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -44,7 +88,7 @@ const Payment = () => {
             <CheckCircle2 className="w-20 h-20 text-bet-success mx-auto mb-4" />
             <h2 className="text-2xl font-black text-foreground mb-3">Payment Submitted!</h2>
             <p className="text-muted-foreground mb-6">
-              We will review your payment, please hold... If payment delays, contact admin.
+              We will review your payment, please hold... For quick approval, please message admin on WhatsApp with your payment screenshot.
             </p>
           </div>
 
@@ -129,6 +173,20 @@ const Payment = () => {
           <h2 className="text-xl font-bold text-foreground mb-4">Upload Payment Proof</h2>
           <div className="space-y-4">
             <div>
+              <Label htmlFor="email" className="text-foreground">
+                Your Email Address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="mt-2"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="screenshot" className="text-foreground">
                 Payment Screenshot
               </Label>
@@ -154,10 +212,10 @@ const Payment = () => {
 
             <Button
               onClick={handleSubmit}
-              disabled={!screenshot}
+              disabled={!screenshot || !userEmail || isSubmitting}
               className="w-full bg-gradient-primary hover:opacity-90 transition-all duration-300 font-bold text-lg py-6 disabled:opacity-50"
             >
-              Submit Payment
+              {isSubmitting ? "Submitting..." : "Submit Payment"}
             </Button>
           </div>
         </Card>
