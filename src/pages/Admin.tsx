@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Pencil, Trash2, Upload, Loader2, Sparkles } from "lucide-react";
+import { Pencil, Trash2, Upload, Loader2, Sparkles, CheckCircle, XCircle } from "lucide-react";
 import { useBettingData, Match, SureOdd } from "@/hooks/useBettingData";
+import { supabase } from "@/integrations/supabase/client";
 
 const Admin = () => {
   const {
@@ -39,6 +40,8 @@ const Admin = () => {
     match?: "home" | "away";
     sureOdd?: "home" | "away";
   }>({});
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
 
   const generateTeamLogo = async (
     teamName: string,
@@ -50,8 +53,44 @@ const Admin = () => {
       return;
     }
 
-    toast.info("AI logo generation requires enabling Lovable Cloud backend. Please upload logos manually for now.");
-    return;
+    const logoType = field === "homeTeamLogo" ? "home" : "away";
+    setGeneratingLogo((prev) => ({ ...prev, [formType]: logoType }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-logo', {
+        body: { teamName }
+      });
+
+      if (error) throw error;
+
+      if (data?.imageUrl) {
+        if (formType === "match") {
+          if (logoType === "home") {
+            setMatchHomeLogoPreview(data.imageUrl);
+          } else {
+            setMatchAwayLogoPreview(data.imageUrl);
+          }
+        } else {
+          if (logoType === "home") {
+            setSureOddHomeLogoPreview(data.imageUrl);
+          } else {
+            setSureOddAwayLogoPreview(data.imageUrl);
+          }
+        }
+        toast.success("Logo generated successfully!");
+      } else {
+        throw new Error("No image returned");
+      }
+    } catch (error: any) {
+      console.error("Logo generation error:", error);
+      toast.error(error.message || "Failed to generate logo. Please try uploading manually.");
+    } finally {
+      setGeneratingLogo((prev) => {
+        const updated = { ...prev };
+        delete updated[formType];
+        return updated;
+      });
+    }
   };
 
   const handleImageUpload = (
@@ -75,6 +114,45 @@ const Admin = () => {
   const handleSaveAccount = () => {
     toast.success("Account details updated successfully!");
   };
+
+  const fetchPayments = async () => {
+    setLoadingPayments(true);
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPayments(data || []);
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+      toast.error('Failed to load payments');
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const handlePaymentStatus = async (paymentId: string, status: 'approved' | 'declined') => {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .update({ status })
+        .eq('id', paymentId);
+
+      if (error) throw error;
+
+      toast.success(`Payment ${status} successfully!`);
+      fetchPayments();
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      toast.error('Failed to update payment status');
+    }
+  };
+
+  useEffect(() => {
+    fetchPayments();
+  }, []);
 
   const handleSaveMatch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,7 +247,7 @@ const Admin = () => {
 
       <main className="max-w-screen-xl mx-auto px-4 py-6">
         <Tabs defaultValue="account" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-bet-card">
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-bet-card">
             <TabsTrigger value="account" className="data-[state=active]:bg-primary">
               Account Details
             </TabsTrigger>
@@ -178,6 +256,9 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="sure-odds" className="data-[state=active]:bg-primary">
               Manage Sure Odds
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-primary">
+              Payment Approvals
             </TabsTrigger>
           </TabsList>
 
@@ -834,6 +915,100 @@ const Admin = () => {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Payment Approvals</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Review and approve user payments</p>
+                </div>
+                <Button
+                  onClick={fetchPayments}
+                  disabled={loadingPayments}
+                  className="bg-gradient-primary hover:opacity-90"
+                >
+                  {loadingPayments ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-bet-border">
+                      <TableHead className="text-foreground">Email</TableHead>
+                      <TableHead className="text-foreground">Sure Odd ID</TableHead>
+                      <TableHead className="text-foreground">Amount</TableHead>
+                      <TableHead className="text-foreground">Status</TableHead>
+                      <TableHead className="text-foreground">Screenshot</TableHead>
+                      <TableHead className="text-foreground">Date</TableHead>
+                      <TableHead className="text-foreground">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map((payment) => (
+                      <TableRow key={payment.id} className="border-bet-border">
+                        <TableCell className="text-foreground">{payment.user_email}</TableCell>
+                        <TableCell className="text-foreground font-mono text-xs">{payment.sure_odd_id}</TableCell>
+                        <TableCell className="text-foreground">₦{payment.amount}</TableCell>
+                        <TableCell>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            payment.status === 'approved' 
+                              ? 'bg-green-500/20 text-green-500' 
+                              : payment.status === 'declined'
+                              ? 'bg-red-500/20 text-red-500'
+                              : 'bg-yellow-500/20 text-yellow-500'
+                          }`}>
+                            {payment.status.toUpperCase()}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {payment.screenshot_url && (
+                            <a
+                              href={payment.screenshot_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline text-sm"
+                            >
+                              View
+                            </a>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-foreground text-sm">
+                          {new Date(payment.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {payment.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handlePaymentStatus(payment.id, 'approved')}
+                                className="bg-green-500 hover:bg-green-600 text-white"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handlePaymentStatus(payment.id, 'declined')}
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {payments.length === 0 && !loadingPayments && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No payments found
+                  </div>
+                )}
               </div>
             </Card>
           </TabsContent>
