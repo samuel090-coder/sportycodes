@@ -111,6 +111,7 @@ export type Database = {
           home_team: string
           home_team_logo: string | null
           id: string
+          match_count: number
           odds: number
           prediction: string
           price: number
@@ -126,6 +127,7 @@ export type Database = {
           home_team: string
           home_team_logo?: string | null
           id?: string
+          match_count?: number
           odds: number
           prediction: string
           price?: number
@@ -141,6 +143,7 @@ export type Database = {
           home_team?: string
           home_team_logo?: string | null
           id?: string
+          match_count?: number
           odds?: number
           prediction?: string
           price?: number
