@@ -14,11 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      matches: {
+        Row: {
+          away_odds: number
+          away_team: string
+          away_team_logo: string | null
+          bet_code: string
+          created_at: string | null
+          home_odds: number
+          home_team: string
+          home_team_logo: string | null
+          id: string
+          match_time: string
+          price: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          away_odds: number
+          away_team: string
+          away_team_logo?: string | null
+          bet_code: string
+          created_at?: string | null
+          home_odds: number
+          home_team: string
+          home_team_logo?: string | null
+          id?: string
+          match_time: string
+          price?: number
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          away_odds?: number
+          away_team?: string
+          away_team_logo?: string | null
+          bet_code?: string
+          created_at?: string | null
+          home_odds?: number
+          home_team?: string
+          home_team_logo?: string | null
+          id?: string
+          match_time?: string
+          price?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number | null
           created_at: string | null
           id: string
+          item_id: string | null
+          item_type: string | null
           screenshot_url: string | null
           status: string
           sure_odd_id: string
@@ -29,6 +79,8 @@ export type Database = {
           amount?: number | null
           created_at?: string | null
           id?: string
+          item_id?: string | null
+          item_type?: string | null
           screenshot_url?: string | null
           status?: string
           sure_odd_id: string
@@ -39,11 +91,61 @@ export type Database = {
           amount?: number | null
           created_at?: string | null
           id?: string
+          item_id?: string | null
+          item_type?: string | null
           screenshot_url?: string | null
           status?: string
           sure_odd_id?: string
           updated_at?: string | null
           user_email?: string
+        }
+        Relationships: []
+      }
+      sure_odds: {
+        Row: {
+          away_team: string
+          away_team_logo: string | null
+          bet_code: string
+          confidence: string
+          created_at: string | null
+          home_team: string
+          home_team_logo: string | null
+          id: string
+          odds: number
+          prediction: string
+          price: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          away_team: string
+          away_team_logo?: string | null
+          bet_code: string
+          confidence: string
+          created_at?: string | null
+          home_team: string
+          home_team_logo?: string | null
+          id?: string
+          odds: number
+          prediction: string
+          price?: number
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          away_team?: string
+          away_team_logo?: string | null
+          bet_code?: string
+          confidence?: string
+          created_at?: string | null
+          home_team?: string
+          home_team_logo?: string | null
+          id?: string
+          odds?: number
+          prediction?: string
+          price?: number
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
