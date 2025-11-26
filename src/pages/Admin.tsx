@@ -229,6 +229,7 @@ const Admin = () => {
       betCode: formData.get("betCode") as string,
       status: (formData.get("status") as "not-started" | "scored" | "lost") || "not-started",
       price: parseFloat(formData.get("price") as string) || 0,
+      matchCount: parseInt(formData.get("matchCount") as string) || 1,
     };
 
     if (editingSureOdd) {
@@ -910,6 +911,23 @@ const Admin = () => {
                     <option value="scored">Scored (Won)</option>
                     <option value="lost">Lost</option>
                   </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="matchCount" className="text-foreground">
+                    Number of Matches in Code
+                  </Label>
+                  <Input
+                    id="matchCount"
+                    name="matchCount"
+                    type="number"
+                    min="1"
+                    defaultValue={editingSureOdd?.matchCount || 1}
+                    className="mt-2 bg-secondary border-bet-border text-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    1 = Single match (shows team names), &gt;1 = Multiple matches (shows count)
+                  </p>
                 </div>
 
                 <div className="flex gap-4">

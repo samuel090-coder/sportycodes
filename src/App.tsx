@@ -5,9 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoadingScreen from "./components/LoadingScreen";
-import Bet from "./pages/Bet";
 import SureOdds from "./pages/SureOdds";
-import PlaceBet from "./pages/PlaceBet";
 import Payment from "./pages/Payment";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -39,9 +37,7 @@ const App = () => {
         {showLoading && !hasShownLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Bet />} />
-            <Route path="/sure-odds" element={<SureOdds />} />
-            <Route path="/place-bet" element={<PlaceBet />} />
+            <Route path="/" element={<SureOdds />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

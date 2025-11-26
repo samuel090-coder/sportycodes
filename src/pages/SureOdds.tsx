@@ -5,6 +5,7 @@ import { useBettingData } from "@/hooks/useBettingData";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const SureOdds = () => {
   const { sureOdds } = useBettingData();
@@ -42,6 +43,31 @@ const SureOdds = () => {
 
     if (email) {
       checkPaymentStatus();
+      
+      // Subscribe to real-time updates for payment approvals
+      const channel = supabase
+        .channel('payment-approvals')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'payments',
+            filter: `user_email=eq.${email}`
+          },
+          (payload) => {
+            console.log('Payment status updated:', payload);
+            if (payload.new.status === 'approved') {
+              setApprovedItems(prev => [...prev, payload.new.item_id]);
+              toast.success('Your payment has been approved! You can now view the code.');
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, []);
 
@@ -85,54 +111,65 @@ const SureOdds = () => {
             <div className="grid gap-4">
               {notStartedOdds.map((odd) => {
                 const userHasAccess = hasAccess(odd.id);
+                const isMultipleMatches = odd.matchCount > 1;
                 
                 return (
                   <Card
                     key={odd.id}
                     className="p-4 hover:shadow-bet transition-all duration-300 animate-fade-in border-2 bg-gradient-card border-bet-border"
                   >
-                    {/* Team Logos and Names */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        {odd.homeTeamLogo ? (
-                          <img
-                            src={odd.homeTeamLogo}
-                            alt={`${odd.homeTeam} logo`}
-                            className="w-12 h-12 object-contain rounded-full"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              const fallback = e.currentTarget.nextElementSibling;
-                              if (fallback) (fallback as HTMLElement).style.display = "flex";
-                            }}
-                          />
-                        ) : null}
-                        <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl" style={{ display: odd.homeTeamLogo ? "none" : "flex" }}>
-                          ⚽
-                        </div>
-                        <span className="text-sm font-bold text-foreground">{odd.homeTeam}</span>
+                    {/* Display logic based on match count */}
+                    {isMultipleMatches ? (
+                      /* Multiple matches - show count */
+                      <div className="flex items-center justify-center mb-3">
+                        <h3 className="text-2xl font-black text-primary">
+                          {odd.matchCount} SURE ODDS
+                        </h3>
                       </div>
+                    ) : (
+                      /* Single match - show team logos and names */
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2 flex-1">
+                          {odd.homeTeamLogo ? (
+                            <img
+                              src={odd.homeTeamLogo}
+                              alt={`${odd.homeTeam} logo`}
+                              className="w-12 h-12 object-contain rounded-full"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) (fallback as HTMLElement).style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl" style={{ display: odd.homeTeamLogo ? "none" : "flex" }}>
+                            ⚽
+                          </div>
+                          <span className="text-sm font-bold text-foreground">{odd.homeTeam}</span>
+                        </div>
 
-                      <span className="text-lg font-black text-muted-foreground px-2">VS</span>
+                        <span className="text-lg font-black text-muted-foreground px-2">VS</span>
 
-                      <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="text-sm font-bold text-foreground text-right">{odd.awayTeam}</span>
-                        {odd.awayTeamLogo ? (
-                          <img
-                            src={odd.awayTeamLogo}
-                            alt={`${odd.awayTeam} logo`}
-                            className="w-12 h-12 object-contain rounded-full"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              const fallback = e.currentTarget.nextElementSibling;
-                              if (fallback) (fallback as HTMLElement).style.display = "flex";
-                            }}
-                          />
-                        ) : null}
-                        <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl" style={{ display: odd.awayTeamLogo ? "none" : "flex" }}>
-                          ⚽
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="text-sm font-bold text-foreground text-right">{odd.awayTeam}</span>
+                          {odd.awayTeamLogo ? (
+                            <img
+                              src={odd.awayTeamLogo}
+                              alt={`${odd.awayTeam} logo`}
+                              className="w-12 h-12 object-contain rounded-full"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) (fallback as HTMLElement).style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div className="w-12 h-12 bg-bet-dark rounded-full flex items-center justify-center text-2xl" style={{ display: odd.awayTeamLogo ? "none" : "flex" }}>
+                            ⚽
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex items-center justify-between mb-3">
                       <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">

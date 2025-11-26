@@ -44,40 +44,53 @@ const Payment = () => {
     setIsSubmitting(true);
 
     try {
-      // Convert screenshot to base64 for storage
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Screenshot = reader.result as string;
+      // Upload screenshot to Supabase storage
+      const fileExt = screenshot.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-        // Insert payment record
-        const { error } = await supabase
-          .from('payments')
-          .insert({
-            user_email: userEmail,
-            sure_odd_id: location.state?.id || 'bet-payment',
-            screenshot_url: base64Screenshot,
-            amount: betAmount || 0,
-            status: 'pending',
-            item_type: location.state?.type || 'sure-odd',
-            item_id: location.state?.id || null
-          });
+      const { error: uploadError } = await supabase.storage
+        .from('payment-screenshots')
+        .upload(filePath, screenshot);
 
-        if (error) {
-          console.error('Payment submission error:', error);
-          toast.error("Failed to submit payment. Please try again.");
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Store user email in localStorage for access control
-        localStorage.setItem('user_payment_email', userEmail);
-
-        setIsSubmitted(true);
-        toast.success("Payment submitted successfully!");
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast.error("Failed to upload screenshot. Please try again.");
         setIsSubmitting(false);
-      };
+        return;
+      }
 
-      reader.readAsDataURL(screenshot);
+      // Get public URL for the uploaded file
+      const { data: urlData } = supabase.storage
+        .from('payment-screenshots')
+        .getPublicUrl(filePath);
+
+      // Insert payment record
+      const { error } = await supabase
+        .from('payments')
+        .insert({
+          user_email: userEmail,
+          sure_odd_id: location.state?.id || 'bet-payment',
+          screenshot_url: urlData.publicUrl,
+          amount: betAmount || 0,
+          status: 'pending',
+          item_type: location.state?.type || 'sure-odd',
+          item_id: location.state?.id || null
+        });
+
+      if (error) {
+        console.error('Payment submission error:', error);
+        toast.error("Failed to submit payment. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Store user email in localStorage for access control
+      localStorage.setItem('user_payment_email', userEmail);
+
+      setIsSubmitted(true);
+      toast.success("Payment submitted successfully!");
+      setIsSubmitting(false);
     } catch (error) {
       console.error('Payment error:', error);
       toast.error("An error occurred. Please try again.");
