@@ -14,13 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payments: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          id: string
+          screenshot_url: string | null
+          status: string
+          sure_odd_id: string
+          updated_at: string | null
+          user_email: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          screenshot_url?: string | null
+          status?: string
+          sure_odd_id: string
+          updated_at?: string | null
+          user_email: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          screenshot_url?: string | null
+          status?: string
+          sure_odd_id?: string
+          updated_at?: string | null
+          user_email?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: { user_email: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
