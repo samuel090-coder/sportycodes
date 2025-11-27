@@ -3,25 +3,24 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil, Trash2, Upload, Loader2, Sparkles, CheckCircle, XCircle } from "lucide-react";
-import { useBettingData, Match, SureOdd } from "@/hooks/useBettingData";
+import { Pencil, Trash2, Upload, Loader2, Sparkles, CheckCircle, XCircle, Terminal, Shield, Lock, Unlock } from "lucide-react";
+import { useBettingData, SureOdd } from "@/hooks/useBettingData";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Admin = () => {
-  const {
-    matches,
-    sureOdds,
-    addMatch,
-    updateMatch,
-    deleteMatch,
-    addSureOdd,
-    updateSureOdd,
-    deleteSureOdd,
-  } = useBettingData();
+  const navigate = useNavigate();
+  const { sureOdds, addSureOdd, updateSureOdd, deleteSureOdd } = useBettingData();
+  
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [accountDetails, setAccountDetails] = useState({
     accountNumber: "1234567890",
@@ -29,32 +28,72 @@ const Admin = () => {
     bankName: "GTBank",
   });
 
-  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [editingSureOdd, setEditingSureOdd] = useState<SureOdd | null>(null);
-  
-  const [matchHomeLogoPreview, setMatchHomeLogoPreview] = useState<string>("");
-  const [matchAwayLogoPreview, setMatchAwayLogoPreview] = useState<string>("");
   const [sureOddHomeLogoPreview, setSureOddHomeLogoPreview] = useState<string>("");
   const [sureOddAwayLogoPreview, setSureOddAwayLogoPreview] = useState<string>("");
-  const [generatingLogo, setGeneratingLogo] = useState<{
-    match?: "home" | "away";
-    sureOdd?: "home" | "away";
-  }>({});
+  const [generatingLogo, setGeneratingLogo] = useState<"home" | "away" | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
 
-  const generateTeamLogo = async (
-    teamName: string,
-    field: "homeTeamLogo" | "awayTeamLogo",
-    formType: "match" | "sureOdd"
-  ) => {
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user?.email) {
+      const { data: isAdmin } = await supabase.rpc('is_admin', { 
+        user_email: data.session.user.email 
+      });
+      setIsAuthenticated(!!isAdmin);
+      if (!isAdmin) {
+        toast.error("Access Denied - Admin Only");
+        navigate("/");
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAuthenticating(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword,
+      });
+
+      if (error) throw error;
+
+      const { data: isAdmin } = await supabase.rpc('is_admin', { 
+        user_email: data.user.email 
+      });
+
+      if (isAdmin) {
+        setIsAuthenticated(true);
+        toast.success("Access Granted");
+      } else {
+        await supabase.auth.signOut();
+        toast.error("Access Denied - Admin Only");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Authentication Failed");
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const generateTeamLogo = async (teamName: string, field: "homeTeamLogo" | "awayTeamLogo") => {
     if (!teamName.trim()) {
       toast.error("Please enter team name first");
       return;
     }
 
     const logoType = field === "homeTeamLogo" ? "home" : "away";
-    setGeneratingLogo((prev) => ({ ...prev, [formType]: logoType }));
+    setGeneratingLogo(logoType);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-logo', {
@@ -64,18 +103,10 @@ const Admin = () => {
       if (error) throw error;
 
       if (data?.imageUrl) {
-        if (formType === "match") {
-          if (logoType === "home") {
-            setMatchHomeLogoPreview(data.imageUrl);
-          } else {
-            setMatchAwayLogoPreview(data.imageUrl);
-          }
+        if (logoType === "home") {
+          setSureOddHomeLogoPreview(data.imageUrl);
         } else {
-          if (logoType === "home") {
-            setSureOddHomeLogoPreview(data.imageUrl);
-          } else {
-            setSureOddAwayLogoPreview(data.imageUrl);
-          }
+          setSureOddAwayLogoPreview(data.imageUrl);
         }
         toast.success("Logo generated successfully!");
       } else {
@@ -85,36 +116,11 @@ const Admin = () => {
       console.error("Logo generation error:", error);
       toast.error(error.message || "Failed to generate logo. Please try uploading manually.");
     } finally {
-      setGeneratingLogo((prev) => {
-        const updated = { ...prev };
-        delete updated[formType];
-        return updated;
-      });
+      setGeneratingLogo(null);
     }
   };
 
-  const generateBothLogos = async (homeTeamName: string, awayTeamName: string, formType: "match" | "sureOdd") => {
-    if (!homeTeamName.trim() || !awayTeamName.trim()) {
-      toast.error("Please enter both team names first");
-      return;
-    }
-
-    toast.info("Generating both team logos...");
-    
-    // Generate home team logo
-    await generateTeamLogo(homeTeamName, "homeTeamLogo", formType);
-    
-    // Small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Generate away team logo
-    await generateTeamLogo(awayTeamName, "awayTeamLogo", formType);
-  };
-
-  const handleImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setPreview: (url: string) => void
-  ) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setPreview: (url: string) => void) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -127,10 +133,6 @@ const Admin = () => {
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const handleSaveAccount = () => {
-    toast.success("Account details updated successfully!");
   };
 
   const fetchPayments = async () => {
@@ -169,60 +171,10 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    fetchPayments();
-  }, []);
-
-  const handleSaveMatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    
-    const matchData = {
-      homeTeam: formData.get("homeTeam") as string,
-      awayTeam: formData.get("awayTeam") as string,
-      homeTeamLogo: matchHomeLogoPreview || editingMatch?.homeTeamLogo || "",
-      awayTeamLogo: matchAwayLogoPreview || editingMatch?.awayTeamLogo || "",
-      homeOdds: parseFloat(formData.get("homeOdds") as string),
-      awayOdds: parseFloat(formData.get("awayOdds") as string),
-      matchTime: formData.get("matchTime") as string,
-      status: formData.get("status") as "not-started" | "live" | "completed",
-      betCode: formData.get("betCode") as string,
-      price: parseFloat(formData.get("price") as string) || 0,
-    };
-
-    try {
-      if (editingMatch) {
-        await updateMatch(editingMatch.id, matchData);
-        toast.success("Match updated successfully!");
-        setEditingMatch(null);
-      } else {
-        await addMatch(matchData);
-        toast.success("Match added successfully!");
-      }
-      (e.target as HTMLFormElement).reset();
-      setMatchHomeLogoPreview("");
-      setMatchAwayLogoPreview("");
-    } catch (error) {
-      console.error('Save match error:', error);
-      toast.error("Failed to save match. Please try again.");
+    if (isAuthenticated) {
+      fetchPayments();
     }
-  };
-
-  const handleEditMatch = (match: Match) => {
-    setEditingMatch(match);
-    setMatchHomeLogoPreview(match.homeTeamLogo || "");
-    setMatchAwayLogoPreview(match.awayTeamLogo || "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleDeleteMatch = async (id: string) => {
-    try {
-      await deleteMatch(id);
-      toast.success("Match deleted successfully!");
-    } catch (error) {
-      console.error('Delete match error:', error);
-      toast.error("Failed to delete match. Please try again.");
-    }
-  };
+  }, [isAuthenticated]);
 
   const handleSaveSureOdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,874 +229,621 @@ const Admin = () => {
     }
   };
 
+  // Login Screen
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-cyber-dark flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-cyber-panel border-2 border-cyber-neon-green shadow-neon-green p-8">
+          <div className="space-y-6">
+            <Skeleton className="h-12 w-3/4 mx-auto bg-cyber-neon-green/20" />
+            <Skeleton className="h-10 w-full bg-cyber-neon-green/20" />
+            <Skeleton className="h-10 w-full bg-cyber-neon-green/20" />
+            <Skeleton className="h-12 w-full bg-cyber-neon-green/20" />
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-cyber-dark flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated scan line */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyber-neon-green to-transparent animate-scan-line opacity-30" />
+        </div>
+
+        <Card className="w-full max-w-md bg-cyber-panel border-2 border-cyber-neon-green shadow-neon-green p-8 relative overflow-hidden animate-fade-in">
+          {/* LED corner accents */}
+          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyber-neon-cyan animate-neon-pulse" />
+          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyber-neon-cyan animate-neon-pulse" />
+          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyber-neon-cyan animate-neon-pulse" />
+          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyber-neon-cyan animate-neon-pulse" />
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Shield className="w-8 h-8 text-cyber-neon-green animate-neon-pulse" />
+                <Terminal className="w-8 h-8 text-cyber-neon-cyan animate-neon-pulse" />
+              </div>
+              <h1 className="text-3xl font-black text-cyber-neon-green tracking-wider font-mono">
+                ADMIN ACCESS
+              </h1>
+              <p className="text-cyber-neon-cyan/70 font-mono text-sm">
+                {"> AUTHORIZATION REQUIRED_"}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email" className="text-cyber-neon-green font-mono">
+                  EMAIL ADDRESS
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  required
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-green text-cyber-neon-green font-mono focus:shadow-neon-green transition-all"
+                  placeholder="admin@sporty.codes"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="text-cyber-neon-green font-mono">
+                  PASSWORD
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  required
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-green text-cyber-neon-green font-mono focus:shadow-neon-green transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isAuthenticating}
+                className="w-full bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black tracking-wider font-mono text-lg py-6 shadow-neon-green hover:shadow-neon-cyan transition-all"
+              >
+                {isAuthenticating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    AUTHENTICATING...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-5 h-5 mr-2" />
+                    ENTER SYSTEM
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
+  // Main Admin Dashboard
   return (
-    <div className="min-h-screen bg-bet-dark pb-8">
-      <header className="sticky top-0 z-30 bg-gradient-primary shadow-bet">
+    <div className="min-h-screen bg-cyber-dark pb-20 relative overflow-hidden">
+      {/* Animated background effects */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-neon animate-scan-line" />
+      </div>
+
+      <header className="sticky top-0 z-30 bg-cyber-panel border-b-2 border-cyber-neon-green shadow-neon-green">
         <div className="max-w-screen-xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-black text-primary-foreground">Admin Dashboard</h1>
-          <p className="text-sm text-primary-foreground/80 mt-1">Manage your betting platform</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Terminal className="w-8 h-8 text-cyber-neon-green animate-neon-pulse" />
+              <div>
+                <h1 className="text-3xl font-black text-cyber-neon-green tracking-wider font-mono animate-glitch">
+                  ADMIN CONTROL PANEL
+                </h1>
+                <p className="text-sm text-cyber-neon-cyan/70 font-mono mt-1">
+                  {"> SYSTEM STATUS: ONLINE_"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-cyber-neon-green animate-neon-pulse" />
+              <span className="text-cyber-neon-green font-mono text-sm">SECURE</span>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-screen-xl mx-auto px-4 py-6">
-        <Tabs defaultValue="account" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6 bg-bet-card">
-            <TabsTrigger value="account" className="data-[state=active]:bg-primary">
-              Account Details
-            </TabsTrigger>
-            <TabsTrigger value="matches" className="data-[state=active]:bg-primary">
-              Manage Matches
-            </TabsTrigger>
-            <TabsTrigger value="sure-odds" className="data-[state=active]:bg-primary">
-              Manage Sure Odds
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="data-[state=active]:bg-primary">
-              Payment Approvals
-            </TabsTrigger>
-          </TabsList>
+      <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
+        {/* Account Details Section */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-cyan/50 shadow-neon-cyan p-6 relative overflow-hidden">
+          <div className="absolute top-2 right-2 flex gap-2">
+            <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
+            <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse delay-150" />
+          </div>
 
-          <TabsContent value="account">
-            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in">
-              <h2 className="text-xl font-bold text-foreground mb-6">Update Payment Account</h2>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="bankName" className="text-foreground">
-                    Bank Name
-                  </Label>
-                  <Input
-                    id="bankName"
-                    value={accountDetails.bankName}
-                    onChange={(e) =>
-                      setAccountDetails({ ...accountDetails, bankName: e.target.value })
-                    }
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
+          <h2 className="text-xl font-black text-cyber-neon-cyan mb-6 font-mono flex items-center gap-2">
+            <span className="text-cyber-neon-green">&gt;</span> PAYMENT ACCOUNT CONFIGURATION
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bankName" className="text-cyber-neon-green font-mono text-sm">
+                BANK NAME
+              </Label>
+              <Input
+                id="bankName"
+                value={accountDetails.bankName}
+                onChange={(e) => setAccountDetails({ ...accountDetails, bankName: e.target.value })}
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="accountName" className="text-foreground">
-                    Account Name
-                  </Label>
-                  <Input
-                    id="accountName"
-                    value={accountDetails.accountName}
-                    onChange={(e) =>
-                      setAccountDetails({ ...accountDetails, accountName: e.target.value })
-                    }
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
+            <div>
+              <Label htmlFor="accountName" className="text-cyber-neon-green font-mono text-sm">
+                ACCOUNT NAME
+              </Label>
+              <Input
+                id="accountName"
+                value={accountDetails.accountName}
+                onChange={(e) => setAccountDetails({ ...accountDetails, accountName: e.target.value })}
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="accountNumber" className="text-foreground">
-                    Account Number
-                  </Label>
-                  <Input
-                    id="accountNumber"
-                    value={accountDetails.accountNumber}
-                    onChange={(e) =>
-                      setAccountDetails({ ...accountDetails, accountNumber: e.target.value })
-                    }
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
+            <div>
+              <Label htmlFor="accountNumber" className="text-cyber-neon-green font-mono text-sm">
+                ACCOUNT NUMBER
+              </Label>
+              <Input
+                id="accountNumber"
+                value={accountDetails.accountNumber}
+                onChange={(e) => setAccountDetails({ ...accountDetails, accountNumber: e.target.value })}
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+              />
+            </div>
 
-                <Button
-                  onClick={handleSaveAccount}
-                  className="w-full bg-gradient-primary hover:opacity-90 transition-all duration-300 font-bold"
-                >
-                  Save Changes
-                </Button>
+            <Button
+              onClick={() => toast.success("Account details updated!")}
+              className="w-full bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-green hover:shadow-neon-cyan transition-all"
+            >
+              SAVE CONFIGURATION
+            </Button>
+          </div>
+        </Card>
+
+        {/* Sure Odds Management */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6 relative overflow-hidden">
+          <div className="absolute top-2 right-2 flex gap-2">
+            <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse delay-75" />
+            <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse delay-150" />
+          </div>
+
+          <h2 className="text-xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
+            <span className="text-cyber-neon-cyan">&gt;</span> {editingSureOdd ? "EDIT PREDICTION" : "ADD NEW PREDICTION"}
+          </h2>
+          <form onSubmit={handleSaveSureOdd} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="homeTeam" className="text-cyber-neon-cyan font-mono text-sm">
+                  HOME TEAM
+                </Label>
+                <Input
+                  id="homeTeam"
+                  name="homeTeam"
+                  required
+                  defaultValue={editingSureOdd?.homeTeam}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
               </div>
-            </Card>
-          </TabsContent>
+              <div>
+                <Label htmlFor="awayTeam" className="text-cyber-neon-cyan font-mono text-sm">
+                  AWAY TEAM
+                </Label>
+                <Input
+                  id="awayTeam"
+                  name="awayTeam"
+                  required
+                  defaultValue={editingSureOdd?.awayTeam}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
+              </div>
+            </div>
 
-          <TabsContent value="matches">
-            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in mb-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">
-                {editingMatch ? "Edit Match" : "Add New Match"}
-              </h2>
-              <form onSubmit={handleSaveMatch} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="homeTeam" className="text-foreground">
-                      Home Team
-                    </Label>
-                    <Input
-                      id="homeTeam"
-                      name="homeTeam"
-                      required
-                      defaultValue={editingMatch?.homeTeam}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="awayTeam" className="text-foreground">
-                      Away Team
-                    </Label>
-                    <Input
-                      id="awayTeam"
-                      name="awayTeam"
-                      required
-                      defaultValue={editingMatch?.awayTeam}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="homeTeamLogo" className="text-foreground">
-                      Home Team Logo
-                    </Label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("homeTeamLogoInput")?.click()}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
-                            generateTeamLogo(homeTeam, "homeTeamLogo", "match");
-                          }}
-                          disabled={generatingLogo.match === "home"}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          {generatingLogo.match === "home" ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-4 h-4 mr-2" />
-                          )}
-                          AI
-                        </Button>
-                        <input
-                          id="homeTeamLogoInput"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageUpload(e, setMatchHomeLogoPreview)}
-                        />
-                      </div>
-                      {matchHomeLogoPreview && (
-                        <img
-                          src={matchHomeLogoPreview}
-                          alt="Home team preview"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="awayTeamLogo" className="text-foreground">
-                      Away Team Logo
-                    </Label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("awayTeamLogoInput")?.click()}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
-                            generateTeamLogo(awayTeam, "awayTeamLogo", "match");
-                          }}
-                          disabled={generatingLogo.match === "away"}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          {generatingLogo.match === "away" ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-4 h-4 mr-2" />
-                          )}
-                          AI
-                        </Button>
-                        <input
-                          id="awayTeamLogoInput"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageUpload(e, setMatchAwayLogoPreview)}
-                        />
-                      </div>
-                      {matchAwayLogoPreview && (
-                        <img
-                          src={matchAwayLogoPreview}
-                          alt="Away team preview"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-center">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
-                      const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
-                      generateBothLogos(homeTeam, awayTeam, "match");
-                    }}
-                    disabled={generatingLogo.match !== undefined}
-                    className="bg-gradient-primary text-primary-foreground hover:opacity-90"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Both Team Logos
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="homeOdds" className="text-foreground">
-                      Home Odds
-                    </Label>
-                    <Input
-                      id="homeOdds"
-                      name="homeOdds"
-                      type="number"
-                      step="0.01"
-                      required
-                      defaultValue={editingMatch?.homeOdds}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="awayOdds" className="text-foreground">
-                      Away Odds
-                    </Label>
-                    <Input
-                      id="awayOdds"
-                      name="awayOdds"
-                      type="number"
-                      step="0.01"
-                      required
-                      defaultValue={editingMatch?.awayOdds}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="matchTime" className="text-foreground">
-                      Match Time
-                    </Label>
-                    <Input
-                      id="matchTime"
-                      name="matchTime"
-                      required
-                      placeholder="e.g., Today 18:00"
-                      defaultValue={editingMatch?.matchTime}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="status" className="text-foreground">
-                      Match Status
-                    </Label>
-                    <Select name="status" defaultValue={editingMatch?.status || "not-started"}>
-                      <SelectTrigger className="mt-2 bg-secondary border-bet-border text-foreground">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="not-started">Not Started</SelectItem>
-                        <SelectItem value="live">Live</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="betCode" className="text-foreground">
-                    Betting Code
-                  </Label>
-                  <Input
-                    id="betCode"
-                    name="betCode"
-                    required
-                    placeholder="e.g., MU2L8-45X9K"
-                    defaultValue={editingMatch?.betCode}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="price" className="text-foreground">
-                    Price (₦)
-                  </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="1000"
-                    defaultValue={editingMatch?.price || 0}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-gradient-primary hover:opacity-90 transition-all duration-300 font-bold"
-                  >
-                    {editingMatch ? "Update Match" : "Add Match"}
-                  </Button>
-                  {editingMatch && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-cyber-neon-cyan font-mono text-sm">HOME LOGO</Label>
+                <div className="mt-2 space-y-2">
+                  <div className="flex gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setEditingMatch(null)}
-                      className="border-bet-border text-foreground"
+                      onClick={() => document.getElementById("homeLogoInput")?.click()}
+                      className="flex-1 border-cyber-neon-cyan text-cyber-neon-cyan hover:bg-cyber-neon-cyan hover:text-cyber-dark font-mono"
                     >
-                      Cancel
+                      <Upload className="w-4 h-4 mr-2" />
+                      UPLOAD
                     </Button>
-                  )}
-                </div>
-              </form>
-            </Card>
-
-            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in">
-              <h2 className="text-xl font-bold text-foreground mb-6">All Matches</h2>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-foreground">Match</TableHead>
-                      <TableHead className="text-foreground">Odds</TableHead>
-                      <TableHead className="text-foreground">Time</TableHead>
-                      <TableHead className="text-foreground">Status</TableHead>
-                      <TableHead className="text-foreground">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {matches.map((match) => (
-                      <TableRow key={match.id}>
-                        <TableCell className="text-foreground font-medium">
-                          {match.homeTeam} vs {match.awayTeam}
-                        </TableCell>
-                        <TableCell className="text-foreground">
-                          {match.homeOdds} / {match.awayOdds}
-                        </TableCell>
-                        <TableCell className="text-foreground">{match.matchTime}</TableCell>
-                        <TableCell>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-bold ${
-                              match.status === "live"
-                                ? "bg-bet-success/20 text-bet-success"
-                                : match.status === "not-started"
-                                ? "bg-blue-500/20 text-blue-400"
-                                : "bg-muted/50 text-muted-foreground"
-                            }`}
-                          >
-                            {match.status === "live"
-                              ? "LIVE"
-                              : match.status === "not-started"
-                              ? "NOT STARTED"
-                              : "COMPLETED"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditMatch(match)}
-                              className="border-bet-border text-foreground hover:bg-primary/20"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteMatch(match.id)}
-                              className="border-bet-border text-destructive hover:bg-destructive/20"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="sure-odds">
-            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in mb-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">
-                {editingSureOdd ? "Edit Sure Odd" : "Add New Sure Odd"}
-              </h2>
-              <form onSubmit={handleSaveSureOdd} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="homeTeam" className="text-foreground">
-                      Home Team
-                    </Label>
-                    <Input
-                      id="homeTeam"
-                      name="homeTeam"
-                      required
-                      placeholder="e.g., PSG"
-                      defaultValue={editingSureOdd?.homeTeam}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="awayTeam" className="text-foreground">
-                      Away Team
-                    </Label>
-                    <Input
-                      id="awayTeam"
-                      name="awayTeam"
-                      required
-                      placeholder="e.g., Monaco"
-                      defaultValue={editingSureOdd?.awayTeam}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="homeTeamLogo" className="text-foreground">
-                      Home Team Logo
-                    </Label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("sureOddHomeLogoInput")?.click()}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
-                            generateTeamLogo(homeTeam, "homeTeamLogo", "sureOdd");
-                          }}
-                          disabled={generatingLogo.sureOdd === "home"}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          {generatingLogo.sureOdd === "home" ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-4 h-4 mr-2" />
-                          )}
-                          AI
-                        </Button>
-                        <input
-                          id="sureOddHomeLogoInput"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageUpload(e, setSureOddHomeLogoPreview)}
-                        />
-                      </div>
-                      {sureOddHomeLogoPreview && (
-                        <img
-                          src={sureOddHomeLogoPreview}
-                          alt="Home team preview"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="awayTeamLogo" className="text-foreground">
-                      Away Team Logo
-                    </Label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("sureOddAwayLogoInput")?.click()}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
-                            generateTeamLogo(awayTeam, "awayTeamLogo", "sureOdd");
-                          }}
-                          disabled={generatingLogo.sureOdd === "away"}
-                          className="border-bet-border text-foreground hover:bg-primary/20"
-                        >
-                          {generatingLogo.sureOdd === "away" ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-4 h-4 mr-2" />
-                          )}
-                          AI
-                        </Button>
-                        <input
-                          id="sureOddAwayLogoInput"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageUpload(e, setSureOddAwayLogoPreview)}
-                        />
-                      </div>
-                      {sureOddAwayLogoPreview && (
-                        <img
-                          src={sureOddAwayLogoPreview}
-                          alt="Away team preview"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-bet-border"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-center">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
-                      const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
-                      generateBothLogos(homeTeam, awayTeam, "sureOdd");
-                    }}
-                    disabled={generatingLogo.sureOdd !== undefined}
-                    className="bg-gradient-primary text-primary-foreground hover:opacity-90"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Both Team Logos
-                  </Button>
-                </div>
-
-                <div>
-                  <Label htmlFor="prediction" className="text-foreground">
-                    Prediction
-                  </Label>
-                  <Input
-                    id="prediction"
-                    name="prediction"
-                    required
-                    placeholder="e.g., Over 2.5 Goals"
-                    defaultValue={editingSureOdd?.prediction}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="odds" className="text-foreground">
-                      Odds
-                    </Label>
-                    <Input
-                      id="odds"
-                      name="odds"
-                      type="number"
-                      step="0.01"
-                      required
-                      defaultValue={editingSureOdd?.odds}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="confidence" className="text-foreground">
-                      Confidence (e.g., 95%)
-                    </Label>
-                    <Input
-                      id="confidence"
-                      name="confidence"
-                      required
-                      placeholder="95%"
-                      defaultValue={editingSureOdd?.confidence}
-                      className="mt-2 bg-secondary border-bet-border text-foreground"
-                    />
-                  </div>
-                <div>
-                  <Label htmlFor="betCode" className="text-foreground">
-                    Betting Code
-                  </Label>
-                  <Input
-                    id="betCode"
-                    name="betCode"
-                    required
-                    placeholder="PSG5M2-GH8PL"
-                    defaultValue={editingSureOdd?.betCode}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="price" className="text-foreground">
-                    Price (₦)
-                  </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="500"
-                    defaultValue={editingSureOdd?.price || 0}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="status" className="text-foreground">
-                    Game Status
-                  </Label>
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={editingSureOdd?.status || "not-started"}
-                    className="mt-2 w-full bg-secondary border border-bet-border text-foreground rounded-md px-3 py-2"
-                  >
-                    <option value="not-started">Not Started</option>
-                    <option value="scored">Scored (Won)</option>
-                    <option value="lost">Lost</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="matchCount" className="text-foreground">
-                    Number of Matches in Code
-                  </Label>
-                  <Input
-                    id="matchCount"
-                    name="matchCount"
-                    type="number"
-                    min="1"
-                    defaultValue={editingSureOdd?.matchCount || 1}
-                    className="mt-2 bg-secondary border-bet-border text-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    1 = Single match (shows team names), &gt;1 = Multiple matches (shows count)
-                  </p>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-gradient-primary hover:opacity-90 transition-all duration-300 font-bold"
-                  >
-                    {editingSureOdd ? "Update Sure Odd" : "Add Sure Odd"}
-                  </Button>
-                  {editingSureOdd && (
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setEditingSureOdd(null)}
-                      className="border-bet-border text-foreground"
+                      onClick={() => {
+                        const homeTeam = (document.getElementById("homeTeam") as HTMLInputElement)?.value;
+                        generateTeamLogo(homeTeam, "homeTeamLogo");
+                      }}
+                      disabled={generatingLogo === "home"}
+                      className="flex-1 border-cyber-neon-purple text-cyber-neon-purple hover:bg-cyber-neon-purple hover:text-cyber-dark font-mono"
                     >
-                      Cancel
+                      {generatingLogo === "home" ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4 mr-2" />
+                      )}
+                      AI
                     </Button>
+                    <input
+                      id="homeLogoInput"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageUpload(e, setSureOddHomeLogoPreview)}
+                    />
+                  </div>
+                  {sureOddHomeLogoPreview && (
+                    <img
+                      src={sureOddHomeLogoPreview}
+                      alt="Home team preview"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-cyber-neon-green shadow-neon-green"
+                    />
                   )}
                 </div>
-              </form>
-            </Card>
-
-            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in">
-              <h2 className="text-xl font-bold text-foreground mb-6">All Sure Odds</h2>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-foreground">Match</TableHead>
-                      <TableHead className="text-foreground">Prediction</TableHead>
-                      <TableHead className="text-foreground">Odds</TableHead>
-                      <TableHead className="text-foreground">Confidence</TableHead>
-                      <TableHead className="text-foreground">Status</TableHead>
-                      <TableHead className="text-foreground">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sureOdds.map((sureOdd) => (
-                      <TableRow key={sureOdd.id}>
-                        <TableCell className="text-foreground font-medium">
-                          {sureOdd.homeTeam} vs {sureOdd.awayTeam}
-                        </TableCell>
-                        <TableCell className="text-foreground">{sureOdd.prediction}</TableCell>
-                        <TableCell className="text-foreground font-bold">
-                          {sureOdd.odds}
-                        </TableCell>
-                        <TableCell className="text-bet-success font-bold">
-                          {sureOdd.confidence}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              sureOdd.status === "scored"
-                                ? "bg-green-500/20 text-green-500"
-                                : sureOdd.status === "lost"
-                                ? "bg-red-500/20 text-red-500"
-                                : "bg-yellow-500/20 text-yellow-500"
-                            }`}
-                          >
-                            {sureOdd.status === "scored"
-                              ? "WON"
-                              : sureOdd.status === "lost"
-                              ? "LOST"
-                              : "NOT STARTED"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditSureOdd(sureOdd)}
-                              className="border-bet-border text-foreground hover:bg-primary/20"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteSureOdd(sureOdd.id)}
-                              className="border-bet-border text-destructive hover:bg-destructive/20"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="payments">
-            <Card className="bg-gradient-card border-bet-border p-6 animate-fade-in">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">Payment Approvals</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Review and approve user payments</p>
-                </div>
-                <Button
-                  onClick={fetchPayments}
-                  disabled={loadingPayments}
-                  className="bg-gradient-primary hover:opacity-90"
-                >
-                  {loadingPayments ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
-                </Button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-bet-border">
-                      <TableHead className="text-foreground">Email</TableHead>
-                      <TableHead className="text-foreground">Sure Odd ID</TableHead>
-                      <TableHead className="text-foreground">Amount</TableHead>
-                      <TableHead className="text-foreground">Status</TableHead>
-                      <TableHead className="text-foreground">Screenshot</TableHead>
-                      <TableHead className="text-foreground">Date</TableHead>
-                      <TableHead className="text-foreground">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment.id} className="border-bet-border">
-                        <TableCell className="text-foreground">{payment.user_email}</TableCell>
-                        <TableCell className="text-foreground font-mono text-xs">{payment.sure_odd_id}</TableCell>
-                        <TableCell className="text-foreground">₦{payment.amount}</TableCell>
-                        <TableCell>
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            payment.status === 'approved' 
-                              ? 'bg-green-500/20 text-green-500' 
-                              : payment.status === 'declined'
-                              ? 'bg-red-500/20 text-red-500'
-                              : 'bg-yellow-500/20 text-yellow-500'
-                          }`}>
-                            {payment.status.toUpperCase()}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {payment.screenshot_url && (
-                            <button
-                              onClick={() => {
-                                const modal = document.createElement('div');
-                                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-                                modal.onclick = () => modal.remove();
-                                const img = document.createElement('img');
-                                img.src = payment.screenshot_url;
-                                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain';
-                                modal.appendChild(img);
-                                document.body.appendChild(modal);
-                              }}
-                              className="text-primary hover:underline text-sm cursor-pointer"
-                            >
-                              View Screenshot
-                            </button>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-foreground text-sm">
-                          {new Date(payment.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {payment.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handlePaymentStatus(payment.id, 'approved')}
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handlePaymentStatus(payment.id, 'declined')}
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {payments.length === 0 && !loadingPayments && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No payments found
+              <div>
+                <Label className="text-cyber-neon-cyan font-mono text-sm">AWAY LOGO</Label>
+                <div className="mt-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById("awayLogoInput")?.click()}
+                      className="flex-1 border-cyber-neon-cyan text-cyber-neon-cyan hover:bg-cyber-neon-cyan hover:text-cyber-dark font-mono"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      UPLOAD
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const awayTeam = (document.getElementById("awayTeam") as HTMLInputElement)?.value;
+                        generateTeamLogo(awayTeam, "awayTeamLogo");
+                      }}
+                      disabled={generatingLogo === "away"}
+                      className="flex-1 border-cyber-neon-purple text-cyber-neon-purple hover:bg-cyber-neon-purple hover:text-cyber-dark font-mono"
+                    >
+                      {generatingLogo === "away" ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4 mr-2" />
+                      )}
+                      AI
+                    </Button>
+                    <input
+                      id="awayLogoInput"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageUpload(e, setSureOddAwayLogoPreview)}
+                    />
                   </div>
-                )}
+                  {sureOddAwayLogoPreview && (
+                    <img
+                      src={sureOddAwayLogoPreview}
+                      alt="Away team preview"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-cyber-neon-green shadow-neon-green"
+                    />
+                  )}
+                </div>
               </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="odds" className="text-cyber-neon-cyan font-mono text-sm">
+                  ODDS
+                </Label>
+                <Input
+                  id="odds"
+                  name="odds"
+                  type="number"
+                  step="0.01"
+                  required
+                  defaultValue={editingSureOdd?.odds}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
+              </div>
+              <div>
+                <Label htmlFor="confidence" className="text-cyber-neon-cyan font-mono text-sm">
+                  CONFIDENCE %
+                </Label>
+                <Input
+                  id="confidence"
+                  name="confidence"
+                  required
+                  defaultValue={editingSureOdd?.confidence}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                  placeholder="95%"
+                />
+              </div>
+              <div>
+                <Label htmlFor="matchCount" className="text-cyber-neon-cyan font-mono text-sm">
+                  MATCH COUNT
+                </Label>
+                <Input
+                  id="matchCount"
+                  name="matchCount"
+                  type="number"
+                  min="1"
+                  required
+                  defaultValue={editingSureOdd?.matchCount || 1}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="prediction" className="text-cyber-neon-cyan font-mono text-sm">
+                  PREDICTION
+                </Label>
+                <Input
+                  id="prediction"
+                  name="prediction"
+                  required
+                  defaultValue={editingSureOdd?.prediction}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                  placeholder="Over 2.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="price" className="text-cyber-neon-cyan font-mono text-sm">
+                  PRICE (₦)
+                </Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="0.01"
+                  required
+                  defaultValue={editingSureOdd?.price}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="betCode" className="text-cyber-neon-cyan font-mono text-sm">
+                BET CODE
+              </Label>
+              <Input
+                id="betCode"
+                name="betCode"
+                required
+                defaultValue={editingSureOdd?.betCode}
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="status" className="text-cyber-neon-cyan font-mono text-sm">
+                STATUS
+              </Label>
+              <Select name="status" defaultValue={editingSureOdd?.status || "not-started"}>
+                <SelectTrigger className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-cyber-panel border-cyber-neon-green">
+                  <SelectItem value="not-started" className="text-cyber-neon-green font-mono">NOT STARTED</SelectItem>
+                  <SelectItem value="scored" className="text-cyber-neon-green font-mono">SCORED</SelectItem>
+                  <SelectItem value="lost" className="text-cyber-neon-red font-mono">LOST</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-4">
+              <Button
+                type="submit"
+                className="flex-1 bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-green hover:shadow-neon-cyan transition-all"
+              >
+                {editingSureOdd ? "UPDATE PREDICTION" : "ADD PREDICTION"}
+              </Button>
+              {editingSureOdd && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingSureOdd(null);
+                    setSureOddHomeLogoPreview("");
+                    setSureOddAwayLogoPreview("");
+                  }}
+                  className="border-cyber-neon-red text-cyber-neon-red hover:bg-cyber-neon-red hover:text-cyber-dark font-mono"
+                >
+                  CANCEL
+                </Button>
+              )}
+            </div>
+          </form>
+        </Card>
+
+        {/* Sure Odds List */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-cyan p-6 relative overflow-hidden">
+          <h2 className="text-xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
+            <span className="text-cyber-neon-green">&gt;</span> ACTIVE PREDICTIONS
+          </h2>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-cyber-neon-green/30 hover:bg-cyber-panel/50">
+                  <TableHead className="text-cyber-neon-cyan font-mono">TEAMS</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono">PREDICTION</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono">ODDS</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono">CONFIDENCE</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono">CODE</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono">PRICE</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono">STATUS</TableHead>
+                  <TableHead className="text-cyber-neon-cyan font-mono text-right">ACTIONS</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sureOdds.map((odd) => (
+                  <TableRow key={odd.id} className="border-cyber-neon-green/20 hover:bg-cyber-panel/50 transition-colors">
+                    <TableCell className="text-cyber-neon-green font-mono">
+                      {odd.matchCount > 1 ? `${odd.matchCount} MATCHES` : `${odd.homeTeam} vs ${odd.awayTeam}`}
+                    </TableCell>
+                    <TableCell className="text-cyber-neon-green font-mono">{odd.prediction}</TableCell>
+                    <TableCell className="text-cyber-neon-green font-mono">{odd.odds}</TableCell>
+                    <TableCell className="text-cyber-neon-green font-mono">{odd.confidence}</TableCell>
+                    <TableCell className="text-cyber-neon-green font-mono">{odd.betCode}</TableCell>
+                    <TableCell className="text-cyber-neon-green font-mono">₦{odd.price}</TableCell>
+                    <TableCell>
+                      <span className={`font-mono text-xs px-2 py-1 rounded ${
+                        odd.status === 'scored' ? 'bg-cyber-neon-green/20 text-cyber-neon-green' :
+                        odd.status === 'lost' ? 'bg-cyber-neon-red/20 text-cyber-neon-red' :
+                        'bg-cyber-neon-cyan/20 text-cyber-neon-cyan'
+                      }`}>
+                        {odd.status.toUpperCase()}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditSureOdd(odd)}
+                          className="border-cyber-neon-cyan text-cyber-neon-cyan hover:bg-cyber-neon-cyan hover:text-cyber-dark"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteSureOdd(odd.id)}
+                          className="border-cyber-neon-red text-cyber-neon-red hover:bg-cyber-neon-red hover:text-cyber-dark"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+
+        {/* Payment Approvals */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-red/50 shadow-neon-red p-6 relative overflow-hidden">
+          <h2 className="text-xl font-black text-cyber-neon-red mb-6 font-mono flex items-center gap-2">
+            <span className="text-cyber-neon-green">&gt;</span> PAYMENT APPROVALS
+          </h2>
+          {loadingPayments ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-20 w-full bg-cyber-neon-green/10" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-cyber-neon-green/30 hover:bg-cyber-panel/50">
+                    <TableHead className="text-cyber-neon-cyan font-mono">USER EMAIL</TableHead>
+                    <TableHead className="text-cyber-neon-cyan font-mono">AMOUNT</TableHead>
+                    <TableHead className="text-cyber-neon-cyan font-mono">DATE</TableHead>
+                    <TableHead className="text-cyber-neon-cyan font-mono">SCREENSHOT</TableHead>
+                    <TableHead className="text-cyber-neon-cyan font-mono">STATUS</TableHead>
+                    <TableHead className="text-cyber-neon-cyan font-mono text-right">ACTIONS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((payment) => (
+                    <TableRow key={payment.id} className="border-cyber-neon-green/20 hover:bg-cyber-panel/50 transition-colors">
+                      <TableCell className="text-cyber-neon-green font-mono">{payment.user_email}</TableCell>
+                      <TableCell className="text-cyber-neon-green font-mono">₦{payment.amount}</TableCell>
+                      <TableCell className="text-cyber-neon-green font-mono">
+                        {new Date(payment.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedScreenshot(payment.screenshot_url)}
+                          className="border-cyber-neon-purple text-cyber-neon-purple hover:bg-cyber-neon-purple hover:text-cyber-dark font-mono"
+                        >
+                          VIEW
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-mono text-xs px-2 py-1 rounded ${
+                          payment.status === 'approved' ? 'bg-cyber-neon-green/20 text-cyber-neon-green' :
+                          payment.status === 'declined' ? 'bg-cyber-neon-red/20 text-cyber-neon-red' :
+                          'bg-cyber-neon-cyan/20 text-cyber-neon-cyan'
+                        }`}>
+                          {payment.status.toUpperCase()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePaymentStatus(payment.id, 'approved')}
+                            disabled={payment.status === 'approved'}
+                            className="border-cyber-neon-green text-cyber-neon-green hover:bg-cyber-neon-green hover:text-cyber-dark disabled:opacity-50"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePaymentStatus(payment.id, 'declined')}
+                            disabled={payment.status === 'declined'}
+                            className="border-cyber-neon-red text-cyber-neon-red hover:bg-cyber-neon-red hover:text-cyber-dark disabled:opacity-50"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </Card>
       </main>
+
+      {/* Screenshot Modal */}
+      <Dialog open={!!selectedScreenshot} onOpenChange={() => setSelectedScreenshot(null)}>
+        <DialogContent className="bg-cyber-panel border-2 border-cyber-neon-green shadow-neon-green max-w-2xl">
+          <div className="p-4">
+            <h3 className="text-xl font-black text-cyber-neon-green mb-4 font-mono">PAYMENT SCREENSHOT</h3>
+            {selectedScreenshot && (
+              <img
+                src={selectedScreenshot}
+                alt="Payment proof"
+                className="w-full h-auto rounded border-2 border-cyber-neon-cyan shadow-neon-cyan"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
