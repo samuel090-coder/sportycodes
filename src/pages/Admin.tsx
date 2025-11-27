@@ -163,9 +163,19 @@ const Admin = () => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     
+    const matchCount = parseInt(formData.get("matchCount") as string) || 1;
+    const homeTeam = formData.get("homeTeam") as string;
+    const awayTeam = formData.get("awayTeam") as string;
+    
+    // Validate team names for single match odds
+    if (matchCount === 1 && (!homeTeam || !awayTeam)) {
+      toast.error("Team names are required for single match odds");
+      return;
+    }
+    
     const sureOddData = {
-      homeTeam: formData.get("homeTeam") as string,
-      awayTeam: formData.get("awayTeam") as string,
+      homeTeam: matchCount > 1 ? "" : homeTeam,
+      awayTeam: matchCount > 1 ? "" : awayTeam,
       homeTeamLogo: sureOddHomeLogoPreview || editingSureOdd?.homeTeamLogo || "",
       awayTeamLogo: sureOddAwayLogoPreview || editingSureOdd?.awayTeamLogo || "",
       prediction: formData.get("prediction") as string,
@@ -174,7 +184,8 @@ const Admin = () => {
       betCode: formData.get("betCode") as string,
       status: (formData.get("status") as "not-started" | "scored" | "lost") || "not-started",
       price: parseFloat(formData.get("price") as string) || 0,
-      matchCount: parseInt(formData.get("matchCount") as string) || 1,
+      matchCount: matchCount,
+      scheduledTime: formData.get("scheduledTime") as string || null,
     };
 
     try {
@@ -403,27 +414,54 @@ const Admin = () => {
             <span className="text-cyber-neon-cyan">&gt;</span> {editingSureOdd ? "EDIT PREDICTION" : "ADD NEW PREDICTION"}
           </h2>
           <form onSubmit={handleSaveSureOdd} className="space-y-4">
+            <div>
+              <Label htmlFor="matchCount" className="text-cyber-neon-cyan font-mono text-sm">
+                MATCH COUNT
+              </Label>
+              <Input
+                id="matchCount"
+                name="matchCount"
+                type="number"
+                min="1"
+                required
+                defaultValue={editingSureOdd?.matchCount || 1}
+                onChange={(e) => {
+                  const isMultiple = parseInt(e.target.value) > 1;
+                  const homeTeamInput = document.getElementById("homeTeam") as HTMLInputElement;
+                  const awayTeamInput = document.getElementById("awayTeam") as HTMLInputElement;
+                  if (homeTeamInput && awayTeamInput) {
+                    homeTeamInput.required = !isMultiple;
+                    awayTeamInput.required = !isMultiple;
+                  }
+                }}
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+              />
+              <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-1">
+                Team names required only for single match (1)
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="homeTeam" className="text-cyber-neon-cyan font-mono text-sm">
-                  HOME TEAM
+                  HOME TEAM {editingSureOdd?.matchCount === 1 || !editingSureOdd ? "(Required for single match)" : "(Optional)"}
                 </Label>
                 <Input
                   id="homeTeam"
                   name="homeTeam"
-                  required
+                  required={!editingSureOdd || editingSureOdd.matchCount === 1}
                   defaultValue={editingSureOdd?.homeTeam}
                   className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
                 />
               </div>
               <div>
                 <Label htmlFor="awayTeam" className="text-cyber-neon-cyan font-mono text-sm">
-                  AWAY TEAM
+                  AWAY TEAM {editingSureOdd?.matchCount === 1 || !editingSureOdd ? "(Required for single match)" : "(Optional)"}
                 </Label>
                 <Input
                   id="awayTeam"
                   name="awayTeam"
-                  required
+                  required={!editingSureOdd || editingSureOdd.matchCount === 1}
                   defaultValue={editingSureOdd?.awayTeam}
                   className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
                 />
@@ -527,7 +565,7 @@ const Admin = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="odds" className="text-cyber-neon-cyan font-mono text-sm">
                   ODDS
@@ -553,20 +591,6 @@ const Admin = () => {
                   defaultValue={editingSureOdd?.confidence}
                   className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
                   placeholder="95%"
-                />
-              </div>
-              <div>
-                <Label htmlFor="matchCount" className="text-cyber-neon-cyan font-mono text-sm">
-                  MATCH COUNT
-                </Label>
-                <Input
-                  id="matchCount"
-                  name="matchCount"
-                  type="number"
-                  min="1"
-                  required
-                  defaultValue={editingSureOdd?.matchCount || 1}
-                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
                 />
               </div>
             </div>
@@ -614,20 +638,37 @@ const Admin = () => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="status" className="text-cyber-neon-cyan font-mono text-sm">
-                STATUS
-              </Label>
-              <Select name="status" defaultValue={editingSureOdd?.status || "not-started"}>
-                <SelectTrigger className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-cyber-panel border-cyber-neon-green">
-                  <SelectItem value="not-started" className="text-cyber-neon-green font-mono">NOT STARTED</SelectItem>
-                  <SelectItem value="scored" className="text-cyber-neon-green font-mono">SCORED</SelectItem>
-                  <SelectItem value="lost" className="text-cyber-neon-red font-mono">LOST</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status" className="text-cyber-neon-cyan font-mono text-sm">
+                  STATUS
+                </Label>
+                <Select name="status" defaultValue={editingSureOdd?.status || "not-started"}>
+                  <SelectTrigger className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-cyber-panel border-cyber-neon-green">
+                    <SelectItem value="not-started" className="text-cyber-neon-green font-mono">NOT STARTED</SelectItem>
+                    <SelectItem value="scored" className="text-cyber-neon-green font-mono">SCORED</SelectItem>
+                    <SelectItem value="lost" className="text-cyber-neon-red font-mono">LOST</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="scheduledTime" className="text-cyber-neon-cyan font-mono text-sm">
+                  SCHEDULED START TIME
+                </Label>
+                <Input
+                  id="scheduledTime"
+                  name="scheduledTime"
+                  type="datetime-local"
+                  defaultValue={editingSureOdd?.scheduledTime ? new Date(editingSureOdd.scheduledTime).toISOString().slice(0, 16) : ""}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
+                <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-1">
+                  Optional: Game activates at scheduled time
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-4">
