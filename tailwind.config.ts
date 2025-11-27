@@ -56,14 +56,28 @@ export default {
           success: "hsl(var(--bet-success))",
           warning: "hsl(var(--bet-warning))",
         },
+        cyber: {
+          "neon-green": "hsl(var(--cyber-neon-green))",
+          "neon-cyan": "hsl(var(--cyber-neon-cyan))",
+          "neon-purple": "hsl(var(--cyber-neon-purple))",
+          "neon-red": "hsl(var(--cyber-neon-red))",
+          dark: "hsl(var(--cyber-dark))",
+          panel: "hsl(var(--cyber-panel))",
+          border: "hsl(var(--cyber-border))",
+        },
       },
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',
         'gradient-card': 'var(--gradient-card)',
+        'gradient-cyber': 'var(--gradient-cyber)',
+        'gradient-neon': 'var(--gradient-neon)',
       },
       boxShadow: {
         'bet': 'var(--shadow-bet)',
         'card': 'var(--shadow-card)',
+        'neon-green': 'var(--shadow-neon-green)',
+        'neon-cyan': 'var(--shadow-neon-cyan)',
+        'neon-red': 'var(--shadow-neon-red)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -95,6 +109,27 @@ export default {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        "neon-pulse": {
+          "0%, 100%": { 
+            opacity: "1",
+            filter: "brightness(1)"
+          },
+          "50%": { 
+            opacity: "0.8",
+            filter: "brightness(1.2)"
+          },
+        },
+        "scan-line": {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100vh)" },
+        },
+        "glitch": {
+          "0%, 100%": { transform: "translate(0)" },
+          "20%": { transform: "translate(-2px, 2px)" },
+          "40%": { transform: "translate(-2px, -2px)" },
+          "60%": { transform: "translate(2px, 2px)" },
+          "80%": { transform: "translate(2px, -2px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -103,6 +138,9 @@ export default {
         "slide-up": "slide-up 0.4s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "spin-slow": "spin-slow 3s linear infinite",
+        "neon-pulse": "neon-pulse 2s ease-in-out infinite",
+        "scan-line": "scan-line 8s linear infinite",
+        "glitch": "glitch 0.3s ease-in-out infinite",
       },
     },
   },
