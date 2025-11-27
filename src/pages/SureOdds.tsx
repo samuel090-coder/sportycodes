@@ -12,6 +12,7 @@ const SureOdds = () => {
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<string[]>([]);
+  const [, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     // Get user email from localStorage
@@ -71,7 +72,30 @@ const SureOdds = () => {
     }
   }, []);
 
-  const notStartedOdds = sureOdds.filter(odd => odd.status === "not-started");
+  // Auto-refresh to check for scheduled games every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Force a re-render to check scheduled times
+      setRefreshTrigger(prev => prev + 1);
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const notStartedOdds = sureOdds.filter(odd => {
+    // Filter by status
+    if (odd.status !== "not-started") return false;
+    
+    // If scheduled time is set, only show if time has arrived
+    if (odd.scheduledTime) {
+      const scheduledDate = new Date(odd.scheduledTime);
+      const now = new Date();
+      return now >= scheduledDate;
+    }
+    
+    // If no scheduled time, show immediately
+    return true;
+  });
   const wonGames = sureOdds.filter(odd => odd.status === "scored");
   const lostGames = sureOdds.filter(odd => odd.status === "lost");
 
@@ -172,9 +196,20 @@ const SureOdds = () => {
                     )}
 
                     <div className="flex items-center justify-between mb-3">
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
-                        NOT STARTED
-                      </span>
+                      {odd.scheduledTime && new Date(odd.scheduledTime) > new Date() ? (
+                        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
+                          STARTS {new Date(odd.scheduledTime).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      ) : (
+                        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
+                          ACTIVE NOW
+                        </span>
+                      )}
                       <p className="text-sm font-bold text-primary">
                         {odd.confidence} Confidence
                       </p>

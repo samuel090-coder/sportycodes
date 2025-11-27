@@ -115,6 +115,7 @@ export type Database = {
           odds: number
           prediction: string
           price: number
+          scheduled_time: string | null
           status: string
           updated_at: string | null
         }
@@ -131,6 +132,7 @@ export type Database = {
           odds: number
           prediction: string
           price?: number
+          scheduled_time?: string | null
           status: string
           updated_at?: string | null
         }
@@ -147,6 +149,7 @@ export type Database = {
           odds?: number
           prediction?: string
           price?: number
+          scheduled_time?: string | null
           status?: string
           updated_at?: string | null
         }

@@ -111,7 +111,7 @@ const Payment = () => {
           </div>
 
           <a
-            href="https://wa.me/+2349067423764"
+            href={`https://wa.me/+2349067423764?text=${encodeURIComponent(`Hello! I just made a payment for:\n\n${homeTeam && awayTeam ? `Match: ${homeTeam} vs ${awayTeam}\n` : ''}Bet Amount: ₦${betAmount}\nPotential Win: ₦${potentialWin}\n\nPlease confirm my payment and grant access to the betting code. Thank you!`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full bg-bet-success text-white font-bold py-3 rounded-lg hover:opacity-90 transition-all mb-4"
