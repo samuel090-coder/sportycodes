@@ -18,8 +18,7 @@ const Admin = () => {
   const { sureOdds, addSureOdd, updateSureOdd, deleteSureOdd } = useBettingData();
   
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const [adminPin, setAdminPin] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [accountDetails, setAccountDetails] = useState({
@@ -40,20 +39,9 @@ const Admin = () => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user?.email) {
-      const { data: isAdmin } = await supabase.rpc('is_admin', { 
-        user_email: data.session.user.email 
-      });
-      setIsAuthenticated(!!isAdmin);
-      if (!isAdmin) {
-        toast.error("Access Denied - Admin Only");
-        navigate("/");
-      }
-    } else {
-      setIsAuthenticated(false);
-    }
+  const checkAuth = () => {
+    const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
+    setIsAuthenticated(isAuth);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -61,23 +49,18 @@ const Admin = () => {
     setIsAuthenticating(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: adminEmail,
-        password: adminPassword,
+      const { data, error } = await supabase.functions.invoke('verify-admin-pin', {
+        body: { pin: adminPin }
       });
 
       if (error) throw error;
 
-      const { data: isAdmin } = await supabase.rpc('is_admin', { 
-        user_email: data.user.email 
-      });
-
-      if (isAdmin) {
+      if (data?.isValid) {
+        sessionStorage.setItem('admin_authenticated', 'true');
         setIsAuthenticated(true);
         toast.success("Access Granted");
       } else {
-        await supabase.auth.signOut();
-        toast.error("Access Denied - Admin Only");
+        toast.error("Invalid PIN - Access Denied");
       }
     } catch (error: any) {
       toast.error(error.message || "Authentication Failed");
@@ -276,33 +259,24 @@ const Admin = () => {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="email" className="text-cyber-neon-green font-mono">
-                  EMAIL ADDRESS
+                <Label htmlFor="pin" className="text-cyber-neon-green font-mono">
+                  ENTER ADMIN PIN
                 </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  required
-                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-green text-cyber-neon-green font-mono focus:shadow-neon-green transition-all"
-                  placeholder="admin@sporty.codes"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="password" className="text-cyber-neon-green font-mono">
-                  PASSWORD
-                </Label>
-                <Input
-                  id="password"
+                  id="pin"
                   type="password"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, ''))}
                   required
-                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-green text-cyber-neon-green font-mono focus:shadow-neon-green transition-all"
-                  placeholder="••••••••"
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-green text-cyber-neon-green font-mono text-2xl text-center tracking-widest focus:shadow-neon-green transition-all"
+                  placeholder="••••••"
                 />
+                <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-2 text-center">
+                  Enter 4-6 digit PIN code
+                </p>
               </div>
 
               <Button
