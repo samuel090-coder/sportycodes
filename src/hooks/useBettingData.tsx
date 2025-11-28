@@ -32,6 +32,7 @@ export interface SureOdd {
   stake?: number;
   payout?: number;
   adZoneId?: string | null; // MonetAg ad zone for this specific odd
+  adEnabled?: boolean; // Toggle to enable/disable watch ad option for this odd
 }
 
 // Empty defaults - admin will add data
@@ -119,6 +120,7 @@ export const useBettingData = () => {
         stake: item.stake || 0,
         payout: item.payout || 0,
         adZoneId: item.ad_zone_id || undefined,
+        adEnabled: item.ad_enabled !== false, // Default to true if not set
       }));
       setSureOdds(formattedData);
       localStorage.removeItem('sure_odds'); // Clear old localStorage data
@@ -237,6 +239,8 @@ export const useBettingData = () => {
           scheduled_time: sureOdd.scheduledTime || null,
           stake: sureOdd.stake || 0,
           payout: sureOdd.payout || 0,
+          ad_zone_id: sureOdd.adZoneId || null,
+          ad_enabled: sureOdd.adEnabled !== false,
         })
         .select()
         .single();
@@ -288,6 +292,8 @@ export const useBettingData = () => {
           scheduled_time: updates.scheduledTime,
           stake: updates.stake,
           payout: updates.payout,
+          ad_zone_id: updates.adZoneId,
+          ad_enabled: updates.adEnabled,
         })
         .eq('id', id);
 

@@ -843,20 +843,38 @@ const Admin = () => {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="adZoneId" className="text-cyber-neon-cyan font-mono text-sm">
-                AD ZONE ID (MonetAg)
-              </Label>
-              <Input
-                id="adZoneId"
-                name="adZoneId"
-                defaultValue={editingSureOdd?.adZoneId}
-                className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
-                placeholder="e.g., 10250664"
-              />
-              <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-1">
-                Each sure odd uses its own ad zone to prevent user abuse
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="adZoneId" className="text-cyber-neon-cyan font-mono text-sm">
+                  AD ZONE ID (MonetAg)
+                </Label>
+                <Input
+                  id="adZoneId"
+                  name="adZoneId"
+                  defaultValue={editingSureOdd?.adZoneId}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                  placeholder="e.g., 10250664"
+                />
+                <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-1">
+                  Each sure odd uses its own ad zone to prevent user abuse
+                </p>
+              </div>
+              <div className="flex flex-col justify-end">
+                <Label htmlFor="adEnabled" className="text-cyber-neon-cyan font-mono text-sm mb-3 flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  ENABLE "WATCH AD" OPTION
+                </Label>
+                <div className="flex items-center gap-3 bg-cyber-dark/50 border border-cyber-neon-cyan/50 rounded px-4 py-3">
+                  <input
+                    type="checkbox"
+                    id="adEnabled"
+                    name="adEnabled"
+                    defaultChecked={editingSureOdd?.adEnabled !== false}
+                    className="w-5 h-5 accent-cyber-neon-green"
+                  />
+                  <span className="text-cyber-neon-green font-mono text-sm">Allow users to watch ads to unlock</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
