@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { betAmount, potentialWin, selectedTeamName, homeTeam, awayTeam } = location.state || {};
+  const { stake, payout, prediction, homeTeam, awayTeam, matchCount, price } = location.state || {};
 
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [userEmail, setUserEmail] = useState("");
@@ -86,13 +86,13 @@ const Payment = () => {
         .getPublicUrl(filePath);
 
       // Insert payment record
-      const { error } = await supabase
+        const { error } = await supabase
         .from('payments')
         .insert({
           user_email: userEmail,
           sure_odd_id: location.state?.id || 'bet-payment',
           screenshot_url: urlData.publicUrl,
-          amount: betAmount || 0,
+          amount: price || 0,
           status: 'pending',
           item_type: location.state?.type || 'sure-odd',
           item_id: location.state?.id || null
@@ -131,7 +131,7 @@ const Payment = () => {
           </div>
 
           <a
-            href={`https://wa.me/${whatsappNumber.replace(/\+/g, '')}?text=${encodeURIComponent(`Hello! I just made a payment for:\n\n${homeTeam && awayTeam ? `Match: ${homeTeam} vs ${awayTeam}\n` : ''}Bet Amount: ₦${betAmount}\nPotential Win: ₦${potentialWin}\n\nPlease confirm my payment and grant access to the betting code. Thank you!`)}`}
+            href={`https://wa.me/${whatsappNumber.replace(/\+/g, '')}?text=${encodeURIComponent(`Hello! I just made a payment.\n\nBet Summary:\n${matchCount && matchCount > 1 ? `${matchCount} SURE ODDS\n` : homeTeam && awayTeam ? `Match: ${homeTeam} vs ${awayTeam}\n` : ''}Your Pick: ${prediction || 'N/A'}\nBet Amount: ₦${stake || 0}\nPotential Win: ₦${payout || 0}\n\nPlease confirm my payment and grant access to the betting code. Thank you!`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full bg-bet-success text-white font-bold py-3 rounded-lg hover:opacity-90 transition-all mb-4"
@@ -168,23 +168,32 @@ const Payment = () => {
         <Card className="bg-gradient-card border-bet-border p-6 mb-6 animate-fade-in">
           <h2 className="text-xl font-bold text-foreground mb-4">Bet Summary</h2>
           <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Match</span>
-              <span className="font-bold text-foreground">
-                {homeTeam} vs {awayTeam}
-              </span>
-            </div>
+            {matchCount && matchCount > 1 ? (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Match</span>
+                <span className="font-bold text-foreground">
+                  {matchCount} SURE ODDS
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Match</span>
+                <span className="font-bold text-foreground">
+                  {homeTeam} vs {awayTeam}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Your Pick</span>
-              <span className="font-bold text-primary">{selectedTeamName}</span>
+              <span className="font-bold text-primary">{prediction || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Bet Amount</span>
-              <span className="font-bold text-foreground">₦{betAmount}</span>
+              <span className="font-bold text-foreground">₦{stake || 0}</span>
             </div>
             <div className="flex justify-between pt-3 border-t border-bet-border">
               <span className="text-muted-foreground">Potential Win</span>
-              <span className="text-2xl font-black text-primary">₦{potentialWin}</span>
+              <span className="text-2xl font-black text-primary">₦{payout || 0}</span>
             </div>
           </div>
         </Card>
