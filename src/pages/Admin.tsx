@@ -39,6 +39,8 @@ const Admin = () => {
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
+  const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
+  const [siteAdsEnabled, setSiteAdsEnabled] = useState(true);
 
   useEffect(() => {
     checkAuth();
@@ -163,8 +165,62 @@ const Admin = () => {
       fetchPayments();
       fetchWhatsappNumber();
       fetchAccountDetails();
+      loadAdSettings();
     }
   }, [isAuthenticated]);
+
+  const loadAdSettings = async () => {
+    try {
+      const { data: cardsData } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'cards_ads_enabled')
+        .single();
+      
+      const { data: siteData } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'site_ads_enabled')
+        .single();
+
+      if (cardsData) setCardsAdsEnabled(cardsData.setting_value === 'true');
+      if (siteData) setSiteAdsEnabled(siteData.setting_value === 'true');
+    } catch (error) {
+      console.error('Error loading ad settings:', error);
+    }
+  };
+
+  const handleToggleCardsAds = async (enabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ setting_value: enabled.toString() })
+        .eq('setting_key', 'cards_ads_enabled');
+
+      if (error) throw error;
+      setCardsAdsEnabled(enabled);
+      toast.success(`Card ads ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error toggling cards ads:', error);
+      toast.error('Failed to update cards ads setting');
+    }
+  };
+
+  const handleToggleSiteAds = async (enabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ setting_value: enabled.toString() })
+        .eq('setting_key', 'site_ads_enabled');
+
+      if (error) throw error;
+      setSiteAdsEnabled(enabled);
+      toast.success(`Site ads ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error toggling site ads:', error);
+      toast.error('Failed to update site ads setting');
+    }
+  };
 
   const fetchWhatsappNumber = async () => {
     try {
@@ -614,6 +670,64 @@ const Admin = () => {
             >
               SAVE CONFIGURATION
             </Button>
+          </div>
+        </Card>
+
+        {/* Global Ad Controls */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-cyan/50 shadow-neon-cyan p-6 relative overflow-hidden">
+          <h2 className="text-xl font-black text-cyber-neon-cyan mb-6 font-mono flex items-center gap-2">
+            <span className="text-cyber-neon-green">&gt;</span> GLOBAL AD CONTROLS
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-cyber-dark/50 border border-cyber-neon-cyan/30 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-cyber-neon-green font-mono font-bold">CARDS ADS</h3>
+                  <p className="text-cyber-neon-cyan/60 text-xs font-mono mt-1">
+                    Controls "Watch Ad" option on all cards
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleCardsAds(!cardsAdsEnabled)}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    cardsAdsEnabled ? 'bg-cyber-neon-green' : 'bg-cyber-dark border-2 border-cyber-neon-red'
+                  }`}
+                >
+                  <div className={`absolute top-1 ${cardsAdsEnabled ? 'right-1' : 'left-1'} w-6 h-6 rounded-full bg-cyber-panel transition-all shadow-lg`} />
+                </button>
+              </div>
+              <p className="text-cyber-neon-cyan/70 text-xs font-mono">
+                Status: <span className={cardsAdsEnabled ? 'text-cyber-neon-green' : 'text-cyber-neon-red'}>
+                  {cardsAdsEnabled ? 'ON' : 'OFF'}
+                </span>
+              </p>
+            </div>
+
+            <div className="bg-cyber-dark/50 border border-cyber-neon-cyan/30 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-cyber-neon-green font-mono font-bold">SITE ADS</h3>
+                  <p className="text-cyber-neon-cyan/60 text-xs font-mono mt-1">
+                    Controls global site-wide ad placements
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleSiteAds(!siteAdsEnabled)}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    siteAdsEnabled ? 'bg-cyber-neon-green' : 'bg-cyber-dark border-2 border-cyber-neon-red'
+                  }`}
+                >
+                  <div className={`absolute top-1 ${siteAdsEnabled ? 'right-1' : 'left-1'} w-6 h-6 rounded-full bg-cyber-panel transition-all shadow-lg`} />
+                </button>
+              </div>
+              <p className="text-cyber-neon-cyan/70 text-xs font-mono">
+                Status: <span className={siteAdsEnabled ? 'text-cyber-neon-green' : 'text-cyber-neon-red'}>
+                  {siteAdsEnabled ? 'ON' : 'OFF'}
+                </span>
+              </p>
+            </div>
           </div>
         </Card>
 
