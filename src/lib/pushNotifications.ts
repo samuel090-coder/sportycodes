@@ -53,7 +53,11 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
     const permission = await requestNotificationPermission();
     
     if (permission !== 'granted') {
-      toast.error('Please enable notifications in your browser settings');
+      if (permission === 'denied') {
+        toast.error('Notifications are blocked for this site. Please enable them from your browser\'s site settings.');
+      } else {
+        toast.error('Please accept the notification prompt in your browser to enable alerts.');
+      }
       return false;
     }
 

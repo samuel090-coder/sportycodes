@@ -118,10 +118,10 @@ const SureOdds = () => {
           .select('setting_value')
           .eq('setting_key', 'cards_ads_enabled')
           .single();
-        
-        if (data) {
-          setCardsAdsEnabled(data.setting_value === 'true');
-        }
+
+        const enabled = data ? data.setting_value === 'true' : true;
+        console.log('Loaded cards_ads_enabled =', enabled);
+        setCardsAdsEnabled(enabled);
       } catch (error) {
         console.error('Error loading cards ads setting:', error);
       }
@@ -129,6 +129,7 @@ const SureOdds = () => {
 
     loadCardsAdsSetting();
   }, []);
+
 
   // Auto-refresh to check for scheduled games every minute
   useEffect(() => {
@@ -144,7 +145,22 @@ const SureOdds = () => {
   const wonGames = sureOdds.filter(odd => odd.status === "scored");
   const lostGames = sureOdds.filter(odd => odd.status === "lost");
 
-  const handleViewCode = (odd: typeof sureOdds[0]) => {
+  const handleViewCode = async (odd: typeof sureOdds[0]) => {
+    // Always refresh global cards ads setting before showing options
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'cards_ads_enabled')
+        .single();
+
+      const enabled = data ? data.setting_value === 'true' : true;
+      console.log('Refreshed cards_ads_enabled before dialog =', enabled);
+      setCardsAdsEnabled(enabled);
+    } catch (error) {
+      console.error('Error refreshing cards ads setting:', error);
+    }
+
     setSelectedOdd(odd);
     setUnlockDialogOpen(true);
   };
