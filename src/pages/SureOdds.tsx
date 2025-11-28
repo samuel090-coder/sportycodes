@@ -100,9 +100,9 @@ const SureOdds = () => {
   // Auto-refresh to check for scheduled games every minute
   useEffect(() => {
     const interval = setInterval(() => {
-      // Force a re-render to check scheduled times
+      // Force a re-render to check scheduled times more frequently
       setRefreshTrigger(prev => prev + 1);
-    }, 60000); // Check every minute
+    }, 5000); // Check every 5 seconds for near-instant LIVE updates
 
     return () => clearInterval(interval);
   }, []);
