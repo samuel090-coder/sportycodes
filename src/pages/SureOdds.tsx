@@ -99,13 +99,18 @@ const SureOdds = () => {
   const wonGames = sureOdds.filter(odd => odd.status === "scored");
   const lostGames = sureOdds.filter(odd => odd.status === "lost");
 
-  const handleViewCode = (sureOddId: string, price: number) => {
+  const handleViewCode = (odd: typeof sureOdds[0]) => {
     navigate("/payment", {
       state: {
         type: "sure-odd",
-        id: sureOddId,
-        betAmount: price,
-        potentialWin: price * 2,
+        id: odd.id,
+        stake: odd.stake,
+        payout: odd.payout,
+        prediction: odd.prediction,
+        homeTeam: odd.homeTeam,
+        awayTeam: odd.awayTeam,
+        matchCount: odd.matchCount,
+        price: odd.price,
       },
     });
   };
@@ -243,7 +248,7 @@ const SureOdds = () => {
                         {!userHasAccess && (
                           <button
                             type="button"
-                            onClick={() => handleViewCode(odd.id, odd.price)}
+                            onClick={() => handleViewCode(odd)}
                             className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bet-dark/70 text-primary-foreground text-xs font-semibold"
                           >
                             <Eye className="w-5 h-5" />
