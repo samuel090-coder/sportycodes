@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
@@ -155,7 +156,7 @@ const SureOdds = () => {
     }
 
     try {
-      // Check if user has attempted to watch an ad for this odd in the last hour
+      // Check if user has attempted to watch an ad for this odd in the last 24 hours
       const { data: attempts, error: checkError } = await supabase
         .from('ad_view_attempts')
         .select('*')
@@ -171,10 +172,10 @@ const SureOdds = () => {
         const now = new Date();
         const hoursSinceLastAttempt = (now.getTime() - lastAttempt.getTime()) / (1000 * 60 * 60);
 
-        if (hoursSinceLastAttempt < 1) {
-          const minutesLeft = Math.ceil((1 - hoursSinceLastAttempt) * 60);
+        if (hoursSinceLastAttempt < 24) {
+          const hoursLeft = Math.ceil(24 - hoursSinceLastAttempt);
           toast.error(
-            `Please wait ${minutesLeft} minutes before watching another ad, or use the payment option.`,
+            `Please wait ${hoursLeft} hours before watching another ad, or use the payment option.`,
             { duration: 5000 }
           );
           return;
@@ -638,23 +639,28 @@ const SureOdds = () => {
               </div>
             </Button>
 
-            {/* Watch Ad Option */}
-            <Button
-              onClick={handleWatchAdOption}
-              variant="outline"
-              className="w-full h-auto py-6 border-2 border-green-500/50 hover:bg-green-500/10"
-            >
-              <div className="flex items-center gap-3">
-                <Play className="w-6 h-6 text-green-500" />
-                <div className="text-left">
-                  <div className="font-black text-lg text-green-500">Watch Ad (FREE)</div>
-                  <div className="text-xs text-muted-foreground">Support us with an ad view</div>
+            {/* Watch Ad Option - Only show if ad is enabled for this odd */}
+            {selectedOdd?.adEnabled && (
+              <Button
+                onClick={handleWatchAdOption}
+                variant="outline"
+                className="w-full h-auto py-6 border-2 border-green-500/50 hover:bg-green-500/10"
+              >
+                <div className="flex items-center gap-3">
+                  <Play className="w-6 h-6 text-green-500" />
+                  <div className="text-left">
+                    <div className="font-black text-lg text-green-500">Watch Ad (FREE)</div>
+                    <div className="text-xs text-muted-foreground">24hr Cooldown - Support us with an ad view</div>
+                  </div>
                 </div>
-              </div>
-            </Button>
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Push Notification Prompt */}
+      {userEmail && <NotificationPrompt userEmail={userEmail} />}
     </div>
   );
 };

@@ -184,8 +184,30 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          subscription: Json
+          user_email: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          subscription: Json
+          user_email: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          subscription?: Json
+          user_email?: string
+        }
+        Relationships: []
+      }
       sure_odds: {
         Row: {
+          ad_enabled: boolean | null
           ad_zone_id: string | null
           away_team: string
           away_team_logo: string | null
@@ -206,6 +228,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ad_enabled?: boolean | null
           ad_zone_id?: string | null
           away_team: string
           away_team_logo?: string | null
@@ -226,6 +249,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ad_enabled?: boolean | null
           ad_zone_id?: string | null
           away_team?: string
           away_team_logo?: string | null
