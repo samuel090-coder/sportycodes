@@ -107,20 +107,7 @@ const SureOdds = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const notStartedOdds = sureOdds.filter(odd => {
-    // Filter by status
-    if (odd.status !== "not-started") return false;
-    
-    // If scheduled time is set, only show if time has arrived
-    if (odd.scheduledTime) {
-      const scheduledDate = new Date(odd.scheduledTime);
-      const now = new Date();
-      return now >= scheduledDate;
-    }
-    
-    // If no scheduled time, show immediately
-    return true;
-  });
+  const notStartedOdds = sureOdds.filter(odd => odd.status === "not-started");
   const wonGames = sureOdds.filter(odd => odd.status === "scored");
   const lostGames = sureOdds.filter(odd => odd.status === "lost");
 
@@ -241,21 +228,33 @@ const SureOdds = () => {
                     )}
 
                     <div className="flex items-center justify-between mb-3">
-                      {odd.scheduledTime ? (
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
-                          STARTS {new Date(odd.scheduledTime).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
-                      ) : (
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
-                          ACTIVE NOW
-                        </span>
-                      )}
+                      {(() => {
+                        if (odd.scheduledTime) {
+                          const scheduledDate = new Date(odd.scheduledTime);
+                          const now = new Date();
+                          const isLive = now >= scheduledDate;
+                          
+                          if (isLive) {
+                            return (
+                              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-500 animate-pulse">
+                                🔴 LIVE NOW
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
+                                NOT STARTED
+                              </span>
+                            );
+                          }
+                        } else {
+                          return (
+                            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-500 animate-pulse">
+                              🔴 LIVE NOW
+                            </span>
+                          );
+                        }
+                      })()}
                       <p className="text-sm font-bold text-primary">
                         {odd.confidence} Confidence
                       </p>
