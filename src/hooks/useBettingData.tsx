@@ -29,6 +29,8 @@ export interface SureOdd {
   price: number;
   matchCount: number; // 1 = single match, >1 = multiple matches
   scheduledTime?: string | null; // Optional scheduled start time
+  stake?: number;
+  payout?: number;
 }
 
 // Empty defaults - admin will add data
@@ -113,6 +115,8 @@ export const useBettingData = () => {
         price: item.price || 0,
         matchCount: item.match_count || 1,
         scheduledTime: item.scheduled_time || undefined,
+        stake: item.stake || 0,
+        payout: item.payout || 0,
       }));
       setSureOdds(formattedData);
       localStorage.removeItem('sure_odds'); // Clear old localStorage data
@@ -229,6 +233,8 @@ export const useBettingData = () => {
           price: sureOdd.price || 0,
           match_count: sureOdd.matchCount || 1,
           scheduled_time: sureOdd.scheduledTime || null,
+          stake: sureOdd.stake || 0,
+          payout: sureOdd.payout || 0,
         })
         .select()
         .single();
@@ -249,6 +255,8 @@ export const useBettingData = () => {
         price: data.price || 0,
         matchCount: data.match_count || 1,
         scheduledTime: data.scheduled_time || undefined,
+        stake: data.stake || 0,
+        payout: data.payout || 0,
       };
 
       const updated = [...sureOdds, newSureOdd];
@@ -276,6 +284,8 @@ export const useBettingData = () => {
           price: updates.price,
           match_count: updates.matchCount,
           scheduled_time: updates.scheduledTime,
+          stake: updates.stake,
+          payout: updates.payout,
         })
         .eq('id', id);
 
@@ -317,5 +327,6 @@ export const useBettingData = () => {
     addSureOdd,
     updateSureOdd,
     deleteSureOdd,
+    isLoading,
   };
 };

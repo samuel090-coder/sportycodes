@@ -34,6 +34,10 @@ const Admin = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
+  const [whatsappNumber, setWhatsappNumber] = useState("+2349067423764");
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [isUpdatingPin, setIsUpdatingPin] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -156,8 +160,66 @@ const Admin = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchPayments();
+      fetchWhatsappNumber();
     }
   }, [isAuthenticated]);
+
+  const fetchWhatsappNumber = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'whatsapp_number')
+        .single();
+
+      if (error) throw error;
+      if (data) setWhatsappNumber(data.setting_value);
+    } catch (error) {
+      console.error('Error fetching WhatsApp number:', error);
+    }
+  };
+
+  const handleUpdateWhatsapp = async () => {
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ setting_value: whatsappNumber })
+        .eq('setting_key', 'whatsapp_number');
+
+      if (error) throw error;
+      toast.success("WhatsApp number updated successfully!");
+    } catch (error) {
+      console.error('Error updating WhatsApp:', error);
+      toast.error("Failed to update WhatsApp number");
+    }
+  };
+
+  const handleUpdatePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingPin(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('update-admin-pin', {
+        body: { currentPin, newPin }
+      });
+
+      if (error) throw error;
+
+      if (data?.isValid) {
+        toast.success("PIN verified! Please update ADMIN_PIN secret with: " + data.newPin, {
+          duration: 10000,
+        });
+        setCurrentPin("");
+        setNewPin("");
+      } else {
+        toast.error(data?.message || "Invalid current PIN");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update PIN");
+    } finally {
+      setIsUpdatingPin(false);
+    }
+  };
 
   const handleSaveSureOdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +248,8 @@ const Admin = () => {
       price: parseFloat(formData.get("price") as string) || 0,
       matchCount: matchCount,
       scheduledTime: formData.get("scheduledTime") as string || null,
+      stake: parseFloat(formData.get("stake") as string) || 0,
+      payout: parseFloat(formData.get("payout") as string) || 0,
     };
 
     try {
@@ -345,6 +409,105 @@ const Admin = () => {
       </header>
 
       <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
+        {/* Security Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-purple p-6 relative overflow-hidden">
+            <div className="absolute top-2 right-2 flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
+            </div>
+
+            <h2 className="text-xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
+              <span className="text-cyber-neon-green">&gt;</span> UPDATE ADMIN PIN
+            </h2>
+            <form onSubmit={handleUpdatePin} className="space-y-4">
+              <div>
+                <Label htmlFor="currentPin" className="text-cyber-neon-cyan font-mono text-sm">
+                  CURRENT PIN
+                </Label>
+                <Input
+                  id="currentPin"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={currentPin}
+                  onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+                  required
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono focus:border-cyber-neon-purple focus:shadow-neon-purple transition-all"
+                />
+              </div>
+              <div>
+                <Label htmlFor="newPin" className="text-cyber-neon-cyan font-mono text-sm">
+                  NEW PIN (4-6 digits)
+                </Label>
+                <Input
+                  id="newPin"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                  required
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono focus:border-cyber-neon-purple focus:shadow-neon-purple transition-all"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={isUpdatingPin}
+                className="w-full bg-cyber-neon-purple text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-purple hover:shadow-neon-cyan transition-all"
+              >
+                {isUpdatingPin ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    UPDATING...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    UPDATE PIN
+                  </>
+                )}
+              </Button>
+            </form>
+          </Card>
+
+          <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6 relative overflow-hidden">
+            <div className="absolute top-2 right-2 flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
+            </div>
+
+            <h2 className="text-xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
+              <span className="text-cyber-neon-cyan">&gt;</span> WHATSAPP NUMBER
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="whatsappNumber" className="text-cyber-neon-cyan font-mono text-sm">
+                  CONTACT NUMBER
+                </Label>
+                <Input
+                  id="whatsappNumber"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+                  placeholder="+234..."
+                />
+                <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-2">
+                  Users will contact this number after payment
+                </p>
+              </div>
+              <Button
+                onClick={handleUpdateWhatsapp}
+                className="w-full bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-green hover:shadow-neon-cyan transition-all"
+              >
+                SAVE NUMBER
+              </Button>
+            </div>
+          </Card>
+        </div>
+
         {/* Account Details Section */}
         <Card className="bg-gradient-cyber border-2 border-cyber-neon-cyan/50 shadow-neon-cyan p-6 relative overflow-hidden">
           <div className="absolute top-2 right-2 flex gap-2">
@@ -621,6 +784,37 @@ const Admin = () => {
                   required
                   defaultValue={editingSureOdd?.price}
                   className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="stake" className="text-cyber-neon-cyan font-mono text-sm">
+                  STAKE (₦)
+                </Label>
+                <Input
+                  id="stake"
+                  name="stake"
+                  type="number"
+                  step="0.01"
+                  defaultValue={editingSureOdd?.stake || 0}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                  placeholder="1000"
+                />
+              </div>
+              <div>
+                <Label htmlFor="payout" className="text-cyber-neon-cyan font-mono text-sm">
+                  PAYOUT (₦)
+                </Label>
+                <Input
+                  id="payout"
+                  name="payout"
+                  type="number"
+                  step="0.01"
+                  defaultValue={editingSureOdd?.payout || 0}
+                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                  placeholder="2500"
                 />
               </div>
             </div>

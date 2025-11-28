@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const SureOdds = () => {
-  const { sureOdds } = useBettingData();
+  const { sureOdds, isLoading } = useBettingData();
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<string[]>([]);
@@ -124,9 +124,24 @@ const SureOdds = () => {
       </header>
 
       <main className="max-w-screen-xl mx-auto px-4 py-6">
-        {/* Not Started Games - At Top */}
-        {notStartedOdds.length > 0 && (
-          <div className="mb-8">
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="text-center py-16">
+            <div className="mb-4">
+              <div className="w-20 h-20 mx-auto bg-muted rounded-full flex items-center justify-center animate-pulse">
+                <span className="text-4xl">⚽</span>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Loading Sure Odds...</h2>
+            <p className="text-muted-foreground">
+              Please wait while we fetch the latest predictions
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Not Started Games - At Top */}
+            {notStartedOdds.length > 0 && (
+              <div className="mb-8">
             <div className="mb-6">
               <h2 className="text-xl font-bold text-foreground mb-2">Active Predictions</h2>
               <p className="text-sm text-muted-foreground">Carefully analyzed matches with high win probability</p>
@@ -196,13 +211,14 @@ const SureOdds = () => {
                     )}
 
                     <div className="flex items-center justify-between mb-3">
-                      {odd.scheduledTime && new Date(odd.scheduledTime) > new Date() ? (
+                      {odd.scheduledTime ? (
                         <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">
                           STARTS {new Date(odd.scheduledTime).toLocaleString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             hour: 'numeric',
-                            minute: '2-digit'
+                            minute: '2-digit',
+                            hour12: true
                           })}
                         </span>
                       ) : (
@@ -413,6 +429,8 @@ const SureOdds = () => {
               ))}
             </div>
           </div>
+        )}
+          </>
         )}
       </main>
       <BottomNav />

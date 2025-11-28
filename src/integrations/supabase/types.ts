@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       matches: {
         Row: {
           away_odds: number
@@ -113,9 +134,11 @@ export type Database = {
           id: string
           match_count: number
           odds: number
+          payout: number | null
           prediction: string
           price: number
           scheduled_time: string | null
+          stake: number | null
           status: string
           updated_at: string | null
         }
@@ -130,9 +153,11 @@ export type Database = {
           id?: string
           match_count?: number
           odds: number
+          payout?: number | null
           prediction: string
           price?: number
           scheduled_time?: string | null
+          stake?: number | null
           status: string
           updated_at?: string | null
         }
@@ -147,9 +172,11 @@ export type Database = {
           id?: string
           match_count?: number
           odds?: number
+          payout?: number | null
           prediction?: string
           price?: number
           scheduled_time?: string | null
+          stake?: number | null
           status?: string
           updated_at?: string | null
         }
