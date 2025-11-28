@@ -46,7 +46,7 @@ const SureOdds = () => {
       checkPaymentStatus();
       
       // Subscribe to real-time updates for payment approvals
-      const channel = supabase
+      const paymentChannel = supabase
         .channel('payment-approvals')
         .on(
           'postgres_changes',
@@ -67,9 +67,34 @@ const SureOdds = () => {
         .subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(paymentChannel);
       };
     }
+  }, []);
+
+  // Real-time subscription for sure odds updates
+  useEffect(() => {
+    const oddsChannel = supabase
+      .channel('sure-odds-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sure_odds'
+        },
+        (payload) => {
+          console.log('Sure odds updated:', payload);
+          // Trigger a re-fetch by updating the refresh trigger
+          setRefreshTrigger(prev => prev + 1);
+          toast.success('New odds available!');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(oddsChannel);
+    };
   }, []);
 
   // Auto-refresh to check for scheduled games every minute
@@ -237,10 +262,22 @@ const SureOdds = () => {
                     </div>
 
                     <div className="space-y-3">
+                      {/* Stake and Payout Row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="text-center py-2 bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-lg border border-green-500/30">
+                          <p className="text-[10px] text-green-400 mb-1 uppercase font-bold">Stake</p>
+                          <p className="text-lg font-black text-green-400">₦{odd.stake?.toLocaleString() || 0}</p>
+                        </div>
+                        <div className="text-center py-2 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg border border-primary/40">
+                          <p className="text-[10px] text-primary mb-1 uppercase font-bold">Potential Win</p>
+                          <p className="text-lg font-black text-primary">₦{odd.payout?.toLocaleString() || 0}</p>
+                        </div>
+                      </div>
+
                       {/* Code Section */}
                       <div className="relative">
                         <div className="text-center py-3 bg-secondary/50 rounded-lg border border-current overflow-hidden">
-                          <p className="text-xs text-muted-foreground mb-1 uppercase">Code</p>
+                          <p className="text-xs text-muted-foreground mb-1 uppercase">Betting Code</p>
                           <p className={`text-xl font-black text-primary ${!userHasAccess ? 'filter blur-sm select-none' : ''}`}>
                             {odd.betCode}
                           </p>
@@ -249,7 +286,7 @@ const SureOdds = () => {
                           <button
                             type="button"
                             onClick={() => handleViewCode(odd)}
-                            className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bet-dark/70 text-primary-foreground text-xs font-semibold"
+                            className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bet-dark/70 text-primary-foreground text-xs font-semibold hover:bg-bet-dark/80 transition-colors"
                           >
                             <Eye className="w-5 h-5" />
                             <span>Pay ₦{odd.price} to view code</span>
@@ -362,6 +399,17 @@ const SureOdds = () => {
                     </p>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="text-center py-2 bg-green-500/10 rounded-lg border border-green-500/30">
+                      <p className="text-[10px] text-green-400 mb-1 uppercase font-bold">Stake</p>
+                      <p className="text-sm font-black text-green-400">₦{odd.stake?.toLocaleString() || 0}</p>
+                    </div>
+                    <div className="text-center py-2 bg-green-500/10 rounded-lg border border-green-500/30">
+                      <p className="text-[10px] text-green-400 mb-1 uppercase font-bold">Won</p>
+                      <p className="text-sm font-black text-green-400">₦{odd.payout?.toLocaleString() || 0}</p>
+                    </div>
+                  </div>
+
                   <div className="text-center py-2 bg-secondary/50 rounded-lg border border-current">
                     <p className="text-xs text-muted-foreground mb-1 uppercase">Result</p>
                     <p className="text-sm font-bold text-foreground">{odd.prediction}</p>
@@ -424,6 +472,17 @@ const SureOdds = () => {
                     <p className="text-sm font-bold text-primary">
                       {odd.confidence} Confidence
                     </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="text-center py-2 bg-red-500/10 rounded-lg border border-red-500/30">
+                      <p className="text-[10px] text-red-400 mb-1 uppercase font-bold">Stake</p>
+                      <p className="text-sm font-black text-red-400">₦{odd.stake?.toLocaleString() || 0}</p>
+                    </div>
+                    <div className="text-center py-2 bg-red-500/10 rounded-lg border border-red-500/30">
+                      <p className="text-[10px] text-red-400 mb-1 uppercase font-bold">Lost</p>
+                      <p className="text-sm font-black text-red-400">₦{odd.payout?.toLocaleString() || 0}</p>
+                    </div>
                   </div>
 
                   <div className="text-center py-2 bg-secondary/50 rounded-lg border border-current">
