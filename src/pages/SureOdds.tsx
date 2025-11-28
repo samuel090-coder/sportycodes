@@ -1,11 +1,19 @@
 import BottomNav from "@/components/BottomNav";
 import { Card } from "@/components/ui/card";
-import { Eye } from "lucide-react";
+import { Eye, CreditCard, Play } from "lucide-react";
 import { useBettingData } from "@/hooks/useBettingData";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
@@ -13,6 +21,8 @@ const SureOdds = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<string[]>([]);
   const [, setRefreshTrigger] = useState(0);
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [selectedOdd, setSelectedOdd] = useState<typeof sureOdds[0] | null>(null);
 
   useEffect(() => {
     // Get user email from localStorage
@@ -112,19 +122,48 @@ const SureOdds = () => {
   const lostGames = sureOdds.filter(odd => odd.status === "lost");
 
   const handleViewCode = (odd: typeof sureOdds[0]) => {
+    setSelectedOdd(odd);
+    setUnlockDialogOpen(true);
+  };
+
+  const handlePayOption = () => {
+    if (!selectedOdd) return;
+    setUnlockDialogOpen(false);
     navigate("/payment", {
       state: {
         type: "sure-odd",
-        id: odd.id,
-        stake: odd.stake,
-        payout: odd.payout,
-        prediction: odd.prediction,
-        homeTeam: odd.homeTeam,
-        awayTeam: odd.awayTeam,
-        matchCount: odd.matchCount,
-        price: odd.price,
+        id: selectedOdd.id,
+        stake: selectedOdd.stake,
+        payout: selectedOdd.payout,
+        prediction: selectedOdd.prediction,
+        homeTeam: selectedOdd.homeTeam,
+        awayTeam: selectedOdd.awayTeam,
+        matchCount: selectedOdd.matchCount,
+        price: selectedOdd.price,
       },
     });
+  };
+
+  const handleWatchAdOption = () => {
+    if (!selectedOdd) return;
+    setUnlockDialogOpen(false);
+    
+    toast.loading('Loading ad...', { id: 'ad-loading' });
+    
+    // Simulate ad display (MonetAg interstitial will show automatically)
+    setTimeout(() => {
+      toast.dismiss('ad-loading');
+      
+      // Grant temporary access by adding to approved items
+      const email = userEmail || 'guest_' + Date.now();
+      if (!userEmail) {
+        localStorage.setItem('user_payment_email', email);
+        setUserEmail(email);
+      }
+      
+      setApprovedItems(prev => [...prev, selectedOdd.id]);
+      toast.success('Code unlocked! Ad credits applied.');
+    }, 3000); // 3 seconds simulates ad viewing time
   };
 
   const hasAccess = (oddId: string) => {
@@ -497,6 +536,51 @@ const SureOdds = () => {
         )}
       </main>
       <BottomNav />
+
+      {/* Unlock Options Dialog */}
+      <Dialog open={unlockDialogOpen} onOpenChange={setUnlockDialogOpen}>
+        <DialogContent className="bg-bet-dark border-bet-border">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-primary">
+              Unlock Betting Code
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Choose how you want to access this prediction
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-4">
+            {/* Pay Option */}
+            <Button
+              onClick={handlePayOption}
+              className="w-full h-auto py-6 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground"
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-6 h-6" />
+                <div className="text-left">
+                  <div className="font-black text-lg">Pay ₦{selectedOdd?.price}</div>
+                  <div className="text-xs opacity-90">Bank Transfer - Instant Access</div>
+                </div>
+              </div>
+            </Button>
+
+            {/* Watch Ad Option */}
+            <Button
+              onClick={handleWatchAdOption}
+              variant="outline"
+              className="w-full h-auto py-6 border-2 border-green-500/50 hover:bg-green-500/10"
+            >
+              <div className="flex items-center gap-3">
+                <Play className="w-6 h-6 text-green-500" />
+                <div className="text-left">
+                  <div className="font-black text-lg text-green-500">Watch Ad (FREE)</div>
+                  <div className="text-xs text-muted-foreground">Support us with an ad view</div>
+                </div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
