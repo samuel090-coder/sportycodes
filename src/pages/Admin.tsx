@@ -161,6 +161,7 @@ const Admin = () => {
     if (isAuthenticated) {
       fetchPayments();
       fetchWhatsappNumber();
+      fetchAccountDetails();
     }
   }, [isAuthenticated]);
 
@@ -176,6 +177,27 @@ const Admin = () => {
       if (data) setWhatsappNumber(data.setting_value);
     } catch (error) {
       console.error('Error fetching WhatsApp number:', error);
+    }
+  };
+
+  const fetchAccountDetails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['bank_name', 'account_name', 'account_number']);
+
+      if (error) throw error;
+
+      const updated = { ...accountDetails };
+      (data || []).forEach((row: any) => {
+        if (row.setting_key === 'bank_name') updated.bankName = row.setting_value;
+        if (row.setting_key === 'account_name') updated.accountName = row.setting_value;
+        if (row.setting_key === 'account_number') updated.accountNumber = row.setting_value;
+      });
+      setAccountDetails(updated);
+    } catch (error) {
+      console.error('Error fetching account details:', error);
     }
   };
 
@@ -218,6 +240,34 @@ const Admin = () => {
       toast.error(error.message || "Failed to update PIN");
     } finally {
       setIsUpdatingPin(false);
+    }
+  };
+
+  const handleSaveAccountDetails = async () => {
+    try {
+      const { error: bankError } = await supabase
+        .from('app_settings')
+        .update({ setting_value: accountDetails.bankName })
+        .eq('setting_key', 'bank_name');
+
+      const { error: nameError } = await supabase
+        .from('app_settings')
+        .update({ setting_value: accountDetails.accountName })
+        .eq('setting_key', 'account_name');
+
+      const { error: numberError } = await supabase
+        .from('app_settings')
+        .update({ setting_value: accountDetails.accountNumber })
+        .eq('setting_key', 'account_number');
+
+      if (bankError || nameError || numberError) {
+        throw bankError || nameError || numberError;
+      }
+
+      toast.success("Account details updated!");
+    } catch (error) {
+      console.error('Error updating account details:', error);
+      toast.error("Failed to update account details");
     }
   };
 
@@ -557,7 +607,7 @@ const Admin = () => {
             </div>
 
             <Button
-              onClick={() => toast.success("Account details updated!")}
+              onClick={handleSaveAccountDetails}
               className="w-full bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-green hover:shadow-neon-cyan transition-all"
             >
               SAVE CONFIGURATION

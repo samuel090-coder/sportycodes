@@ -18,9 +18,15 @@ const Payment = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState("+2349067423764");
+  const [accountDetails, setAccountDetails] = useState({
+    accountNumber: "1234567890",
+    accountName: "SPORTY CODES",
+    bankName: "GTBank",
+  });
 
   useEffect(() => {
     fetchWhatsappNumber();
+    fetchAccountDetails();
   }, []);
 
   const fetchWhatsappNumber = async () => {
@@ -38,10 +44,25 @@ const Payment = () => {
     }
   };
 
-  const accountDetails = {
-    accountNumber: "1234567890",
-    accountName: "SPORTY CODES",
-    bankName: "GTBank",
+  const fetchAccountDetails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['bank_name', 'account_name', 'account_number']);
+
+      if (error) throw error;
+
+      const updated = { ...accountDetails };
+      (data || []).forEach((row: any) => {
+        if (row.setting_key === 'bank_name') updated.bankName = row.setting_value;
+        if (row.setting_key === 'account_name') updated.accountName = row.setting_value;
+        if (row.setting_key === 'account_number') updated.accountNumber = row.setting_value;
+      });
+      setAccountDetails(updated);
+    } catch (error) {
+      console.error('Error fetching account details:', error);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
