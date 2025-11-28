@@ -12,6 +12,7 @@ import { Pencil, Trash2, Upload, Loader2, Sparkles, CheckCircle, XCircle, Termin
 import { useBettingData, SureOdd } from "@/hooks/useBettingData";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { GlobalAdZoneManager } from "@/components/GlobalAdZoneManager";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -300,6 +301,7 @@ const Admin = () => {
       scheduledTime: formData.get("scheduledTime") as string || null,
       stake: parseFloat(formData.get("stake") as string) || 0,
       payout: parseFloat(formData.get("payout") as string) || 0,
+      adZoneId: formData.get("adZoneId") as string || null,
     };
 
     try {
@@ -615,6 +617,9 @@ const Admin = () => {
           </div>
         </Card>
 
+        {/* Global Ad Zones Manager */}
+        <GlobalAdZoneManager />
+
         {/* Sure Odds Management */}
         <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6 relative overflow-hidden">
           <div className="absolute top-2 right-2 flex gap-2">
@@ -836,6 +841,22 @@ const Admin = () => {
                   className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="adZoneId" className="text-cyber-neon-cyan font-mono text-sm">
+                AD ZONE ID (MonetAg)
+              </Label>
+              <Input
+                id="adZoneId"
+                name="adZoneId"
+                defaultValue={editingSureOdd?.adZoneId}
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-cyan/50 text-cyber-neon-green font-mono focus:border-cyber-neon-green focus:shadow-neon-green transition-all"
+                placeholder="e.g., 10250664"
+              />
+              <p className="text-cyber-neon-cyan/50 text-xs font-mono mt-1">
+                Each sure odd uses its own ad zone to prevent user abuse
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

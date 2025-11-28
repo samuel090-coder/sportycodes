@@ -31,6 +31,7 @@ export interface SureOdd {
   scheduledTime?: string | null; // Optional scheduled start time
   stake?: number;
   payout?: number;
+  adZoneId?: string | null; // MonetAg ad zone for this specific odd
 }
 
 // Empty defaults - admin will add data
@@ -117,6 +118,7 @@ export const useBettingData = () => {
         scheduledTime: item.scheduled_time || undefined,
         stake: item.stake || 0,
         payout: item.payout || 0,
+        adZoneId: item.ad_zone_id || undefined,
       }));
       setSureOdds(formattedData);
       localStorage.removeItem('sure_odds'); // Clear old localStorage data
