@@ -38,22 +38,37 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
 
 export const subscribeToPushNotifications = async (userEmail: string): Promise<boolean> => {
   try {
+    // Check if browser supports notifications
+    if (!('Notification' in window)) {
+      toast.error('Your browser does not support notifications');
+      return false;
+    }
+
+    // Check if service workers are supported
+    if (!('serviceWorker' in navigator)) {
+      toast.error('Your browser does not support service workers');
+      return false;
+    }
+
     const permission = await requestNotificationPermission();
     
     if (permission !== 'granted') {
-      toast.error('Please enable notifications to receive updates');
+      toast.error('Please enable notifications in your browser settings');
       return false;
     }
 
     // Register service worker
     const registration = await navigator.serviceWorker.register('/sw.js');
+    console.log('Service worker registered:', registration);
     await navigator.serviceWorker.ready;
+    console.log('Service worker ready');
 
     // Subscribe to push notifications
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource
     });
+    console.log('Push subscription created:', subscription);
 
     // Save subscription to database
     const { error } = await supabase
@@ -77,12 +92,19 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
       if (updateError) throw updateError;
     }
 
+    console.log('Push subscription saved to database');
     toast.success('Notifications enabled! You will receive updates.');
     return true;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error subscribing to push notifications:', error);
-    toast.error('Failed to enable notifications');
+    if (error.message?.includes('subscription')) {
+      toast.error('Failed to create push subscription. Please try again.');
+    } else if (error.message?.includes('permission')) {
+      toast.error('Notification permission denied. Please enable in browser settings.');
+    } else {
+      toast.error('Failed to enable notifications. Please try again.');
+    }
     return false;
   }
 };

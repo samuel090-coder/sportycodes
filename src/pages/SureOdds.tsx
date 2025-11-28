@@ -24,6 +24,7 @@ const SureOdds = () => {
   const [, setRefreshTrigger] = useState(0);
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const [selectedOdd, setSelectedOdd] = useState<typeof sureOdds[0] | null>(null);
+  const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
 
   useEffect(() => {
     // Get user email from localStorage
@@ -106,6 +107,27 @@ const SureOdds = () => {
     return () => {
       supabase.removeChannel(oddsChannel);
     };
+  }, []);
+
+  // Load cards ads setting
+  useEffect(() => {
+    const loadCardsAdsSetting = async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('setting_value')
+          .eq('setting_key', 'cards_ads_enabled')
+          .single();
+        
+        if (data) {
+          setCardsAdsEnabled(data.setting_value === 'true');
+        }
+      } catch (error) {
+        console.error('Error loading cards ads setting:', error);
+      }
+    };
+
+    loadCardsAdsSetting();
   }, []);
 
   // Auto-refresh to check for scheduled games every minute
@@ -639,8 +661,8 @@ const SureOdds = () => {
               </div>
             </Button>
 
-            {/* Watch Ad Option - Only show if ad is enabled for this odd */}
-            {selectedOdd?.adEnabled && (
+            {/* Watch Ad Option - Only show if global cards ads enabled AND ad is enabled for this odd */}
+            {cardsAdsEnabled && selectedOdd?.adEnabled && (
               <Button
                 onClick={handleWatchAdOption}
                 variant="outline"
