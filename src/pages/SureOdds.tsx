@@ -144,46 +144,100 @@ const SureOdds = () => {
     });
   };
 
-  const handleWatchAdOption = () => {
+  const handleWatchAdOption = async () => {
     if (!selectedOdd) return;
     setUnlockDialogOpen(false);
     
-    toast.info('Please wait while we load the ad...', { duration: 2000 });
-    
-    // Store the odd ID that needs to be unlocked
-    sessionStorage.setItem('pending_unlock_odd_id', selectedOdd.id);
-    
-    // Create a click event to trigger MonetAg interstitial ad
-    // MonetAg ads are triggered by user interactions
-    const adTrigger = document.createElement('a');
-    adTrigger.href = '#';
-    adTrigger.style.position = 'fixed';
-    adTrigger.style.top = '-1000px';
-    adTrigger.innerHTML = 'Ad Trigger';
-    document.body.appendChild(adTrigger);
-    
-    // Programmatically click to trigger ad
-    setTimeout(() => {
-      adTrigger.click();
-      document.body.removeChild(adTrigger);
-      
-      // Wait for ad to be viewed (MonetAg typically shows for 5-10 seconds)
-      // Then check if we should grant access
-      setTimeout(() => {
-        const pendingOddId = sessionStorage.getItem('pending_unlock_odd_id');
-        if (pendingOddId) {
-          const email = userEmail || 'guest_' + Date.now();
-          if (!userEmail) {
-            localStorage.setItem('user_payment_email', email);
-            setUserEmail(email);
-          }
-          
-          setApprovedItems(prev => [...prev, pendingOddId]);
-          sessionStorage.removeItem('pending_unlock_odd_id');
-          toast.success('Code unlocked! Thank you for watching.');
+    const email = userEmail || 'guest_' + Date.now();
+    if (!userEmail) {
+      localStorage.setItem('user_payment_email', email);
+      setUserEmail(email);
+    }
+
+    try {
+      // Check if user has attempted to watch an ad for this odd in the last hour
+      const { data: attempts, error: checkError } = await supabase
+        .from('ad_view_attempts')
+        .select('*')
+        .eq('user_email', email)
+        .eq('sure_odd_id', selectedOdd.id)
+        .order('attempted_at', { ascending: false })
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (attempts && attempts.length > 0) {
+        const lastAttempt = new Date(attempts[0].attempted_at);
+        const now = new Date();
+        const hoursSinceLastAttempt = (now.getTime() - lastAttempt.getTime()) / (1000 * 60 * 60);
+
+        if (hoursSinceLastAttempt < 1) {
+          const minutesLeft = Math.ceil((1 - hoursSinceLastAttempt) * 60);
+          toast.error(
+            `Please wait ${minutesLeft} minutes before watching another ad, or use the payment option.`,
+            { duration: 5000 }
+          );
+          return;
         }
-      }, 8000); // 8 seconds allows time for ad to display and be viewed
-    }, 500);
+      }
+
+      // Record this attempt in the database
+      const { error: insertError } = await supabase
+        .from('ad_view_attempts')
+        .insert({
+          user_email: email,
+          sure_odd_id: selectedOdd.id,
+          granted_access: false
+        });
+
+      if (insertError) throw insertError;
+
+      // Check if this odd has a custom ad zone
+      const adZoneId = selectedOdd.adZoneId || '10250664'; // Default to existing zone
+
+      toast.info('Loading ad... Please watch completely to unlock.', { duration: 3000 });
+
+      // Dynamically inject ad script for this specific zone
+      const adScript = document.createElement('script');
+      adScript.setAttribute('data-zone', adZoneId);
+      adScript.src = 'https://groleegni.net/vignette.min.js';
+      adScript.onload = () => {
+        // Create trigger to activate the ad
+        const adTrigger = document.createElement('a');
+        adTrigger.href = '#';
+        adTrigger.style.position = 'fixed';
+        adTrigger.style.top = '-1000px';
+        document.body.appendChild(adTrigger);
+        
+        setTimeout(() => {
+          adTrigger.click();
+          document.body.removeChild(adTrigger);
+          
+          // Grant access after ad display time
+          setTimeout(async () => {
+            setApprovedItems(prev => [...prev, selectedOdd.id]);
+            
+            // Update attempt to mark access granted
+            await supabase
+              .from('ad_view_attempts')
+              .update({ granted_access: true })
+              .eq('user_email', email)
+              .eq('sure_odd_id', selectedOdd.id)
+              .order('attempted_at', { ascending: false })
+              .limit(1);
+
+            toast.success('Code unlocked! Thank you for watching.');
+            document.head.removeChild(adScript);
+          }, 8000);
+        }, 500);
+      };
+      
+      document.head.appendChild(adScript);
+
+    } catch (error: any) {
+      console.error('Error checking ad attempts:', error);
+      toast.error('Failed to load ad. Please try the payment option.');
+    }
   };
 
   const hasAccess = (oddId: string) => {

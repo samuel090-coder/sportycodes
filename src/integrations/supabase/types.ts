@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_view_attempts: {
+        Row: {
+          attempted_at: string
+          granted_access: boolean | null
+          id: string
+          sure_odd_id: string
+          user_email: string
+        }
+        Insert: {
+          attempted_at?: string
+          granted_access?: boolean | null
+          id?: string
+          sure_odd_id: string
+          user_email: string
+        }
+        Update: {
+          attempted_at?: string
+          granted_access?: boolean | null
+          id?: string
+          sure_odd_id?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_view_attempts_sure_odd_id_fkey"
+            columns: ["sure_odd_id"]
+            isOneToOne: false
+            referencedRelation: "sure_odds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           id: string
@@ -32,6 +64,36 @@ export type Database = {
           setting_key?: string
           setting_value?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      global_ad_zones: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          placement: string
+          updated_at: string | null
+          zone_id: string
+          zone_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          placement: string
+          updated_at?: string | null
+          zone_id: string
+          zone_name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          placement?: string
+          updated_at?: string | null
+          zone_id?: string
+          zone_name?: string
         }
         Relationships: []
       }
@@ -124,6 +186,7 @@ export type Database = {
       }
       sure_odds: {
         Row: {
+          ad_zone_id: string | null
           away_team: string
           away_team_logo: string | null
           bet_code: string
@@ -143,6 +206,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ad_zone_id?: string | null
           away_team: string
           away_team_logo?: string | null
           bet_code: string
@@ -162,6 +226,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ad_zone_id?: string | null
           away_team?: string
           away_team_logo?: string | null
           bet_code?: string
