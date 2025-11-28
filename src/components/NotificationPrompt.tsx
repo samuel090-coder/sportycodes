@@ -19,12 +19,8 @@ export const NotificationPrompt = ({ userEmail }: NotificationPromptProps) => {
       const subscribed = await checkNotificationStatus(userEmail);
       setIsSubscribed(subscribed);
       
-      // Show prompt if not subscribed and not dismissed recently
-      const dismissed = localStorage.getItem('notification_prompt_dismissed');
-      const dismissedTime = dismissed ? parseInt(dismissed) : 0;
-      const dayInMs = 24 * 60 * 60 * 1000;
-      
-      if (!subscribed && (Date.now() - dismissedTime > dayInMs)) {
+      // Show prompt every time if not subscribed - keep bothering until enabled!
+      if (!subscribed) {
         setShow(true);
       }
     };
@@ -41,7 +37,7 @@ export const NotificationPrompt = ({ userEmail }: NotificationPromptProps) => {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem('notification_prompt_dismissed', Date.now().toString());
+    // Just hide for now - will show again on next page load
     setShow(false);
   };
 
