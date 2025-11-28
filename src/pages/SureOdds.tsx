@@ -148,22 +148,42 @@ const SureOdds = () => {
     if (!selectedOdd) return;
     setUnlockDialogOpen(false);
     
-    toast.loading('Loading ad...', { id: 'ad-loading' });
+    toast.info('Please wait while we load the ad...', { duration: 2000 });
     
-    // Simulate ad display (MonetAg interstitial will show automatically)
+    // Store the odd ID that needs to be unlocked
+    sessionStorage.setItem('pending_unlock_odd_id', selectedOdd.id);
+    
+    // Create a click event to trigger MonetAg interstitial ad
+    // MonetAg ads are triggered by user interactions
+    const adTrigger = document.createElement('a');
+    adTrigger.href = '#';
+    adTrigger.style.position = 'fixed';
+    adTrigger.style.top = '-1000px';
+    adTrigger.innerHTML = 'Ad Trigger';
+    document.body.appendChild(adTrigger);
+    
+    // Programmatically click to trigger ad
     setTimeout(() => {
-      toast.dismiss('ad-loading');
+      adTrigger.click();
+      document.body.removeChild(adTrigger);
       
-      // Grant temporary access by adding to approved items
-      const email = userEmail || 'guest_' + Date.now();
-      if (!userEmail) {
-        localStorage.setItem('user_payment_email', email);
-        setUserEmail(email);
-      }
-      
-      setApprovedItems(prev => [...prev, selectedOdd.id]);
-      toast.success('Code unlocked! Ad credits applied.');
-    }, 3000); // 3 seconds simulates ad viewing time
+      // Wait for ad to be viewed (MonetAg typically shows for 5-10 seconds)
+      // Then check if we should grant access
+      setTimeout(() => {
+        const pendingOddId = sessionStorage.getItem('pending_unlock_odd_id');
+        if (pendingOddId) {
+          const email = userEmail || 'guest_' + Date.now();
+          if (!userEmail) {
+            localStorage.setItem('user_payment_email', email);
+            setUserEmail(email);
+          }
+          
+          setApprovedItems(prev => [...prev, pendingOddId]);
+          sessionStorage.removeItem('pending_unlock_odd_id');
+          toast.success('Code unlocked! Thank you for watching.');
+        }
+      }, 8000); // 8 seconds allows time for ad to display and be viewed
+    }, 500);
   };
 
   const hasAccess = (oddId: string) => {
