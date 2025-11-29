@@ -145,6 +145,15 @@ const Admin = () => {
 
   const handlePaymentStatus = async (paymentId: string, status: 'approved' | 'declined') => {
     try {
+      // Get payment details before updating
+      const { data: payment, error: fetchError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
       const { error } = await supabase
         .from('payments')
         .update({ status })
@@ -154,6 +163,36 @@ const Admin = () => {
 
       toast.success(`Payment ${status} successfully!`);
       fetchPayments();
+
+      // Send notification if payment was approved
+      if (status === 'approved' && payment && payment.item_id) {
+        try {
+          // Get the sure odd details
+          const { data: sureOdd } = await supabase
+            .from('sure_odds')
+            .select('home_team, away_team, match_count')
+            .eq('id', payment.item_id)
+            .single();
+
+          const oddName = sureOdd && sureOdd.match_count > 1
+            ? `${sureOdd.match_count} SURE ODDS`
+            : sureOdd
+              ? `${sureOdd.home_team} vs ${sureOdd.away_team}`
+              : 'Sure Odd';
+
+          await supabase.functions.invoke('notify-payment-approved', {
+            body: {
+              userEmail: payment.user_email,
+              oddName,
+              sureOddId: payment.item_id
+            }
+          });
+          console.log('✓ Payment approval notification sent');
+        } catch (notifError) {
+          console.error('Failed to send notification:', notifError);
+          // Don't throw - notification failure shouldn't break the main flow
+        }
+      }
     } catch (error) {
       console.error('Error updating payment:', error);
       toast.error('Failed to update payment status');
