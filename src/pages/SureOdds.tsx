@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { HilltopAdRenderer } from "@/components/HilltopAdRenderer";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
@@ -292,12 +293,18 @@ const SureOdds = () => {
 
   return (
     <div className="min-h-screen bg-bet-dark pb-24">
+      {/* HilltopAds Renderer - Header Placement */}
+      <HilltopAdRenderer placement="header" />
+      
       <header className="sticky top-0 z-30 bg-gradient-primary shadow-bet">
         <div className="max-w-screen-xl mx-auto px-4 py-6">
           <h1 className="text-3xl font-black text-primary-foreground">SURE ODDS</h1>
           <p className="text-sm text-primary-foreground/80 mt-1">Copy sure betting codes from verified predictions</p>
         </div>
       </header>
+      
+      {/* HilltopAds Renderer - After Header Placement */}
+      <HilltopAdRenderer placement="after-header" />
 
       <main className="max-w-screen-xl mx-auto px-4 py-6">
         {/* Loading State */}
@@ -706,6 +713,9 @@ const SureOdds = () => {
 
       {/* Push Notification Prompt */}
       {userEmail && <NotificationPrompt userEmail={userEmail} />}
+      
+      {/* HilltopAds Renderer - Footer Placement */}
+      <HilltopAdRenderer placement="footer" />
     </div>
   );
 };
