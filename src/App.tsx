@@ -9,6 +9,7 @@ import SureOdds from "./pages/SureOdds";
 import Payment from "./pages/Payment";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import Install from "./pages/Install";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => {
             <Route path="/" element={<SureOdds />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/install" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
