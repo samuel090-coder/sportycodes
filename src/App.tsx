@@ -8,7 +8,12 @@ import LoadingScreen from "./components/LoadingScreen";
 import InstallGate from "./components/InstallGate";
 import SureOdds from "./pages/SureOdds";
 import Payment from "./pages/Payment";
-import Admin from "./pages/Admin";
+import { AdminLayout } from "./pages/AdminLayout";
+import { SecuritySection } from "./components/admin/SecuritySection";
+import { AdsSection } from "./components/admin/AdsSection";
+import { SureOddsSection } from "./components/admin/SureOddsSection";
+import { PaymentsSection } from "./components/admin/PaymentsSection";
+import { NotificationsSection } from "./components/admin/NotificationsSection";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 
@@ -42,7 +47,14 @@ const App = () => {
             <Routes>
               <Route path="/" element={<SureOdds />} />
               <Route path="/payment" element={<Payment />} />
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route path="security" element={<SecuritySection />} />
+                <Route path="ads" element={<AdsSection />} />
+                <Route path="sure-odds" element={<SureOddsSection />} />
+                <Route path="payments" element={<PaymentsSection />} />
+                <Route path="notifications" element={<NotificationsSection />} />
+                <Route path="settings" element={<SecuritySection />} />
+              </Route>
               <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
