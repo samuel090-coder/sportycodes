@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoadingScreen from "./components/LoadingScreen";
+import InstallGate from "./components/InstallGate";
 import SureOdds from "./pages/SureOdds";
 import Payment from "./pages/Payment";
 import Admin from "./pages/Admin";
@@ -37,13 +38,15 @@ const App = () => {
         <Sonner />
         {showLoading && !hasShownLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<SureOdds />} />
-            <Route path="/payment" element={<Payment />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/install" element={<Install />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <InstallGate>
+            <Routes>
+              <Route path="/" element={<SureOdds />} />
+              <Route path="/payment" element={<Payment />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/install" element={<Install />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </InstallGate>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
