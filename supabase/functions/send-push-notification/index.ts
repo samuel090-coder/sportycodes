@@ -23,16 +23,25 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvRuwGWYWkSWQPjRnFCnRhJCNaXdyKBkqPLBwOZOiZNLqjEDLRDaWo';
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
 
-    if (!vapidPrivateKey) {
-      throw new Error('VAPID_PRIVATE_KEY not configured');
+    if (!vapidPrivateKey || !vapidPublicKey) {
+      throw new Error('VAPID keys not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const payload: NotificationPayload = await req.json();
 
     console.log('Sending notification:', payload);
+
+    // Dynamically import web-push so we don't pay the cost if not needed
+    const webpush = await import('https://esm.sh/web-push@3.6.0');
+
+    webpush.default.setVapidDetails(
+      'mailto:admin@sportycodes.com',
+      vapidPublicKey,
+      vapidPrivateKey,
+    );
 
     // Get subscriptions based on userEmail or all
     let query = supabase.from('push_subscriptions').select('*');
@@ -58,61 +67,45 @@ serve(async (req) => {
 
     console.log(`Found ${subscriptions.length} subscriptions`);
 
-    // Send push notification to each subscription
+    // Send push notification to each subscription using web-push
     const results = await Promise.allSettled(
-      subscriptions.map(async (sub) => {
+      subscriptions.map(async (sub: any) => {
         try {
           const subscription = sub.subscription;
-          
-          // Create notification payload
+
           const notificationData = {
             title: payload.title,
             body: payload.body,
             tag: payload.tag || 'sporty-codes-notification',
-            data: payload.data || {}
+            data: payload.data || {},
           };
 
-          // Use Web Push protocol
           const pushSubscription = {
             endpoint: subscription.endpoint,
             keys: {
               p256dh: subscription.keys.p256dh,
-              auth: subscription.keys.auth
-            }
+              auth: subscription.keys.auth,
+            },
           };
 
-          // Create JWT for VAPID
-          const vapidHeaders = createVapidHeaders(
-            pushSubscription.endpoint,
-            vapidPublicKey,
-            vapidPrivateKey
-          );
+          try {
+            await webpush.default.sendNotification(
+              pushSubscription as any,
+              JSON.stringify(notificationData),
+            );
+          } catch (err: any) {
+            console.error(`web-push error for ${sub.user_email}:`, err?.statusCode, err?.body || err?.message);
 
-          // Send the notification
-          const response = await fetch(pushSubscription.endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': vapidHeaders.Authorization,
-              'Crypto-Key': vapidHeaders['Crypto-Key']
-            },
-            body: JSON.stringify(notificationData)
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Push failed for ${sub.user_email}:`, response.status, errorText);
-            
             // If subscription is no longer valid (410 Gone), delete it
-            if (response.status === 410) {
+            if (err?.statusCode === 410 || err?.statusCode === 404) {
               await supabase
                 .from('push_subscriptions')
                 .delete()
                 .eq('id', sub.id);
               console.log(`Deleted invalid subscription for ${sub.user_email}`);
             }
-            
-            throw new Error(`Push failed: ${response.status}`);
+
+            throw err;
           }
 
           console.log(`✓ Notification sent to ${sub.user_email}`);
@@ -125,7 +118,9 @@ serve(async (req) => {
       })
     );
 
-    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const successful = results.filter((r) => {
+      return r.status === 'fulfilled' && (r.value as any).success;
+    }).length;
     const failed = results.length - successful;
 
     console.log(`Notification sent: ${successful} successful, ${failed} failed`);
@@ -135,7 +130,7 @@ serve(async (req) => {
         success: true, 
         sent: successful, 
         failed,
-        total: subscriptions.length 
+        total: subscriptions.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -149,29 +144,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Helper function to create VAPID headers
-function createVapidHeaders(endpoint: string, publicKey: string, privateKey: string) {
-  const url = new URL(endpoint);
-  const audience = `${url.protocol}//${url.host}`;
-  
-  // Create JWT header and payload
-  const header = {
-    typ: 'JWT',
-    alg: 'ES256'
-  };
-  
-  const jwtPayload = {
-    aud: audience,
-    exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60, // 12 hours
-    sub: 'mailto:admin@sportycodes.com'
-  };
-
-  // For now, use a simplified approach - in production you'd use proper JWT signing
-  const jwtToken = `${btoa(JSON.stringify(header))}.${btoa(JSON.stringify(jwtPayload))}`;
-  
-  return {
-    'Authorization': `vapid t=${jwtToken}, k=${publicKey}`,
-    'Crypto-Key': `p256ecdsa=${publicKey}`
-  };
-}
