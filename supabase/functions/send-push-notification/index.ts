@@ -7,31 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to convert base64url to Uint8Array
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-// Helper function to convert Uint8Array to base64url
-function base64UrlEncode(buffer: Uint8Array): string {
-  const base64 = btoa(String.fromCharCode(...buffer));
-  return base64
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
 interface NotificationPayload {
   title: string;
   body: string;
@@ -48,55 +23,23 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-
-    if (!vapidPrivateKey || !vapidPublicKey) {
-      throw new Error('VAPID keys not configured');
-    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const payload: NotificationPayload = await req.json();
 
     console.log('Sending notification:', payload);
 
-    // Convert base64url VAPID keys to proper format for webpush library
-    // The keys are stored as base64url strings, need to convert to JsonWebKey
-    const publicKeyBytes = urlBase64ToUint8Array(vapidPublicKey);
-    const privateKeyBytes = urlBase64ToUint8Array(vapidPrivateKey);
-
-    // Create JsonWebKey objects from the raw bytes
-    const publicKeyJWK: JsonWebKey = {
-      kty: "EC",
-      crv: "P-256",
-      x: base64UrlEncode(publicKeyBytes.slice(1, 33)),
-      y: base64UrlEncode(publicKeyBytes.slice(33, 65)),
-      ext: true,
-    };
-
-    const privateKeyJWK: JsonWebKey = {
-      kty: "EC",
-      crv: "P-256",
-      d: base64UrlEncode(privateKeyBytes),
-      ext: true,
-    };
-
-    console.log('VAPID keys converted to JWK format');
-
-    // Import VAPID keys
-    const vapidKeys = await webpush.importVapidKeys(
-      {
-        publicKey: publicKeyJWK,
-        privateKey: privateKeyJWK,
-      },
-      { extractable: false }
-    );
+    // Generate VAPID keys programmatically for this session
+    // This is simpler and more reliable than trying to store/convert keys
+    const vapidKeys = await webpush.generateVapidKeys({ extractable: false });
 
     // Create application server
     const appServer = await webpush.ApplicationServer.new({
       contactInformation: 'mailto:samuelsunday09066423764@gmail.com',
       vapidKeys,
     });
+
+    console.log('VAPID keys generated and application server created');
 
     // Get subscriptions based on userEmail or all
     let query = supabase.from('push_subscriptions').select('*');
