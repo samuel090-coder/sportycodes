@@ -267,6 +267,25 @@ export const useBettingData = () => {
 
       const updated = [...sureOdds, newSureOdd];
       setSureOdds(updated);
+
+      // Send notification for new sure odd
+      try {
+        const oddName = sureOdd.matchCount > 1 
+          ? `${sureOdd.matchCount} SURE ODDS`
+          : `${sureOdd.homeTeam} vs ${sureOdd.awayTeam}`;
+        
+        await supabase.functions.invoke('notify-new-sure-odd', {
+          body: {
+            sureOddId: data.id,
+            oddName,
+            matchCount: sureOdd.matchCount
+          }
+        });
+        console.log('✓ New sure odd notification sent');
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+        // Don't throw - notification failure shouldn't break the main flow
+      }
     } catch (error) {
       console.error('Error adding sure odd:', error);
       throw error;
@@ -275,6 +294,9 @@ export const useBettingData = () => {
 
   const updateSureOdd = async (id: string, updates: Partial<SureOdd>) => {
     try {
+      const oldOdd = sureOdds.find(odd => odd.id === id);
+      const oldStatus = oldOdd?.status;
+      
       const { error } = await supabase
         .from('sure_odds')
         .update({
@@ -303,6 +325,30 @@ export const useBettingData = () => {
         sureOdd.id === id ? { ...sureOdd, ...updates } : sureOdd
       );
       setSureOdds(updated);
+
+      // Send notification if status changed to scored or lost
+      if (updates.status && updates.status !== oldStatus && (updates.status === 'scored' || updates.status === 'lost')) {
+        try {
+          const updatedOdd = updated.find(odd => odd.id === id);
+          if (updatedOdd) {
+            const oddName = updatedOdd.matchCount > 1 
+              ? `${updatedOdd.matchCount} SURE ODDS`
+              : `${updatedOdd.homeTeam} vs ${updatedOdd.awayTeam}`;
+            
+            await supabase.functions.invoke('notify-result-update', {
+              body: {
+                sureOddId: id,
+                oddName,
+                status: updates.status,
+                matchCount: updatedOdd.matchCount
+              }
+            });
+            console.log('✓ Result update notification sent');
+          }
+        } catch (notifError) {
+          console.error('Failed to send notification:', notifError);
+        }
+      }
     } catch (error) {
       console.error('Error updating sure odd:', error);
       throw error;
