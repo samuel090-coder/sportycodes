@@ -7,6 +7,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to convert base64url to Uint8Array
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Helper function to convert Uint8Array to base64url
+function base64UrlEncode(buffer: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...buffer));
+  return base64
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
 interface NotificationPayload {
   title: string;
   body: string;
@@ -35,11 +60,30 @@ serve(async (req) => {
 
     console.log('Sending notification:', payload);
 
-    // Parse the JsonWebKey strings from environment
-    const publicKeyJWK: JsonWebKey = JSON.parse(vapidPublicKey);
-    const privateKeyJWK: JsonWebKey = JSON.parse(vapidPrivateKey);
+    // Convert base64url VAPID keys to proper format for webpush library
+    // The keys are stored as base64url strings, need to convert to JsonWebKey
+    const publicKeyBytes = urlBase64ToUint8Array(vapidPublicKey);
+    const privateKeyBytes = urlBase64ToUint8Array(vapidPrivateKey);
 
-    // Import VAPID keys using proper JsonWebKey format
+    // Create JsonWebKey objects from the raw bytes
+    const publicKeyJWK: JsonWebKey = {
+      kty: "EC",
+      crv: "P-256",
+      x: base64UrlEncode(publicKeyBytes.slice(1, 33)),
+      y: base64UrlEncode(publicKeyBytes.slice(33, 65)),
+      ext: true,
+    };
+
+    const privateKeyJWK: JsonWebKey = {
+      kty: "EC",
+      crv: "P-256",
+      d: base64UrlEncode(privateKeyBytes),
+      ext: true,
+    };
+
+    console.log('VAPID keys converted to JWK format');
+
+    // Import VAPID keys
     const vapidKeys = await webpush.importVapidKeys(
       {
         publicKey: publicKeyJWK,
