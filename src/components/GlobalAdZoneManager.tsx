@@ -125,9 +125,24 @@ export const GlobalAdZoneManager = () => {
         <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse delay-150" />
       </div>
 
-      <h2 className="text-xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
+      <h2 className="text-xl font-black text-cyber-neon-purple mb-4 font-mono flex items-center gap-2">
         <span className="text-cyber-neon-green">&gt;</span> GLOBAL AD ZONES MANAGER
       </h2>
+
+      {/* HilltopAds Instructions */}
+      <div className="mb-6 p-4 bg-cyber-neon-cyan/10 border border-cyber-neon-cyan/30 rounded-lg">
+        <h3 className="text-sm font-bold text-cyber-neon-cyan font-mono mb-2">📘 HOW TO ADD HILLTOPADS ZONES:</h3>
+        <ol className="text-xs text-cyber-neon-green/80 font-mono space-y-1 list-decimal list-inside">
+          <li>Go to your HilltopAds dashboard and copy the zone's full script URL</li>
+          <li>Paste the full URL (e.g., https://serious-sample.com/d.mFFG...) into "ZONE ID" field</li>
+          <li>Give it a descriptive name (e.g., "HilltopAds Header Banner")</li>
+          <li>Select where the ad should appear (Header, Footer, etc.)</li>
+          <li>Click "ADD ZONE" and activate it using the status toggle</li>
+        </ol>
+        <p className="text-xs text-cyber-neon-purple/80 font-mono mt-2">
+          💡 The ads will appear automatically on the site once activated
+        </p>
+      </div>
 
       <div className="space-y-6">
         {/* Add New Zone Form */}
@@ -141,8 +156,8 @@ export const GlobalAdZoneManager = () => {
                 id="zone_id"
                 value={newZone.zone_id}
                 onChange={(e) => setNewZone({ ...newZone, zone_id: e.target.value })}
-                placeholder="e.g., 10250664"
-                className="mt-2 bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono"
+                placeholder="Paste full script URL here"
+                className="mt-2 bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono text-xs"
                 required
               />
             </div>
@@ -170,8 +185,9 @@ export const GlobalAdZoneManager = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-cyber-panel border-cyber-neon-purple">
-                  <SelectItem value="header" className="text-cyber-neon-green font-mono">Header</SelectItem>
-                  <SelectItem value="footer" className="text-cyber-neon-green font-mono">Footer</SelectItem>
+                  <SelectItem value="header" className="text-cyber-neon-green font-mono">Header (Top of page)</SelectItem>
+                  <SelectItem value="after-header" className="text-cyber-neon-green font-mono">After Header (Below title)</SelectItem>
+                  <SelectItem value="footer" className="text-cyber-neon-green font-mono">Footer (Bottom of page)</SelectItem>
                   <SelectItem value="sidebar" className="text-cyber-neon-green font-mono">Sidebar</SelectItem>
                   <SelectItem value="popup" className="text-cyber-neon-green font-mono">Popup</SelectItem>
                   <SelectItem value="interstitial" className="text-cyber-neon-green font-mono">Interstitial</SelectItem>
@@ -229,7 +245,9 @@ export const GlobalAdZoneManager = () => {
                 <TableBody>
                   {adZones.map((zone) => (
                     <TableRow key={zone.id} className="border-cyber-neon-purple/20">
-                      <TableCell className="text-cyber-neon-cyan font-mono">{zone.zone_id}</TableCell>
+                      <TableCell className="text-cyber-neon-cyan font-mono text-xs max-w-[200px] truncate" title={zone.zone_id}>
+                        {zone.zone_id}
+                      </TableCell>
                       <TableCell className="text-cyber-neon-green font-mono">{zone.zone_name}</TableCell>
                       <TableCell className="text-cyber-neon-cyan font-mono uppercase">{zone.placement}</TableCell>
                       <TableCell>
