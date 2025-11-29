@@ -1,7 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvRuwGWYWkSWQPjRnFCnRhJCNaXdyKBkqPLBwOZOiZNLqjEDLRDaWo';
+// IMPORTANT: This must match the VAPID_PUBLIC_KEY you entered in secrets
+// Copy the EXACT same public key from your VAPID generator here
+const VAPID_PUBLIC_KEY = 'BD8wOI7CfSUpQ6KCCZgC_WuXSDAvr9rhIxKCkX11TEwJ8OllH2DA4H3MjsM15V1evbt6qExX2rZ5J1HMlLJnMxqA';
 
 export const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
