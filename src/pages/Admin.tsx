@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil, Trash2, Upload, Loader2, Sparkles, CheckCircle, XCircle, Terminal, Shield, Lock, Unlock } from "lucide-react";
+import { Pencil, Trash2, Upload, Loader2, Sparkles, CheckCircle, XCircle, Terminal, Shield, Lock, Unlock, Bell, Send } from "lucide-react";
 import { useBettingData, SureOdd } from "@/hooks/useBettingData";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +41,10 @@ const Admin = () => {
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
   const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
   const [siteAdsEnabled, setSiteAdsEnabled] = useState(true);
+  const [testNotifTitle, setTestNotifTitle] = useState("🎯 Test Notification");
+  const [testNotifBody, setTestNotifBody] = useState("This is a test push notification from SPORTY CODES admin panel!");
+  const [testNotifEmail, setTestNotifEmail] = useState("");
+  const [sendingTestNotif, setSendingTestNotif] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -367,6 +371,40 @@ const Admin = () => {
     }
   };
 
+  const handleTestNotification = async () => {
+    setSendingTestNotif(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title: testNotifTitle,
+          body: testNotifBody,
+          userEmail: testNotifEmail || undefined,
+          tag: 'admin-test-notification',
+          data: { type: 'admin_test' }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.sent > 0) {
+        toast.success(`✓ Notification sent to ${data.sent} user(s)!`, {
+          description: data.failed > 0 ? `${data.failed} failed to send` : undefined
+        });
+      } else {
+        toast.warning('No subscribed users found', {
+          description: 'Make sure users have enabled notifications first'
+        });
+      }
+    } catch (error: any) {
+      console.error('Test notification error:', error);
+      toast.error('Failed to send notification', {
+        description: error.message || 'Check console for details'
+      });
+    } finally {
+      setSendingTestNotif(false);
+    }
+  };
+
   const handleSaveSureOdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -556,17 +594,18 @@ const Admin = () => {
       </header>
 
       <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
-        {/* Security Settings */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-purple p-6 relative overflow-hidden">
-            <div className="absolute top-2 right-2 flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse" />
-              <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
-            </div>
-
-            <h2 className="text-xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
-              <span className="text-cyber-neon-green">&gt;</span> UPDATE ADMIN PIN
-            </h2>
+        {/* SECTION 1: Security & Settings */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-purple p-6 relative overflow-hidden">
+          <h2 className="text-2xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
+            <Shield className="w-6 h-6" />
+            SECURITY & SETTINGS
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-cyber-dark/30 border border-cyber-neon-purple/30 rounded-lg p-6">
+            <h3 className="text-lg font-black text-cyber-neon-purple mb-4 font-mono flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              UPDATE ADMIN PIN
+            </h3>
             <form onSubmit={handleUpdatePin} className="space-y-4">
               <div>
                 <Label htmlFor="currentPin" className="text-cyber-neon-cyan font-mono text-sm">
@@ -618,17 +657,13 @@ const Admin = () => {
                 )}
               </Button>
             </form>
-          </Card>
+          </div>
 
-          <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6 relative overflow-hidden">
-            <div className="absolute top-2 right-2 flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse" />
-              <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
-            </div>
-
-            <h2 className="text-xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
-              <span className="text-cyber-neon-cyan">&gt;</span> WHATSAPP NUMBER
-            </h2>
+          <div className="bg-cyber-dark/30 border border-cyber-neon-green/30 rounded-lg p-6">
+            <h3 className="text-lg font-black text-cyber-neon-green mb-4 font-mono flex items-center gap-2">
+              <Send className="w-5 h-5" />
+              WHATSAPP NUMBER
+            </h3>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="whatsappNumber" className="text-cyber-neon-cyan font-mono text-sm">
@@ -652,20 +687,15 @@ const Admin = () => {
                 SAVE NUMBER
               </Button>
             </div>
-          </Card>
-        </div>
-
-        {/* Account Details Section */}
-        <Card className="bg-gradient-cyber border-2 border-cyber-neon-cyan/50 shadow-neon-cyan p-6 relative overflow-hidden">
-          <div className="absolute top-2 right-2 flex gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse" />
-            <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
-            <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse delay-150" />
+          </div>
           </div>
 
-          <h2 className="text-xl font-black text-cyber-neon-cyan mb-6 font-mono flex items-center gap-2">
-            <span className="text-cyber-neon-green">&gt;</span> PAYMENT ACCOUNT CONFIGURATION
-          </h2>
+          {/* Bank Details */}
+          <div className="mt-6 bg-cyber-dark/30 border border-cyber-neon-cyan/30 rounded-lg p-6">
+            <h3 className="text-lg font-black text-cyber-neon-cyan mb-4 font-mono flex items-center gap-2">
+              <Terminal className="w-5 h-5" />
+              PAYMENT ACCOUNT
+            </h3>
           <div className="space-y-4">
             <div>
               <Label htmlFor="bankName" className="text-cyber-neon-green font-mono text-sm">
@@ -705,14 +735,88 @@ const Admin = () => {
 
             <Button
               onClick={handleSaveAccountDetails}
-              className="w-full bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-green hover:shadow-neon-cyan transition-all"
+              className="w-full bg-cyber-neon-cyan text-cyber-dark hover:bg-cyber-neon-green font-black font-mono shadow-neon-cyan hover:shadow-neon-green transition-all"
             >
-              SAVE CONFIGURATION
+              SAVE ACCOUNT
             </Button>
+          </div>
           </div>
         </Card>
 
-        {/* Global Ad Controls */}
+        {/* SECTION 2: Notification Test Panel */}
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6 relative overflow-hidden">
+          <h2 className="text-2xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
+            <Bell className="w-6 h-6 animate-neon-pulse" />
+            NOTIFICATION TEST CENTER
+          </h2>
+          <div className="space-y-4">
+            <div className="bg-cyber-dark/30 border border-cyber-neon-green/30 rounded-lg p-4">
+              <p className="text-cyber-neon-cyan font-mono text-sm mb-4">
+                Test push notifications before sending to users. Leave email blank to send to all subscribed users.
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="testNotifEmail" className="text-cyber-neon-cyan font-mono text-sm">
+                    USER EMAIL (optional - leave blank for all)
+                  </Label>
+                  <Input
+                    id="testNotifEmail"
+                    type="email"
+                    value={testNotifEmail}
+                    onChange={(e) => setTestNotifEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="testNotifTitle" className="text-cyber-neon-cyan font-mono text-sm">
+                    NOTIFICATION TITLE
+                  </Label>
+                  <Input
+                    id="testNotifTitle"
+                    value={testNotifTitle}
+                    onChange={(e) => setTestNotifTitle(e.target.value)}
+                    className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="testNotifBody" className="text-cyber-neon-cyan font-mono text-sm">
+                    NOTIFICATION MESSAGE
+                  </Label>
+                  <Input
+                    id="testNotifBody"
+                    value={testNotifBody}
+                    onChange={(e) => setTestNotifBody(e.target.value)}
+                    className="mt-2 bg-cyber-dark/50 border-cyber-neon-green/50 text-cyber-neon-green font-mono focus:border-cyber-neon-cyan focus:shadow-neon-cyan transition-all"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleTestNotification}
+                  disabled={sendingTestNotif}
+                  className="w-full bg-cyber-neon-green text-cyber-dark hover:bg-cyber-neon-cyan font-black font-mono shadow-neon-green hover:shadow-neon-cyan transition-all"
+                >
+                  {sendingTestNotif ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      SENDING...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-4 h-4 mr-2" />
+                      SEND TEST NOTIFICATION
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* SECTION 3: Ad Management */}
         <Card className="bg-gradient-cyber border-2 border-cyber-neon-cyan/50 shadow-neon-cyan p-6 relative overflow-hidden">
           <h2 className="text-xl font-black text-cyber-neon-cyan mb-6 font-mono flex items-center gap-2">
             <span className="text-cyber-neon-green">&gt;</span> GLOBAL AD CONTROLS
@@ -768,21 +872,18 @@ const Admin = () => {
               </p>
             </div>
           </div>
+
+          {/* Global Ad Zones */}
+          <div className="mt-6">
+            <GlobalAdZoneManager />
+          </div>
         </Card>
 
-        {/* Global Ad Zones Manager */}
-        <GlobalAdZoneManager />
-
-        {/* Sure Odds Management */}
+        {/* SECTION 4: Sure Odds Management */}
         <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6 relative overflow-hidden">
-          <div className="absolute top-2 right-2 flex gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse" />
-            <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse delay-75" />
-            <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse delay-150" />
-          </div>
-
-          <h2 className="text-xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
-            <span className="text-cyber-neon-cyan">&gt;</span> {editingSureOdd ? "EDIT PREDICTION" : "ADD NEW PREDICTION"}
+          <h2 className="text-2xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
+            <Sparkles className="w-6 h-6 animate-neon-pulse" />
+            {editingSureOdd ? "EDIT PREDICTION" : "ADD NEW PREDICTION"}
           </h2>
           <form onSubmit={handleSaveSureOdd} className="space-y-4">
             <div>
@@ -1132,10 +1233,10 @@ const Admin = () => {
           </form>
         </Card>
 
-        {/* Sure Odds List */}
-        <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-cyan p-6 relative overflow-hidden">
-          <h2 className="text-xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
-            <span className="text-cyber-neon-green">&gt;</span> ACTIVE PREDICTIONS
+        <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-purple p-6 relative overflow-hidden">
+          <h2 className="text-2xl font-black text-cyber-neon-purple mb-6 font-mono flex items-center gap-2">
+            <Terminal className="w-6 h-6" />
+            ACTIVE PREDICTIONS
           </h2>
           <div className="overflow-x-auto">
             <Table>
@@ -1198,10 +1299,11 @@ const Admin = () => {
           </div>
         </Card>
 
-        {/* Payment Approvals */}
+        {/* SECTION 5: Payment Approvals */}
         <Card className="bg-gradient-cyber border-2 border-cyber-neon-red/50 shadow-neon-red p-6 relative overflow-hidden">
-          <h2 className="text-xl font-black text-cyber-neon-red mb-6 font-mono flex items-center gap-2">
-            <span className="text-cyber-neon-green">&gt;</span> PAYMENT APPROVALS
+          <h2 className="text-2xl font-black text-cyber-neon-red mb-6 font-mono flex items-center gap-2">
+            <CheckCircle className="w-6 h-6 animate-neon-pulse" />
+            PAYMENT APPROVALS
           </h2>
           {loadingPayments ? (
             <div className="space-y-3">
