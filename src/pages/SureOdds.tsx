@@ -27,13 +27,20 @@ const SureOdds = () => {
   const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
 
   useEffect(() => {
-    // Get user email from localStorage
-    const email = localStorage.getItem('user_payment_email');
+    // Get or create user email identifier
+    let email = localStorage.getItem('user_payment_email');
+
+    // If no email stored yet, create a stable guest id so we can still use notifications
+    if (!email) {
+      email = `guest_${Date.now()}`;
+      localStorage.setItem('user_payment_email', email);
+    }
+
     setUserEmail(email);
 
-    // Check if user has approved payments
+    // Only check payments for real emails (not generated guest ids)
     const checkPaymentStatus = async () => {
-      if (!email) return;
+      if (!email || email.startsWith('guest_')) return;
 
       try {
         const { data, error } = await supabase
@@ -47,17 +54,17 @@ const SureOdds = () => {
 
         if (data) {
           const approvedIds = data.map(payment => payment.item_id).filter(Boolean);
-          setApprovedItems(approvedIds);
+          setApprovedItems(approvedIds as string[]);
         }
       } catch (error) {
         console.error('Error checking payment status:', error);
       }
     };
 
-    if (email) {
-      checkPaymentStatus();
-      
-      // Subscribe to real-time updates for payment approvals
+    checkPaymentStatus();
+
+    // Subscribe to real-time updates for payment approvals (real emails only)
+    if (email && !email.startsWith('guest_')) {
       const paymentChannel = supabase
         .channel('payment-approvals')
         .on(

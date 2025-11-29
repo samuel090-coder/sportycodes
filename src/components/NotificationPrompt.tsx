@@ -14,7 +14,7 @@ export const NotificationPrompt = ({ userEmail }: NotificationPromptProps) => {
 
   useEffect(() => {
     const checkStatus = async () => {
-      if (!userEmail || userEmail.startsWith('guest_')) return;
+      if (!userEmail) return;
       
       const subscribed = await checkNotificationStatus(userEmail);
       setIsSubscribed(subscribed);
