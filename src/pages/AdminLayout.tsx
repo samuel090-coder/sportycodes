@@ -39,7 +39,7 @@ export const AdminLayout = () => {
 
       if (error) throw error;
 
-      if (data.valid) {
+      if (data.isValid) {
         sessionStorage.setItem("isAdminAuthenticated", "true");
         setIsAuthenticated(true);
         toast.success("Access granted! Welcome, admin.");
