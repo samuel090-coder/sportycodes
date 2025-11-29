@@ -94,7 +94,7 @@ serve(async (req) => {
 
     // Create application server
     const appServer = await webpush.ApplicationServer.new({
-      contactInformation: 'mailto:admin@sportycodes.com',
+      contactInformation: 'mailto:samuelsunday09066423764@gmail.com',
       vapidKeys,
     });
 
