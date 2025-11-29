@@ -34,10 +34,10 @@ serve(async (req) => {
 
     console.log('Sending notification:', payload);
 
-    // Dynamically import web-push so we don't pay the cost if not needed
-    const webpush = await import('https://esm.sh/web-push@3.6.0');
+    // Use esm.sh with proper module resolution
+    const { default: webpush } = await import('https://esm.sh/web-push@3.6.7');
 
-    webpush.default.setVapidDetails(
+    webpush.setVapidDetails(
       'mailto:admin@sportycodes.com',
       vapidPublicKey,
       vapidPrivateKey,
@@ -89,7 +89,7 @@ serve(async (req) => {
           };
 
           try {
-            await webpush.default.sendNotification(
+            await webpush.sendNotification(
               pushSubscription as any,
               JSON.stringify(notificationData),
             );
