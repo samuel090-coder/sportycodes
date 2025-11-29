@@ -51,7 +51,7 @@ const Install = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-lg w-full p-8 space-y-6 border-2 border-primary/20">
+      <Card className="max-w-lg w-full p-8 space-y-6">
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -60,18 +60,12 @@ const Install = () => {
           </div>
           
           <h1 className="text-3xl font-bold text-foreground">
-            Installation Required
+            Install SPORTY CODES
           </h1>
           
           <p className="text-muted-foreground">
-            You must install SPORTY CODES app to access our platform. Install now for instant access to live odds and secure betting!
+            Install our app on your device for the best experience. Access it instantly from your home screen!
           </p>
-          
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-            <p className="text-sm font-semibold text-destructive">
-              ⚠️ Browser access is not supported. Please install the app.
-            </p>
-          </div>
         </div>
 
         <div className="space-y-4">
