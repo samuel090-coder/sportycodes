@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import * as webpush from "jsr:@negrel/webpush@0.5.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,9 +10,32 @@ const corsHeaders = {
 interface NotificationPayload {
   title: string;
   body: string;
-  userEmail?: string; // If provided, send to specific user, else send to all
+  userEmail?: string;
   tag?: string;
   data?: any;
+}
+
+// Helper to convert base64url string to JsonWebKey format
+function base64urlToJsonWebKey(base64url: string, isPrivate: boolean): JsonWebKey {
+  // Remove any padding
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  
+  if (isPrivate) {
+    return {
+      kty: "EC",
+      crv: "P-256",
+      d: base64url,
+      ext: true,
+    };
+  } else {
+    return {
+      kty: "EC",
+      crv: "P-256",
+      x: base64url.substring(0, 43),
+      y: base64url.substring(43),
+      ext: true,
+    };
+  }
 }
 
 serve(async (req) => {
@@ -34,14 +58,20 @@ serve(async (req) => {
 
     console.log('Sending notification:', payload);
 
-    // Use esm.sh with proper module resolution
-    const { default: webpush } = await import('https://esm.sh/web-push@3.6.7');
-
-    webpush.setVapidDetails(
-      'mailto:admin@sportycodes.com',
-      vapidPublicKey,
-      vapidPrivateKey,
+    // Convert base64 VAPID keys to JsonWebKey format
+    const vapidKeys = await webpush.importVapidKeys(
+      {
+        publicKey: base64urlToJsonWebKey(vapidPublicKey, false),
+        privateKey: base64urlToJsonWebKey(vapidPrivateKey, true),
+      },
+      { extractable: false }
     );
+
+    // Create application server
+    const appServer = await webpush.ApplicationServer.new({
+      contactInformation: 'mailto:admin@sportycodes.com',
+      vapidKeys,
+    });
 
     // Get subscriptions based on userEmail or all
     let query = supabase.from('push_subscriptions').select('*');
@@ -67,37 +97,38 @@ serve(async (req) => {
 
     console.log(`Found ${subscriptions.length} subscriptions`);
 
-    // Send push notification to each subscription using web-push
+    const notificationData = {
+      title: payload.title,
+      body: payload.body,
+      tag: payload.tag || 'sporty-codes-notification',
+      data: payload.data || {},
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+    };
+
+    // Send push notification to each subscription
     const results = await Promise.allSettled(
       subscriptions.map(async (sub: any) => {
         try {
           const subscription = sub.subscription;
 
-          const notificationData = {
-            title: payload.title,
-            body: payload.body,
-            tag: payload.tag || 'sporty-codes-notification',
-            data: payload.data || {},
-          };
-
-          const pushSubscription = {
-            endpoint: subscription.endpoint,
-            keys: {
-              p256dh: subscription.keys.p256dh,
-              auth: subscription.keys.auth,
-            },
-          };
-
           try {
-            await webpush.sendNotification(
-              pushSubscription as any,
-              JSON.stringify(notificationData),
-            );
-          } catch (err: any) {
-            console.error(`web-push error for ${sub.user_email}:`, err?.statusCode, err?.body || err?.message);
+            // Create a subscriber object
+            const subscriber = appServer.subscribe(subscription);
 
-            // If subscription is no longer valid (410 Gone), delete it
-            if (err?.statusCode === 410 || err?.statusCode === 404) {
+            // Send notification
+            await subscriber.pushTextMessage(
+              JSON.stringify(notificationData),
+              { ttl: 86400 }
+            );
+
+            console.log(`✓ Notification sent to ${sub.user_email}`);
+            return { success: true, email: sub.user_email };
+          } catch (err: any) {
+            console.error(`Push error for ${sub.user_email}:`, err?.message);
+
+            // If subscription is no longer valid, delete it
+            if (err?.message?.includes('410') || err?.message?.includes('404')) {
               await supabase
                 .from('push_subscriptions')
                 .delete()
@@ -107,9 +138,6 @@ serve(async (req) => {
 
             throw err;
           }
-
-          console.log(`✓ Notification sent to ${sub.user_email}`);
-          return { success: true, email: sub.user_email };
         } catch (error) {
           console.error(`Failed to send to ${sub.user_email}:`, error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
