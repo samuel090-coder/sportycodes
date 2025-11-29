@@ -303,8 +303,8 @@ const SureOdds = () => {
         </div>
       </header>
       
-      {/* HilltopAds Renderer - After Header Placement */}
-      <HilltopAdRenderer placement="after-header" />
+      {/* HilltopAds Renderer - Sidebar Placement */}
+      <HilltopAdRenderer placement="sidebar" />
 
       <main className="max-w-screen-xl mx-auto px-4 py-6">
         {/* Loading State */}
