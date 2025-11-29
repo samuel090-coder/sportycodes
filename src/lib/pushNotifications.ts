@@ -1,9 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// IMPORTANT: This must match the VAPID_PUBLIC_KEY you entered in secrets
-// Copy the EXACT same public key from your VAPID generator here
-const VAPID_PUBLIC_KEY = 'BD8wOI7CfSUpQ6KCCZgC_WuXSDAvr9rhIxKCkX11TEwJ8OllH2DA4H3MjsM15V1evbt6qExX2rZ5J1HMlLJnMxqA';
+// IMPORTANT: Update this with the base64url public key that corresponds to your JsonWebKey
+// To get this from your JsonWebKey public key: concatenate x and y coordinates in base64url format
+// Example: If your public key JWK has x and y, the applicationServerKey should be those concatenated
+// For now, using a placeholder - replace with your actual public key
+const VAPID_PUBLIC_KEY = 'REPLACE_WITH_YOUR_BASE64URL_PUBLIC_KEY';
 
 export const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
