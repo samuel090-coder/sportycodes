@@ -15,29 +15,6 @@ interface NotificationPayload {
   data?: any;
 }
 
-// Helper to convert base64url string to JsonWebKey format
-function base64urlToJsonWebKey(base64url: string, isPrivate: boolean): JsonWebKey {
-  // Remove any padding
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  
-  if (isPrivate) {
-    return {
-      kty: "EC",
-      crv: "P-256",
-      d: base64url,
-      ext: true,
-    };
-  } else {
-    return {
-      kty: "EC",
-      crv: "P-256",
-      x: base64url.substring(0, 43),
-      y: base64url.substring(43),
-      ext: true,
-    };
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -58,11 +35,15 @@ serve(async (req) => {
 
     console.log('Sending notification:', payload);
 
-    // Convert base64 VAPID keys to JsonWebKey format
+    // Parse the JsonWebKey strings from environment
+    const publicKeyJWK: JsonWebKey = JSON.parse(vapidPublicKey);
+    const privateKeyJWK: JsonWebKey = JSON.parse(vapidPrivateKey);
+
+    // Import VAPID keys using proper JsonWebKey format
     const vapidKeys = await webpush.importVapidKeys(
       {
-        publicKey: base64urlToJsonWebKey(vapidPublicKey, false),
-        privateKey: base64urlToJsonWebKey(vapidPrivateKey, true),
+        publicKey: publicKeyJWK,
+        privateKey: privateKeyJWK,
       },
       { extractable: false }
     );
