@@ -50,22 +50,33 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
       return false;
     }
 
+    // Check current permission status
+    if (Notification.permission === 'denied') {
+      toast.error('Notifications are blocked. Please enable them in your browser settings:\n1. Click the lock icon in the address bar\n2. Allow notifications for this site\n3. Refresh the page');
+      return false;
+    }
+
     const permission = await requestNotificationPermission();
     
     if (permission !== 'granted') {
       if (permission === 'denied') {
-        toast.error('Notifications are blocked for this site. Please enable them from your browser\'s site settings.');
+        toast.error('Notifications are blocked. Please enable them in your browser settings:\n1. Click the lock icon in the address bar\n2. Allow notifications for this site\n3. Refresh the page');
       } else {
-        toast.error('Please accept the notification prompt in your browser to enable alerts.');
+        toast.error('Please accept the notification prompt that appears in your browser to enable alerts.');
       }
       return false;
     }
 
-    // Register service worker
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    console.log('Service worker registered:', registration);
+    // Wait for service worker to be ready
     await navigator.serviceWorker.ready;
-    console.log('Service worker ready');
+    const registration = await navigator.serviceWorker.getRegistration();
+    
+    if (!registration) {
+      toast.error('Service worker not found. Please refresh the page and try again.');
+      return false;
+    }
+
+    console.log('Service worker ready:', registration);
 
     // Subscribe to push notifications
     const subscription = await registration.pushManager.subscribe({
