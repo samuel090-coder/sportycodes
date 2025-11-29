@@ -23,11 +23,11 @@ const InstallGate = ({ children }: InstallGateProps) => {
       setIsStandalone(isInStandaloneMode);
       setIsChecking(false);
 
-      // If not in standalone mode, wait 10 minutes then show warning
+      // If not in standalone mode, wait 10 seconds then show warning
       if (!isInStandaloneMode && location.pathname !== '/install') {
         setTimeout(() => {
           setShowWarning(true);
-        }, 10 * 60 * 1000); // 10 minutes
+        }, 10 * 1000); // 10 seconds
       }
     };
 
