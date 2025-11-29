@@ -2,3 +2,6 @@ project_id = "lgrnqxekdllvagiqrmpm"
 
 [functions.generate-logo]
 verify_jwt = false
+
+[functions.generate-vapid-keys]
+verify_jwt = false

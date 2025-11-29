@@ -23,15 +23,33 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error('VAPID keys not configured');
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const payload: NotificationPayload = await req.json();
 
     console.log('Sending notification:', payload);
 
-    // Generate VAPID keys programmatically for this session
-    // This is simpler and more reliable than trying to store/convert keys
-    const vapidKeys = await webpush.generateVapidKeys({ extractable: false });
+    // Parse the VAPID keys from base64url format stored in secrets
+    // These should be JWK format JSON strings
+    const publicKeyJWK: JsonWebKey = JSON.parse(vapidPublicKey);
+    const privateKeyJWK: JsonWebKey = JSON.parse(vapidPrivateKey);
+
+    console.log('Importing VAPID keys from secrets');
+
+    // Import VAPID keys
+    const vapidKeys = await webpush.importVapidKeys(
+      {
+        publicKey: publicKeyJWK,
+        privateKey: privateKeyJWK,
+      },
+      { extractable: false }
+    );
 
     // Create application server
     const appServer = await webpush.ApplicationServer.new({
@@ -39,7 +57,7 @@ serve(async (req) => {
       vapidKeys,
     });
 
-    console.log('VAPID keys generated and application server created');
+    console.log('Application server created with stored VAPID keys');
 
     // Get subscriptions based on userEmail or all
     let query = supabase.from('push_subscriptions').select('*');
