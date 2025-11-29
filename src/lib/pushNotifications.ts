@@ -1,11 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// IMPORTANT: Update this with the base64url public key that corresponds to your JsonWebKey
-// To get this from your JsonWebKey public key: concatenate x and y coordinates in base64url format
-// Example: If your public key JWK has x and y, the applicationServerKey should be those concatenated
-// For now, using a placeholder - replace with your actual public key
-const VAPID_PUBLIC_KEY = 'REPLACE_WITH_YOUR_BASE64URL_PUBLIC_KEY';
+// VAPID public key from the generated keys (base64url format)
+const VAPID_PUBLIC_KEY = 'BPey8MXqEhSyS666a67-kTHo9x_vjxQuZGtDb1dsOoRktcNzfPMR4tS2_RQQM8hjeTUIV-9E1UQMR3H7GWRLK5E';
 
 export const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
