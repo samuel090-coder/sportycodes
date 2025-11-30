@@ -135,17 +135,27 @@ export const GlobalAdZoneManager = () => {
         <h3 className="text-xs md:text-sm font-bold text-cyber-neon-cyan font-mono mb-2">📘 HILLTOPADS SETUP GUIDE:</h3>
         <ol className="text-xs text-cyber-neon-green/80 font-mono space-y-1 list-decimal list-inside">
           <li>Login to <strong>member.hilltopads.com</strong></li>
-          <li>Click "Add New Zone" button</li>
-          <li>Select zone type (Banner 300x250 recommended for mobile)</li>
-          <li>Copy the FULL script URL from your zone</li>
+          <li>Click "Add New Zone" → Select ad type</li>
+          <li><strong>For Banners:</strong> Choose 300x250 or 300x100</li>
+          <li><strong>For Video Sliders/Popunders:</strong> Choose your preferred type</li>
+          <li>Click on zone → Select <strong>"Direct URL"</strong> invocation</li>
+          <li>Copy the FULL script URL (e.g., https://serious-sample.com/...)</li>
           <li>Paste URL into "ZONE ID" field below</li>
-          <li>Select placement and activate</li>
+          <li>Select placement and click "ADD ZONE"</li>
         </ol>
-        <p className="text-xs text-yellow-400 font-mono mt-2 font-bold">
-          ⚠️ IMPORTANT: HilltopAds works ONLY with Banner zones (300x100, 300x250). Popunders won't display!
-        </p>
+        <div className="mt-3 p-2 bg-cyber-neon-purple/10 border border-cyber-neon-purple/30 rounded">
+          <p className="text-xs font-bold text-cyber-neon-purple font-mono mb-1">💡 INVOCATION CODES EXPLAINED:</p>
+          <ul className="text-[10px] text-cyber-neon-green/70 font-mono space-y-1">
+            <li>• <strong>Direct URL</strong> - Simple script (recommended, easiest)</li>
+            <li>• <strong>Popunder Script</strong> - Opens ad in background tab</li>
+            <li>• <strong>Anti-AdBlock</strong> - Bypasses ad blockers</li>
+          </ul>
+          <p className="text-xs text-yellow-400 font-mono mt-2 font-bold">
+            ⚡ Always use "Direct URL" for best compatibility
+          </p>
+        </div>
         <p className="text-xs text-cyber-neon-purple/80 font-mono mt-2">
-          💡 Ads appear automatically once activated
+          ✅ Ads appear automatically once activated
         </p>
       </div>
 
@@ -161,7 +171,7 @@ export const GlobalAdZoneManager = () => {
                 id="zone_id"
                 value={newZone.zone_id}
                 onChange={(e) => setNewZone({ ...newZone, zone_id: e.target.value })}
-                placeholder="Paste full script URL here"
+                placeholder="https://serious-sample.com/... (Full Direct URL script)"
                 className="mt-2 bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono text-xs"
                 required
               />
