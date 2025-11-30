@@ -118,36 +118,41 @@ export const GlobalAdZoneManager = () => {
   };
 
   return (
-    <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-purple p-6 relative overflow-hidden">
+    <Card className="bg-gradient-cyber border-2 border-cyber-neon-purple/50 shadow-neon-purple p-4 md:p-6 relative overflow-hidden">
       <div className="absolute top-2 right-2 flex gap-2">
         <div className="w-2 h-2 rounded-full bg-cyber-neon-purple animate-pulse" />
         <div className="w-2 h-2 rounded-full bg-cyber-neon-cyan animate-pulse delay-75" />
         <div className="w-2 h-2 rounded-full bg-cyber-neon-green animate-pulse delay-150" />
       </div>
 
-      <h2 className="text-xl font-black text-cyber-neon-purple mb-4 font-mono flex items-center gap-2">
-        <span className="text-cyber-neon-green">&gt;</span> GLOBAL AD ZONES MANAGER
+      <h2 className="text-base md:text-xl font-black text-cyber-neon-purple mb-4 font-mono flex items-center gap-2">
+        <span className="text-cyber-neon-green text-sm md:text-base">&gt;</span> 
+        <span className="text-sm md:text-base">GLOBAL AD ZONES</span>
       </h2>
 
       {/* HilltopAds Instructions */}
-      <div className="mb-6 p-4 bg-cyber-neon-cyan/10 border border-cyber-neon-cyan/30 rounded-lg">
-        <h3 className="text-sm font-bold text-cyber-neon-cyan font-mono mb-2">📘 HOW TO ADD HILLTOPADS ZONES:</h3>
+      <div className="mb-4 md:mb-6 p-3 md:p-4 bg-cyber-neon-cyan/10 border border-cyber-neon-cyan/30 rounded-lg">
+        <h3 className="text-xs md:text-sm font-bold text-cyber-neon-cyan font-mono mb-2">📘 HILLTOPADS SETUP GUIDE:</h3>
         <ol className="text-xs text-cyber-neon-green/80 font-mono space-y-1 list-decimal list-inside">
-          <li>Go to your HilltopAds dashboard and copy the zone's full script URL</li>
-          <li>Paste the full URL (e.g., https://serious-sample.com/d.mFFG...) into "ZONE ID" field</li>
-          <li>Give it a descriptive name (e.g., "HilltopAds Header Banner")</li>
-          <li>Select where the ad should appear (Header, Footer, etc.)</li>
-          <li>Click "ADD ZONE" and activate it using the status toggle</li>
+          <li>Login to <strong>member.hilltopads.com</strong></li>
+          <li>Click "Add New Zone" button</li>
+          <li>Select zone type (Banner 300x250 recommended for mobile)</li>
+          <li>Copy the FULL script URL from your zone</li>
+          <li>Paste URL into "ZONE ID" field below</li>
+          <li>Select placement and activate</li>
         </ol>
+        <p className="text-xs text-yellow-400 font-mono mt-2 font-bold">
+          ⚠️ IMPORTANT: HilltopAds works ONLY with Banner zones (300x100, 300x250). Popunders won't display!
+        </p>
         <p className="text-xs text-cyber-neon-purple/80 font-mono mt-2">
-          💡 The ads will appear automatically on the site once activated
+          💡 Ads appear automatically once activated
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Add New Zone Form */}
-        <form onSubmit={handleAddZone} className="space-y-4 pb-6 border-b border-cyber-neon-purple/30">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleAddZone} className="space-y-4 pb-4 md:pb-6 border-b border-cyber-neon-purple/30">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <Label htmlFor="zone_id" className="text-cyber-neon-cyan font-mono text-sm">
                 ZONE ID
@@ -217,7 +222,7 @@ export const GlobalAdZoneManager = () => {
 
         {/* Existing Zones Table */}
         <div>
-          <h3 className="text-lg font-black text-cyber-neon-cyan mb-4 font-mono">
+          <h3 className="text-base md:text-lg font-black text-cyber-neon-cyan mb-4 font-mono">
             ACTIVE ZONES
           </h3>
           

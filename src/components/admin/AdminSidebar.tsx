@@ -52,6 +52,7 @@ export function AdminSidebar() {
   return (
     <Sidebar
       className={`${isCollapsed ? "w-16" : "w-64"} bg-cyber-dark border-r-2 border-cyber-neon-green/30`}
+      collapsible="icon"
     >
       <SidebarContent>
         {/* Header */}

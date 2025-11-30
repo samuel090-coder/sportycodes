@@ -13,6 +13,12 @@ export const NotificationPrompt = ({ userEmail }: NotificationPromptProps) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
+    // Don't show notification prompt on admin pages
+    if (window.location.pathname.startsWith('/admin')) {
+      setShow(false);
+      return;
+    }
+
     const checkStatus = async () => {
       if (!userEmail) return;
       

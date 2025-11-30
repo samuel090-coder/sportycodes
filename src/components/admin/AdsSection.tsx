@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GlobalAdZoneManager } from "@/components/GlobalAdZoneManager";
 
 export const AdsSection = () => {
+  const isMobile = window.innerWidth < 768;
   const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
   const [siteAdsEnabled, setSiteAdsEnabled] = useState(true);
 
@@ -61,20 +62,20 @@ export const AdsSection = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Ad Toggle Controls */}
-      <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6">
-        <h3 className="text-2xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
-          <DollarSign className="w-6 h-6 animate-neon-pulse" />
-          AD CONTROLS
+      <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-4 md:p-6">
+        <h3 className="text-lg md:text-2xl font-black text-cyber-neon-green mb-4 md:mb-6 font-mono flex items-center gap-2">
+          <DollarSign className="w-5 h-5 md:w-6 md:h-6 animate-neon-pulse" />
+          <span className="text-sm md:text-base">AD CONTROLS</span>
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Per-Card Ads Toggle */}
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-lg font-bold text-cyber-neon-cyan font-mono">PER-CARD ADS</h4>
+                <h4 className="text-base md:text-lg font-bold text-cyber-neon-cyan font-mono">PER-CARD ADS</h4>
                 <p className="text-xs text-cyber-neon-cyan/60 font-mono">Individual sure odd unlock ads</p>
               </div>
               <button
@@ -100,10 +101,10 @@ export const AdsSection = () => {
           </div>
 
           {/* Site-Wide Ads Toggle */}
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-lg font-bold text-cyber-neon-purple font-mono">SITE-WIDE ADS</h4>
+                <h4 className="text-base md:text-lg font-bold text-cyber-neon-purple font-mono">SITE-WIDE ADS</h4>
                 <p className="text-xs text-cyber-neon-purple/60 font-mono">Global ad zone placements</p>
               </div>
               <button
