@@ -13,6 +13,14 @@ const InstallGate = ({ children }: InstallGateProps) => {
   const location = useLocation();
 
   useEffect(() => {
+    // Don't show install prompt on admin pages
+    if (location.pathname.startsWith('/admin')) {
+      setShowWarning(false);
+      setIsStandalone(true);
+      setIsChecking(false);
+      return;
+    }
+
     // Check if app is running in standalone mode (installed)
     const checkStandalone = () => {
       const isInStandaloneMode = 
