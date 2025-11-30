@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -39,6 +39,7 @@ const menuItems = [
     category: "System",
     icon: Settings,
     items: [
+      { title: "SEO Manager", path: "/admin/seo", icon: Search },
       { title: "Notifications", path: "/admin/notifications", icon: Bell },
       { title: "Settings", path: "/admin/settings", icon: Settings },
     ],
