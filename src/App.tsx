@@ -14,6 +14,7 @@ import { AdsSection } from "./components/admin/AdsSection";
 import { SureOddsSection } from "./components/admin/SureOddsSection";
 import { PaymentsSection } from "./components/admin/PaymentsSection";
 import { NotificationsSection } from "./components/admin/NotificationsSection";
+import { SEOSection } from "./components/admin/SEOSection";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 
@@ -52,6 +53,7 @@ const App = () => {
                 <Route path="ads" element={<AdsSection />} />
                 <Route path="sure-odds" element={<SureOddsSection />} />
                 <Route path="payments" element={<PaymentsSection />} />
+                <Route path="seo" element={<SEOSection />} />
                 <Route path="notifications" element={<NotificationsSection />} />
                 <Route path="settings" element={<SecuritySection />} />
               </Route>
