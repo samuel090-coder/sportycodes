@@ -125,14 +125,16 @@ export function SEOSection() {
         </div>
       </div>
 
-      {/* SEO Quick Stats */}
+      {/* SEO Quick Stats - Based on actual settings */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="p-3 sm:p-4 bg-cyber-panel border-cyber-neon-green/30">
           <div className="flex items-center gap-2 sm:gap-3">
             <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
             <div>
               <p className="text-[10px] sm:text-xs text-muted-foreground">Target Keywords</p>
-              <p className="text-base sm:text-lg font-black text-foreground">15+</p>
+              <p className="text-base sm:text-lg font-black text-foreground">
+                {seoSettings.metaKeywords.split(',').filter(k => k.trim()).length}
+              </p>
             </div>
           </div>
         </Card>
@@ -141,8 +143,10 @@ export function SEOSection() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Search className="w-6 h-6 sm:w-8 sm:h-8 text-cyber-neon-cyan" />
             <div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">SEO Score</p>
-              <p className="text-base sm:text-lg font-black text-foreground">95/100</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Title Length</p>
+              <p className={`text-base sm:text-lg font-black ${seoSettings.siteTitle.length <= 60 ? 'text-green-500' : 'text-yellow-500'}`}>
+                {seoSettings.siteTitle.length}/60
+              </p>
             </div>
           </div>
         </Card>
@@ -151,8 +155,10 @@ export function SEOSection() {
           <div className="flex items-center gap-2 sm:gap-3">
             <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-cyber-neon-purple" />
             <div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Indexed Pages</p>
-              <p className="text-base sm:text-lg font-black text-foreground">3</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Description Length</p>
+              <p className={`text-base sm:text-lg font-black ${seoSettings.metaDescription.length <= 160 ? 'text-green-500' : 'text-yellow-500'}`}>
+                {seoSettings.metaDescription.length}/160
+              </p>
             </div>
           </div>
         </Card>
@@ -162,7 +168,9 @@ export function SEOSection() {
             <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             <div>
               <p className="text-[10px] sm:text-xs text-muted-foreground">Status</p>
-              <p className="text-base sm:text-lg font-black text-green-500">Active</p>
+              <p className={`text-base sm:text-lg font-black ${lastUpdated ? 'text-green-500' : 'text-yellow-500'}`}>
+                {lastUpdated ? 'Configured' : 'Pending'}
+              </p>
             </div>
           </div>
         </Card>
