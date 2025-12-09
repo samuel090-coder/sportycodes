@@ -11,11 +11,12 @@ interface HilltopAdZone {
 
 export const HilltopAdRenderer = ({ placement }: { placement: string }) => {
   const [adZones, setAdZones] = useState<HilltopAdZone[]>([]);
+  const [siteAdsEnabled, setSiteAdsEnabled] = useState(false);
 
   useEffect(() => {
-    loadAdZones();
+    loadSettings();
 
-    // Subscribe to real-time changes
+    // Subscribe to real-time changes for both ad zones and settings
     const channel = supabase
       .channel('hilltop-ads')
       .on(
@@ -29,12 +30,51 @@ export const HilltopAdRenderer = ({ placement }: { placement: string }) => {
           loadAdZones();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'app_settings',
+        },
+        () => {
+          loadSettings();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [placement]);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'site_ads_enabled')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading site ads setting:', error);
+        return;
+      }
+
+      // Default to false if no setting exists
+      const enabled = data?.setting_value === 'true';
+      setSiteAdsEnabled(enabled);
+      
+      if (enabled) {
+        loadAdZones();
+      } else {
+        // Clear ads when disabled
+        setAdZones([]);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
 
   const loadAdZones = async () => {
     const { data, error } = await supabase
@@ -52,19 +92,21 @@ export const HilltopAdRenderer = ({ placement }: { placement: string }) => {
   };
 
   useEffect(() => {
+    // Only inject ads if site ads are enabled and we have zones
+    if (!siteAdsEnabled || adZones.length === 0) {
+      // Cleanup any existing ad scripts when disabled
+      cleanupAdScripts();
+      return;
+    }
+
     // Inject ad scripts dynamically
     adZones.forEach((zone) => {
-      const containerId = `ad-container-${zone.id}`;
       const scriptId = `hilltop-ad-${zone.id}`;
       
-      // Remove existing elements
+      // Remove existing script before adding new one
       const existingScript = document.getElementById(scriptId);
       if (existingScript) {
         existingScript.remove();
-      }
-      const existingContainer = document.getElementById(containerId);
-      if (existingContainer) {
-        existingContainer.remove();
       }
 
       const zoneContent = zone.zone_id.trim();
@@ -96,16 +138,15 @@ export const HilltopAdRenderer = ({ placement }: { placement: string }) => {
 
     // Cleanup function
     return () => {
-      adZones.forEach((zone) => {
-        const scriptId = `hilltop-ad-${zone.id}`;
-        const containerId = `ad-container-${zone.id}`;
-        const script = document.getElementById(scriptId);
-        const container = document.getElementById(containerId);
-        if (script) script.remove();
-        if (container) container.remove();
-      });
+      cleanupAdScripts();
     };
-  }, [adZones]);
+  }, [adZones, siteAdsEnabled]);
+
+  const cleanupAdScripts = () => {
+    // Remove all hilltop ad scripts
+    document.querySelectorAll('[id^="hilltop-ad-"]').forEach(el => el.remove());
+    document.querySelectorAll('[id^="ad-container-"]').forEach(el => el.remove());
+  };
 
   return null; // This component doesn't render anything visible
 };
