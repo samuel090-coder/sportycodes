@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://6a0c5d21-db9f-4730-b7b8-19dd6f7dc91a.lovableproject.com/sitemap.xml
 
 # Optimize crawl budget for important pages
 User-agent: Googlebot
@@ -30,6 +30,5 @@ Disallow: /
 User-agent: MJ12bot
 Disallow: /
 
-# Disallow admin and payment pages from indexing
+# Disallow admin pages from indexing
 Disallow: /admin/
-Disallow: /payment/

@@ -5,28 +5,28 @@
         xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   
-  <!-- Homepage -->
+  <!-- Homepage / Sure Odds -->
   <url>
-    <loc>https://yourdomain.com/</loc>
-    <lastmod>2025-01-01</lastmod>
-    <changefreq>hourly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  
-  <!-- Sure Odds Page -->
-  <url>
-    <loc>https://yourdomain.com/</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://6a0c5d21-db9f-4730-b7b8-19dd6f7dc91a.lovableproject.com/</loc>
+    <lastmod>2025-12-09</lastmod>
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <!-- Payment Page -->
   <url>
-    <loc>https://yourdomain.com/payment</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://6a0c5d21-db9f-4730-b7b8-19dd6f7dc91a.lovableproject.com/payment</loc>
+    <lastmod>2025-12-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+  </url>
+  
+  <!-- Install Page -->
+  <url>
+    <loc>https://6a0c5d21-db9f-4730-b7b8-19dd6f7dc91a.lovableproject.com/install</loc>
+    <lastmod>2025-12-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 
 </urlset>
