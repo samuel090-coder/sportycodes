@@ -92,7 +92,7 @@ export const SureOddsSection = () => {
       status: formData.get("status") as "not-started" | "scored" | "lost",
       price: parseFloat(formData.get("price") as string),
       matchCount: matchCount,
-      scheduledTime: formData.get("scheduledTime") as string,
+      scheduledTime: (formData.get("scheduledTime") as string) || null,
       stake: parseFloat(formData.get("stake") as string) || 0,
       payout: parseFloat(formData.get("payout") as string) || 0,
       adZoneId: formData.get("adZoneId") as string || null,

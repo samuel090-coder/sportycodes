@@ -311,7 +311,7 @@ export const useBettingData = () => {
           status: updates.status,
           price: updates.price,
           match_count: updates.matchCount,
-          scheduled_time: updates.scheduledTime,
+          scheduled_time: updates.scheduledTime || null,
           stake: updates.stake,
           payout: updates.payout,
           ad_zone_id: updates.adZoneId,
