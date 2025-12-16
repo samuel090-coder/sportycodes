@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { 
   Bell, Send, Loader2, Users, Image, Sparkles, 
   Copy, Trash2, Plus, Eye, Megaphone, Clock,
-  CheckCircle2, XCircle
+  CheckCircle2, XCircle, Upload
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +23,7 @@ interface NotificationTemplate {
 
 export const NotificationsSection = () => {
   const [activeTab, setActiveTab] = useState("compose");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Compose state
   const [title, setTitle] = useState("🎯 SPORTY CODES Alert!");
@@ -31,6 +32,7 @@ export const NotificationsSection = () => {
   const [targetEmail, setTargetEmail] = useState("");
   const [sendToAll, setSendToAll] = useState(true);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   
   // Stats
   const [subscriberCount, setSubscriberCount] = useState(0);
@@ -97,6 +99,48 @@ export const NotificationsSection = () => {
       console.error('Error fetching subscriber count:', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `notification_${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('notification-images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('notification-images')
+        .getPublicUrl(fileName);
+
+      setImageUrl(publicUrlData.publicUrl);
+      toast.success('Image uploaded successfully!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image. Please use URL instead.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -296,22 +340,72 @@ export const NotificationsSection = () => {
                 />
               </div>
 
-              {/* Image URL */}
+              {/* Image Upload/URL */}
               <div>
                 <Label className="text-cyber-neon-cyan font-mono text-sm flex items-center gap-2">
                   <Image className="w-4 h-4" />
-                  IMAGE URL (OPTIONAL)
+                  NOTIFICATION IMAGE (OPTIONAL)
                 </Label>
-                <Input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="mt-2 bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono"
-                  placeholder="https://example.com/image.png"
-                />
-                <p className="text-xs text-cyber-neon-cyan/50 mt-1">
-                  For rich notifications with images (shows on Android)
-                </p>
+                
+                <div className="mt-2 space-y-3">
+                  {/* Upload Button */}
+                  <div className="flex gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      variant="outline"
+                      className="border-cyber-neon-purple text-cyber-neon-purple hover:bg-cyber-neon-purple/20"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload from Phone
+                        </>
+                      )}
+                    </Button>
+                    <span className="text-cyber-neon-cyan/50 text-sm flex items-center">or paste URL below</span>
+                  </div>
+                  
+                  {/* URL Input */}
+                  <Input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono"
+                    placeholder="https://example.com/image.png"
+                  />
+                  
+                  {/* Image Preview */}
+                  {imageUrl && (
+                    <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-cyber-neon-purple/50">
+                      <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl("")}
+                        className="absolute top-1 right-1 bg-red-600 rounded-full p-1"
+                      >
+                        <XCircle className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-cyber-neon-cyan/50">
+                    Rich notification images display on Android devices
+                  </p>
+                </div>
               </div>
 
               {/* Target Selection */}
