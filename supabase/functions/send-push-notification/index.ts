@@ -31,7 +31,7 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
     if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('VAPID keys not configured');
+      throw new Error('VAPID keys not configured. Please run generate-vapid-keys function and update secrets.');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -39,12 +39,24 @@ serve(async (req) => {
 
     console.log('Sending notification:', payload);
 
-    // Parse the VAPID keys from base64url format stored in secrets
-    // These should be JWK format JSON strings
-    const publicKeyJWK: JsonWebKey = JSON.parse(vapidPublicKey);
-    const privateKeyJWK: JsonWebKey = JSON.parse(vapidPrivateKey);
-
-    console.log('Importing VAPID keys from secrets');
+    // Parse the VAPID keys - they should be JWK format JSON strings
+    let publicKeyJWK: JsonWebKey;
+    let privateKeyJWK: JsonWebKey;
+    
+    try {
+      publicKeyJWK = JSON.parse(vapidPublicKey);
+      privateKeyJWK = JSON.parse(vapidPrivateKey);
+      console.log('VAPID keys parsed as JWK successfully');
+    } catch (parseError) {
+      console.error('VAPID keys are not in JWK format. Current VAPID_PUBLIC_KEY starts with:', vapidPublicKey.substring(0, 20));
+      
+      // The keys are likely in base64url format, need to regenerate
+      throw new Error(
+        'VAPID keys must be in JWK JSON format. ' +
+        'Please call the generate-vapid-keys edge function to generate new keys, ' +
+        'then update VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets with the publicKeyJWK and privateKeyJWK values respectively.'
+      );
+    }
 
     // Import VAPID keys
     const vapidKeys = await webpush.importVapidKeys(
@@ -61,7 +73,7 @@ serve(async (req) => {
       vapidKeys,
     });
 
-    console.log('Application server created with stored VAPID keys');
+    console.log('Application server created with VAPID keys');
 
     // Get subscriptions based on userEmail or all
     let query = supabase.from('push_subscriptions').select('*');
