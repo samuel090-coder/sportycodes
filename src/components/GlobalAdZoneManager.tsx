@@ -130,32 +130,34 @@ export const GlobalAdZoneManager = () => {
         <span className="text-sm md:text-base">GLOBAL AD ZONES</span>
       </h2>
 
-      {/* HilltopAds Instructions */}
+      {/* Ad Setup Instructions */}
       <div className="mb-4 md:mb-6 p-3 md:p-4 bg-cyber-neon-cyan/10 border border-cyber-neon-cyan/30 rounded-lg">
-        <h3 className="text-xs md:text-sm font-bold text-cyber-neon-cyan font-mono mb-2">📘 HILLTOPADS SETUP GUIDE:</h3>
-        <ol className="text-xs text-cyber-neon-green/80 font-mono space-y-1 list-decimal list-inside">
-          <li>Login to <strong>member.hilltopads.com</strong></li>
-          <li>Click "Add New Zone" → Select ad type</li>
-          <li><strong>For Banners:</strong> Choose 300x250 or 300x100</li>
-          <li><strong>For Video Sliders/Popunders:</strong> Choose your preferred type</li>
-          <li>Click on zone → Select <strong>"Direct URL"</strong> invocation</li>
-          <li>Copy the FULL script URL (e.g., https://serious-sample.com/...)</li>
-          <li>Paste URL into "ZONE ID" field below</li>
-          <li>Select placement and click "ADD ZONE"</li>
-        </ol>
-        <div className="mt-3 p-2 bg-cyber-neon-purple/10 border border-cyber-neon-purple/30 rounded">
-          <p className="text-xs font-bold text-cyber-neon-purple font-mono mb-1">💡 INVOCATION CODES EXPLAINED:</p>
-          <ul className="text-[10px] text-cyber-neon-green/70 font-mono space-y-1">
-            <li>• <strong>Direct URL</strong> - Simple script (recommended, easiest)</li>
-            <li>• <strong>Popunder Script</strong> - Opens ad in background tab</li>
-            <li>• <strong>Anti-AdBlock</strong> - Bypasses ad blockers</li>
-          </ul>
-          <p className="text-xs text-yellow-400 font-mono mt-2 font-bold">
-            ⚡ Always use "Direct URL" for best compatibility
+        <h3 className="text-xs md:text-sm font-bold text-cyber-neon-cyan font-mono mb-2">📘 AD SETUP GUIDE</h3>
+        
+        {/* Native Ads (Banner/Display) */}
+        <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded">
+          <p className="text-xs font-bold text-green-400 font-mono mb-1">🖼️ NATIVE/BANNER ADS (Visible on page):</p>
+          <p className="text-[10px] text-cyber-neon-green/70 font-mono">
+            Paste the COMPLETE code including script AND div container:
           </p>
+          <code className="text-[9px] text-cyber-neon-cyan/80 font-mono block mt-1 bg-black/30 p-1 rounded overflow-x-auto">
+            {'<script src="...invoke.js"></script><div id="container-xxx"></div>'}
+          </code>
         </div>
-        <p className="text-xs text-cyber-neon-purple/80 font-mono mt-2">
-          ✅ Ads appear automatically once activated
+
+        {/* Popunder Ads */}
+        <div className="p-2 bg-cyber-neon-purple/10 border border-cyber-neon-purple/30 rounded">
+          <p className="text-xs font-bold text-cyber-neon-purple font-mono mb-1">🔗 POPUNDER ADS (Opens new tab):</p>
+          <p className="text-[10px] text-cyber-neon-green/70 font-mono">
+            Paste just the script URL or full script tag:
+          </p>
+          <code className="text-[9px] text-cyber-neon-cyan/80 font-mono block mt-1 bg-black/30 p-1 rounded overflow-x-auto">
+            //pl28226008.effectivegatecpm.com/xxx.js
+          </code>
+        </div>
+
+        <p className="text-xs text-yellow-400 font-mono mt-3 font-bold">
+          ⚡ Make sure "SITE-WIDE ADS" toggle is ON for ads to display!
         </p>
       </div>
 
