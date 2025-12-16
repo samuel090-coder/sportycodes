@@ -12,7 +12,11 @@ interface NotificationPayload {
   body: string;
   userEmail?: string;
   tag?: string;
-  data?: any;
+  data?: {
+    image?: string;
+    url?: string;
+    [key: string]: any;
+  };
 }
 
 serve(async (req) => {
@@ -83,14 +87,22 @@ serve(async (req) => {
 
     console.log(`Found ${subscriptions.length} subscriptions`);
 
-    const notificationData = {
+    // Build notification data with rich content support
+    const notificationData: any = {
       title: payload.title,
       body: payload.body,
       tag: payload.tag || 'sporty-codes-notification',
       data: payload.data || {},
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
     };
+
+    // Add image for rich notifications (Android big picture style)
+    if (payload.data?.image) {
+      notificationData.image = payload.data.image;
+    }
+
+    console.log('Notification payload:', JSON.stringify(notificationData));
 
     // Send push notification to each subscription
     const results = await Promise.allSettled(
