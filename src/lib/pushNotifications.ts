@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // VAPID public key from the generated keys (base64url format)
-const VAPID_PUBLIC_KEY = 'BBkqeEKmGbEFJO6aiAcU_-TWIJtKZunNWX9Q8WBbdfrcQDrtAzWTQSPrWKQDuHsp-1pLYUVEkWC4_bQyUuxvEdE';
+const VAPID_PUBLIC_KEY = 'BM2vbhroFFAULgUgFqSrUs1gEkp97N3yHyWIC7bb1ZwC5ipxX7FUU6dE7Th98Fzelj07gJaGeCVpLEWoz1jF0bU';
 
 export const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
