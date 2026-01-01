@@ -253,15 +253,21 @@ serve(async (req) => {
           console.log(`✓ Notification sent to ${sub.user_email}`);
           return { success: true, email: sub.user_email };
         } catch (error: any) {
-          console.error(`Failed to send to ${sub.user_email}:`, error.message || error);
+          console.error(`Failed to send to ${sub.user_email}:`, error);
           
-          // Check if subscription is gone (expired/invalid)
-          if (error instanceof webpush.PushMessageError && error.isGone()) {
+          // Check HTTP status from error response
+          const status = error?.response?.status;
+          
+          // Delete subscription if:
+          // - 410 Gone: subscription expired/unsubscribed
+          // - 403 Forbidden: VAPID key mismatch (user must re-subscribe)
+          // - 404 Not Found: endpoint no longer exists
+          if (status === 410 || status === 403 || status === 404) {
             await supabase.from('push_subscriptions').delete().eq('id', sub.id);
-            console.log(`Deleted invalid subscription for ${sub.user_email}`);
+            console.log(`Deleted invalid subscription for ${sub.user_email} (status: ${status})`);
           }
           
-          return { success: false, email: sub.user_email, error: error.message || 'Unknown error' };
+          return { success: false, email: sub.user_email, error: error.message || 'Unknown error', status };
         }
       })
     );

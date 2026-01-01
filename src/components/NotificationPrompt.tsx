@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Bell, X } from "lucide-react";
-import { subscribeToPushNotifications, checkNotificationStatus } from "@/lib/pushNotifications";
+import { subscribeToPushNotifications, checkNotificationStatus, validateAndCleanupSubscription } from "@/lib/pushNotifications";
 
 interface NotificationPromptProps {
   userEmail: string;
@@ -21,6 +21,15 @@ export const NotificationPrompt = ({ userEmail }: NotificationPromptProps) => {
 
     const checkStatus = async () => {
       if (!userEmail) return;
+      
+      // First validate/cleanup any stale subscriptions (e.g., from VAPID key change)
+      const needsResubscribe = await validateAndCleanupSubscription(userEmail);
+      
+      if (needsResubscribe) {
+        setIsSubscribed(false);
+        setShow(true);
+        return;
+      }
       
       const subscribed = await checkNotificationStatus(userEmail);
       setIsSubscribed(subscribed);
