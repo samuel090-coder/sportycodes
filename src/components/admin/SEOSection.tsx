@@ -77,20 +77,50 @@ export function SEOSection() {
         setting_value: new Date().toISOString(),
       });
 
-      // Upsert all settings
+      // Process each setting - check if exists and update or insert
       for (const update of updates) {
-        const { error } = await supabase
+        // First check if the setting exists
+        const { data: existing } = await supabase
           .from('app_settings')
-          .upsert(update, { onConflict: 'setting_key' });
+          .select('id')
+          .eq('setting_key', update.setting_key)
+          .maybeSingle();
 
-        if (error) throw error;
+        if (existing) {
+          // Update existing record
+          const { error } = await supabase
+            .from('app_settings')
+            .update({ 
+              setting_value: update.setting_value,
+              updated_at: new Date().toISOString()
+            })
+            .eq('setting_key', update.setting_key);
+
+          if (error) {
+            console.error('Update error for', update.setting_key, error);
+            throw error;
+          }
+        } else {
+          // Insert new record
+          const { error } = await supabase
+            .from('app_settings')
+            .insert({
+              setting_key: update.setting_key,
+              setting_value: update.setting_value
+            });
+
+          if (error) {
+            console.error('Insert error for', update.setting_key, error);
+            throw error;
+          }
+        }
       }
 
       setLastUpdated(new Date().toISOString());
       toast.success("✓ SEO settings updated successfully!");
     } catch (error: any) {
       console.error('Error updating SEO:', error);
-      toast.error("Failed to update SEO settings");
+      toast.error("Failed to update SEO settings: " + (error.message || 'Unknown error'));
     } finally {
       setIsUpdating(false);
     }
