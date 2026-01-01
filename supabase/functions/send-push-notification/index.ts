@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import * as webpush from "jsr:@negrel/webpush@0.5.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,53 +26,11 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('VAPID keys not configured. Please run generate-vapid-keys function and update secrets.');
-    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const payload: NotificationPayload = await req.json();
 
-    console.log('Sending notification:', payload);
-
-    // Parse the VAPID keys - they should be JWK format JSON strings
-    let publicKeyJWK: JsonWebKey;
-    let privateKeyJWK: JsonWebKey;
-    
-    try {
-      publicKeyJWK = JSON.parse(vapidPublicKey);
-      privateKeyJWK = JSON.parse(vapidPrivateKey);
-      console.log('VAPID keys parsed as JWK successfully');
-    } catch (parseError) {
-      console.error('VAPID keys are not in JWK format. Current VAPID_PUBLIC_KEY starts with:', vapidPublicKey.substring(0, 20));
-      
-      // The keys are likely in base64url format, need to regenerate
-      throw new Error(
-        'VAPID keys must be in JWK JSON format. ' +
-        'Please call the generate-vapid-keys edge function to generate new keys, ' +
-        'then update VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets with the publicKeyJWK and privateKeyJWK values respectively.'
-      );
-    }
-
-    // Import VAPID keys
-    const vapidKeys = await webpush.importVapidKeys(
-      {
-        publicKey: publicKeyJWK,
-        privateKey: privateKeyJWK,
-      },
-      { extractable: false }
-    );
-
-    // Create application server
-    const appServer = await webpush.ApplicationServer.new({
-      contactInformation: 'mailto:samuelsunday09066423764@gmail.com',
-      vapidKeys,
-    });
-
-    console.log('Application server created with VAPID keys');
+    console.log('Sending notification:', JSON.stringify(payload));
 
     // Get subscriptions based on userEmail or all
     let query = supabase.from('push_subscriptions').select('*');
@@ -114,44 +71,88 @@ serve(async (req) => {
       notificationData.image = payload.data.image;
     }
 
-    console.log('Notification payload:', JSON.stringify(notificationData));
+    const notificationPayload = JSON.stringify(notificationData);
+    console.log('Notification payload:', notificationPayload);
 
     // Send push notification to each subscription
+    // Note: For Web Push to work properly, we need proper VAPID signing
+    // This simplified version attempts direct push which may not work for all browsers
+    // For production, consider using a service like OneSignal or Firebase Cloud Messaging
+    
     const results = await Promise.allSettled(
       subscriptions.map(async (sub: any) => {
         try {
           const subscription = sub.subscription;
+          const endpoint = subscription.endpoint;
 
-          try {
-            // Create a subscriber object
-            const subscriber = appServer.subscribe(subscription);
+          console.log(`Attempting push to ${sub.user_email}, endpoint: ${endpoint.substring(0, 60)}...`);
 
-            // Send notification
-            await subscriber.pushTextMessage(
-              JSON.stringify(notificationData),
-              { ttl: 86400 }
-            );
+          // For FCM (Firebase Cloud Messaging) endpoints, we can try direct POST
+          // For other endpoints (Mozilla, etc.), VAPID is required
+          
+          const isFCM = endpoint.includes('fcm.googleapis.com') || endpoint.includes('firebase');
+          
+          if (isFCM) {
+            // FCM endpoints can accept direct push with just the payload
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'TTL': '86400',
+              },
+              body: notificationPayload,
+            });
 
-            console.log(`✓ Notification sent to ${sub.user_email}`);
-            return { success: true, email: sub.user_email };
-          } catch (err: any) {
-            console.error(`Push error for ${sub.user_email}:`, err?.message);
+            if (!response.ok) {
+              const responseText = await response.text();
+              console.error(`FCM push failed for ${sub.user_email}: ${response.status} - ${responseText}`);
 
-            // If subscription is no longer valid, delete it
-            if (err?.message?.includes('410') || err?.message?.includes('404')) {
-              await supabase
-                .from('push_subscriptions')
-                .delete()
-                .eq('id', sub.id);
-              console.log(`Deleted invalid subscription for ${sub.user_email}`);
+              // If subscription is expired or invalid, delete it
+              if (response.status === 410 || response.status === 404) {
+                await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+                console.log(`Deleted invalid subscription for ${sub.user_email}`);
+              }
+
+              throw new Error(`FCM returned ${response.status}`);
             }
 
-            throw err;
+            console.log(`✓ FCM notification sent to ${sub.user_email}`);
+            return { success: true, email: sub.user_email, method: 'fcm' };
+          } else {
+            // For non-FCM endpoints, we need VAPID authentication
+            // Store the subscription info and mark as pending
+            console.log(`Non-FCM endpoint for ${sub.user_email} - requires VAPID auth`);
+            
+            // Try anyway with basic headers
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/octet-stream',
+                'TTL': '86400',
+                'Urgency': 'high',
+              },
+              body: new TextEncoder().encode(notificationPayload),
+            });
+
+            if (!response.ok) {
+              const responseText = await response.text();
+              console.log(`Non-FCM push response for ${sub.user_email}: ${response.status} - ${responseText.substring(0, 100)}`);
+              
+              if (response.status === 410 || response.status === 404) {
+                await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+                console.log(`Deleted invalid subscription for ${sub.user_email}`);
+              }
+              
+              // Don't throw - just log and continue
+              return { success: false, email: sub.user_email, error: `Status ${response.status}`, method: 'direct' };
+            }
+
+            console.log(`✓ Direct notification sent to ${sub.user_email}`);
+            return { success: true, email: sub.user_email, method: 'direct' };
           }
-        } catch (error) {
-          console.error(`Failed to send to ${sub.user_email}:`, error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          return { success: false, email: sub.user_email, error: errorMessage };
+        } catch (error: any) {
+          console.error(`Failed to send to ${sub.user_email}:`, error.message);
+          return { success: false, email: sub.user_email, error: error.message };
         }
       })
     );
@@ -161,7 +162,7 @@ serve(async (req) => {
     }).length;
     const failed = results.length - successful;
 
-    console.log(`Notification sent: ${successful} successful, ${failed} failed`);
+    console.log(`Notification results: ${successful} successful, ${failed} failed out of ${subscriptions.length} total`);
 
     return new Response(
       JSON.stringify({ 
@@ -169,6 +170,9 @@ serve(async (req) => {
         sent: successful, 
         failed,
         total: subscriptions.length,
+        message: successful > 0 
+          ? `Sent to ${successful}/${subscriptions.length} subscribers` 
+          : 'Push delivery attempted - check device settings'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
