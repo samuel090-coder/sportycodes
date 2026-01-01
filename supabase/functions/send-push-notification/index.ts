@@ -19,27 +19,133 @@ interface NotificationPayload {
   };
 }
 
+type VapidJwk = {
+  kty: "EC";
+  crv: "P-256";
+  alg?: "ES256";
+  x: string;
+  y: string;
+  d?: string;
+  ext?: boolean;
+  key_ops?: string[];
+};
+
+const isJsonObjectString = (value: string) => {
+  const v = value.trim();
+  return v.startsWith("{") && v.endsWith("}");
+};
+
+const base64UrlToBytes = (base64Url: string): Uint8Array => {
+  const padded = base64Url + "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
+const bytesToBase64Url = (bytes: Uint8Array): string => {
+  let binary = "";
+  // chunk to avoid call stack limits
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
+
+const toPublicJwk = (secret: string): VapidJwk => {
+  const trimmed = secret.trim();
+
+  if (isJsonObjectString(trimmed)) {
+    console.log("VAPID_PUBLIC_KEY detected as JWK JSON");
+    return JSON.parse(trimmed) as VapidJwk;
+  }
+
+  console.log("VAPID_PUBLIC_KEY detected as base64url raw key");
+  const raw = base64UrlToBytes(trimmed);
+
+  // Raw uncompressed EC point: 0x04 || X(32) || Y(32)
+  if (raw.length === 65 && raw[0] === 0x04) {
+    const x = raw.slice(1, 33);
+    const y = raw.slice(33, 65);
+    return {
+      kty: "EC",
+      crv: "P-256",
+      alg: "ES256",
+      x: bytesToBase64Url(x),
+      y: bytesToBase64Url(y),
+      ext: true,
+      key_ops: ["verify"],
+    };
+  }
+
+  // Some libs omit the 0x04 prefix and store X||Y
+  if (raw.length === 64) {
+    const x = raw.slice(0, 32);
+    const y = raw.slice(32, 64);
+    return {
+      kty: "EC",
+      crv: "P-256",
+      alg: "ES256",
+      x: bytesToBase64Url(x),
+      y: bytesToBase64Url(y),
+      ext: true,
+      key_ops: ["verify"],
+    };
+  }
+
+  throw new Error(`Unsupported VAPID public key raw length: ${raw.length}`);
+};
+
+const toPrivateJwk = (secret: string, pub: VapidJwk): VapidJwk => {
+  const trimmed = secret.trim();
+
+  if (isJsonObjectString(trimmed)) {
+    console.log("VAPID_PRIVATE_KEY detected as JWK JSON");
+    return JSON.parse(trimmed) as VapidJwk;
+  }
+
+  console.log("VAPID_PRIVATE_KEY detected as base64url raw key");
+  const raw = base64UrlToBytes(trimmed);
+
+  // Raw private key for P-256 is 32 bytes
+  if (raw.length !== 32) {
+    throw new Error(`Unsupported VAPID private key raw length: ${raw.length}`);
+  }
+
+  return {
+    kty: "EC",
+    crv: "P-256",
+    alg: "ES256",
+    x: pub.x,
+    y: pub.y,
+    d: bytesToBase64Url(raw),
+    ext: true,
+    key_ops: ["sign"],
+  };
+};
+
 // Cache for application server
 let appServer: webpush.ApplicationServer | null = null;
 
 async function getAppServer(): Promise<webpush.ApplicationServer> {
   if (appServer) return appServer;
 
-  const publicKeyJWK = Deno.env.get('VAPID_PUBLIC_KEY');
-  const privateKeyJWK = Deno.env.get('VAPID_PRIVATE_KEY');
+  const publicSecret = Deno.env.get('VAPID_PUBLIC_KEY');
+  const privateSecret = Deno.env.get('VAPID_PRIVATE_KEY');
 
-  if (!publicKeyJWK || !privateKeyJWK) {
-    throw new Error('VAPID keys not configured. Please set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets.');
+  if (!publicSecret || !privateSecret) {
+    throw new Error('VAPID keys not configured.');
   }
 
   try {
-    // Parse the JWK strings
-    const publicKey = JSON.parse(publicKeyJWK);
-    const privateKey = JSON.parse(privateKeyJWK);
+    const publicKey = toPublicJwk(publicSecret);
+    const privateKey = toPrivateJwk(privateSecret, publicKey);
 
     console.log('Importing VAPID keys...');
 
-    // Import VAPID keys
     const vapidKeys = await webpush.importVapidKeys({
       publicKey,
       privateKey,
@@ -47,7 +153,6 @@ async function getAppServer(): Promise<webpush.ApplicationServer> {
 
     console.log('Creating ApplicationServer...');
 
-    // Create application server
     appServer = await webpush.ApplicationServer.new({
       contactInformation: "mailto:admin@sportycodes.com",
       vapidKeys,
