@@ -168,3 +168,61 @@ export const checkNotificationStatus = async (userEmail: string): Promise<boolea
     return false;
   }
 };
+
+/**
+ * Validates that the current browser subscription matches what's stored in DB.
+ * If mismatched (e.g., after VAPID key change), clears the old subscription.
+ * Returns true if user needs to re-subscribe.
+ */
+export const validateAndCleanupSubscription = async (userEmail: string): Promise<boolean> => {
+  try {
+    // Check if there's a DB record for this user
+    const { data: dbRecord } = await supabase
+      .from('push_subscriptions')
+      .select('subscription')
+      .eq('user_email', userEmail)
+      .single();
+
+    if (!dbRecord) {
+      // No DB record - user should subscribe
+      return true;
+    }
+
+    // Check browser's current subscription
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return false; // Can't check, assume OK
+    }
+
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      // No service worker - delete stale DB record
+      await supabase.from('push_subscriptions').delete().eq('user_email', userEmail);
+      return true;
+    }
+
+    const browserSub = await registration.pushManager.getSubscription();
+    
+    if (!browserSub) {
+      // Browser has no subscription but DB does - delete stale record
+      await supabase.from('push_subscriptions').delete().eq('user_email', userEmail);
+      console.log('Cleaned up stale subscription for', userEmail);
+      return true;
+    }
+
+    // Compare endpoints - cast to access nested property
+    const subscription = dbRecord.subscription as { endpoint?: string } | null;
+    const dbEndpoint = subscription?.endpoint;
+    if (dbEndpoint !== browserSub.endpoint) {
+      // Mismatch - unsubscribe browser and delete DB record
+      await browserSub.unsubscribe();
+      await supabase.from('push_subscriptions').delete().eq('user_email', userEmail);
+      console.log('Cleaned up mismatched subscription for', userEmail);
+      return true;
+    }
+
+    return false; // All good
+  } catch (error) {
+    console.error('Error validating subscription:', error);
+    return false;
+  }
+};
