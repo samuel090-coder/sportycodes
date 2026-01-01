@@ -1,14 +1,26 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// VAPID public key from the generated keys (base64url format)
-const VAPID_PUBLIC_KEY = 'BM2vbhroFFAULgUgFqSrUs1gEkp97N3yHyWIC7bb1ZwC5ipxX7FUU6dE7Th98Fzelj07gJaGeCVpLEWoz1jF0bU';
+let cachedVapidPublicKey: string | null = null;
+
+const getVapidPublicKey = async (): Promise<string> => {
+  if (cachedVapidPublicKey) return cachedVapidPublicKey;
+
+  const { data, error } = await supabase.functions.invoke("get-vapid-public-key");
+  if (error) throw error;
+
+  const key = (data as any)?.publicKey;
+  if (!key || typeof key !== "string") {
+    throw new Error("VAPID public key not available");
+  }
+
+  cachedVapidPublicKey = key;
+  return key;
+};
 
 export const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
 
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
@@ -20,16 +32,16 @@ export const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
 };
 
 export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
-  if (!('Notification' in window)) {
-    console.warn('This browser does not support notifications');
-    return 'denied';
+  if (!("Notification" in window)) {
+    console.warn("This browser does not support notifications");
+    return "denied";
   }
 
-  if (Notification.permission === 'granted') {
-    return 'granted';
+  if (Notification.permission === "granted") {
+    return "granted";
   }
 
-  if (Notification.permission !== 'denied') {
+  if (Notification.permission !== "denied") {
     const permission = await Notification.requestPermission();
     return permission;
   }
@@ -40,30 +52,36 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
 export const subscribeToPushNotifications = async (userEmail: string): Promise<boolean> => {
   try {
     // Check if browser supports notifications
-    if (!('Notification' in window)) {
-      toast.error('Your browser does not support notifications');
+    if (!("Notification" in window)) {
+      toast.error("Your browser does not support notifications");
       return false;
     }
 
     // Check if service workers are supported
-    if (!('serviceWorker' in navigator)) {
-      toast.error('Your browser does not support service workers');
+    if (!("serviceWorker" in navigator)) {
+      toast.error("Your browser does not support service workers");
       return false;
     }
 
     // Check current permission status
-    if (Notification.permission === 'denied') {
-      toast.error('Notifications are blocked. Please enable them in your browser settings:\n1. Click the lock icon in the address bar\n2. Allow notifications for this site\n3. Refresh the page');
+    if (Notification.permission === "denied") {
+      toast.error(
+        "Notifications are blocked. Please enable them in your browser settings:\n1. Click the lock icon in the address bar\n2. Allow notifications for this site\n3. Refresh the page"
+      );
       return false;
     }
 
     const permission = await requestNotificationPermission();
-    
-    if (permission !== 'granted') {
-      if (permission === 'denied') {
-        toast.error('Notifications are blocked. Please enable them in your browser settings:\n1. Click the lock icon in the address bar\n2. Allow notifications for this site\n3. Refresh the page');
+
+    if (permission !== "granted") {
+      if (permission === "denied") {
+        toast.error(
+          "Notifications are blocked. Please enable them in your browser settings:\n1. Click the lock icon in the address bar\n2. Allow notifications for this site\n3. Refresh the page"
+        );
       } else {
-        toast.error('Please accept the notification prompt that appears in your browser to enable alerts.');
+        toast.error(
+          "Please accept the notification prompt that appears in your browser to enable alerts."
+        );
       }
       return false;
     }
@@ -71,59 +89,56 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
     // Wait for service worker to be ready
     await navigator.serviceWorker.ready;
     const registration = await navigator.serviceWorker.getRegistration();
-    
+
     if (!registration) {
-      toast.error('Service worker not found. Please refresh the page and try again.');
+      toast.error("Service worker not found. Please refresh the page and try again.");
       return false;
     }
 
-    console.log('Service worker ready:', registration);
+    console.log("Service worker ready:", registration);
+
+    // Ensure we re-subscribe cleanly (important after VAPID key rotation)
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) {
+      await existing.unsubscribe();
+    }
+
+    const vapidPublicKey = await getVapidPublicKey();
 
     // Subscribe to push notifications
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
     });
-    console.log('Push subscription created:', subscription);
+    console.log("Push subscription created:", subscription);
 
     // Save subscription to database
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .insert({
+    const { error } = await supabase.from("push_subscriptions").upsert(
+      {
         user_email: userEmail,
-        subscription: subscription.toJSON() as any
-      })
-      .select()
-      .single();
+        subscription: subscription.toJSON() as any,
+      },
+      { onConflict: "user_email" }
+    );
 
-    if (error) {
-      // If user already exists, update the subscription
-      const { error: updateError } = await supabase
-        .from('push_subscriptions')
-        .update({
-          subscription: subscription.toJSON() as any
-        })
-        .eq('user_email', userEmail);
-        
-      if (updateError) throw updateError;
-    }
+    if (error) throw error;
 
-    console.log('Push subscription saved to database');
-    toast.success('Notifications enabled! You will receive updates.');
+    console.log("Push subscription saved to database");
+    toast.success("Notifications enabled! You will receive updates.");
     return true;
-
   } catch (error: any) {
-    console.error('Error subscribing to push notifications:', error);
-    if (error.message?.includes('subscription')) {
-      toast.error('Failed to create push subscription. Please try again.');
-    } else if (error.message?.includes('permission')) {
-      toast.error('Notification permission denied. Please enable in browser settings.');
+    console.error("Error subscribing to push notifications:", error);
+    if (error.message?.includes("subscription")) {
+      toast.error("Failed to create push subscription. Please try again.");
+    } else if (error.message?.includes("permission")) {
+      toast.error("Notification permission denied. Please enable in browser settings.");
     } else {
-      toast.error('Failed to enable notifications. Please try again.');
+      toast.error("Failed to enable notifications. Please try again.");
     }
     return false;
   }
 };
+
 
 export const unsubscribeFromPushNotifications = async (userEmail: string): Promise<boolean> => {
   try {
