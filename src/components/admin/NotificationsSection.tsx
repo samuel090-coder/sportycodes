@@ -34,6 +34,14 @@ interface NotificationTemplate {
   image_url?: string;
 }
 
+type DeviceDiagnostics = {
+  permission: string;
+  isStandalone: boolean;
+  swScriptUrl: string | null;
+  hasSubscription: boolean;
+  endpointPreview: string | null;
+};
+
 export const NotificationsSection = () => {
   const [activeTab, setActiveTab] = useState("compose");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +58,10 @@ export const NotificationsSection = () => {
   // Quick Test (This Device)
   const [myDeviceEmail, setMyDeviceEmail] = useState("");
   const [testingSelf, setTestingSelf] = useState(false);
+
+  // Quick diagnostics to confirm SW + subscription on the current device
+  const [diagnostics, setDiagnostics] = useState<DeviceDiagnostics | null>(null);
+  const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
 
   // Stats
   const [subscriberCount, setSubscriberCount] = useState(0);
@@ -113,6 +125,9 @@ export const NotificationsSection = () => {
     } catch {
       // ignore
     }
+
+    // Load initial diagnostics (SW + permission + subscription status)
+    void refreshDiagnostics();
   }, []);
 
   const fetchSubscriberCount = async () => {
@@ -128,6 +143,50 @@ export const NotificationsSection = () => {
       console.error("Error fetching subscriber count:", error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  const refreshDiagnostics = async () => {
+    setLoadingDiagnostics(true);
+    try {
+      const permission =
+        "Notification" in window ? Notification.permission : "unsupported";
+
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone ||
+        document.referrer.includes("android-app://");
+
+      let swScriptUrl: string | null = null;
+      let hasSubscription = false;
+      let endpointPreview: string | null = null;
+
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        swScriptUrl =
+          reg?.active?.scriptURL || reg?.waiting?.scriptURL || reg?.installing?.scriptURL || null;
+
+        if (reg?.pushManager) {
+          const sub = await reg.pushManager.getSubscription();
+          hasSubscription = !!sub;
+          if (sub?.endpoint) {
+            endpointPreview = sub.endpoint.slice(0, 48) + "…";
+          }
+        }
+      }
+
+      setDiagnostics({
+        permission,
+        isStandalone,
+        swScriptUrl,
+        hasSubscription,
+        endpointPreview,
+      });
+    } catch (e) {
+      console.error("Diagnostics error:", e);
+      setDiagnostics(null);
+    } finally {
+      setLoadingDiagnostics(false);
     }
   };
 
@@ -251,6 +310,7 @@ export const NotificationsSection = () => {
       console.log("Test send result:", data);
       toast.success("Test notification sent to this device");
       fetchSubscriberCount();
+      void refreshDiagnostics();
     } catch (error: any) {
       console.error("Error test-sending notification:", error);
       toast.error(error.message || "Failed to send test notification");
@@ -530,7 +590,28 @@ export const NotificationsSection = () => {
 
               {/* Test Send (This Device) */}
               <div className="p-4 bg-cyber-dark/50 border border-cyber-neon-green/30 rounded-lg space-y-3">
-                <Label className="text-cyber-neon-green font-mono text-sm">TEST SEND (THIS DEVICE)</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-cyber-neon-green font-mono text-sm">TEST SEND (THIS DEVICE)</Label>
+                  <Button
+                    type="button"
+                    onClick={refreshDiagnostics}
+                    disabled={loadingDiagnostics}
+                    variant="outline"
+                    className="border-cyber-neon-green/50 text-cyber-neon-green hover:bg-cyber-neon-green/20"
+                  >
+                    {loadingDiagnostics ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Refreshing
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4 mr-2" />
+                        Diagnostics
+                      </>
+                    )}
+                  </Button>
+                </div>
 
                 <div className="flex gap-2">
                   <Input
@@ -549,6 +630,41 @@ export const NotificationsSection = () => {
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
+
+                {diagnostics && (
+                  <div className="text-xs font-mono space-y-1 text-cyber-neon-green/80">
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-70">Permission:</span>
+                      <span className="font-bold">{diagnostics.permission}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-70">Installed:</span>
+                      <span className="font-bold">{diagnostics.isStandalone ? "yes" : "no"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-70">SW:</span>
+                      <span className="truncate">{diagnostics.swScriptUrl || "none"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-70">Subscribed:</span>
+                      {diagnostics.hasSubscription ? (
+                        <span className="inline-flex items-center gap-1 font-bold">
+                          <CheckCircle2 className="w-3 h-3" /> yes
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-bold">
+                          <XCircle className="w-3 h-3" /> no
+                        </span>
+                      )}
+                    </div>
+                    {diagnostics.endpointPreview && (
+                      <div className="flex items-center gap-2">
+                        <span className="opacity-70">Endpoint:</span>
+                        <span className="truncate">{diagnostics.endpointPreview}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Button
                   type="button"

@@ -63,6 +63,20 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
       return false;
     }
 
+    // Push API availability varies (notably iOS Safari).
+    if (!("PushManager" in window)) {
+      toast.error(
+        "Push notifications are not supported on this device/browser. On iPhone/iPad you must install the app to your Home Screen first, then enable notifications."
+      );
+      return false;
+    }
+
+    // Push requires HTTPS / secure context
+    if (!window.isSecureContext) {
+      toast.error("Notifications require a secure (HTTPS) connection.");
+      return false;
+    }
+
     // Check current permission status
     if (Notification.permission === "denied") {
       toast.error(
@@ -86,14 +100,8 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
       return false;
     }
 
-    // Wait for service worker to be ready
-    await navigator.serviceWorker.ready;
-    const registration = await navigator.serviceWorker.getRegistration();
-
-    if (!registration) {
-      toast.error("Service worker not found. Please refresh the page and try again.");
-      return false;
-    }
+    // Ensure we have an active SW registration
+    const registration = await navigator.serviceWorker.ready;
 
     console.log("Service worker ready:", registration);
 
@@ -128,9 +136,13 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
     return true;
   } catch (error: any) {
     console.error("Error subscribing to push notifications:", error);
-    if (error.message?.includes("subscription")) {
+    if (error?.name === "NotAllowedError") {
+      toast.error(
+        "Notification permission was blocked. Please allow notifications for this site and try again."
+      );
+    } else if (error?.message?.includes("subscription")) {
       toast.error("Failed to create push subscription. Please try again.");
-    } else if (error.message?.includes("permission")) {
+    } else if (error?.message?.includes("permission")) {
       toast.error("Notification permission denied. Please enable in browser settings.");
     } else {
       toast.error("Failed to enable notifications. Please try again.");
@@ -170,16 +182,16 @@ export const unsubscribeFromPushNotifications = async (userEmail: string): Promi
 export const checkNotificationStatus = async (userEmail: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('user_email', userEmail)
-      .single();
+      .from("push_subscriptions")
+      .select("id")
+      .eq("user_email", userEmail)
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error; // Ignore "not found" error
+    if (error) throw error;
 
     return !!data;
   } catch (error) {
-    console.error('Error checking notification status:', error);
+    console.error("Error checking notification status:", error);
     return false;
   }
 };
@@ -192,11 +204,13 @@ export const checkNotificationStatus = async (userEmail: string): Promise<boolea
 export const validateAndCleanupSubscription = async (userEmail: string): Promise<boolean> => {
   try {
     // Check if there's a DB record for this user
-    const { data: dbRecord } = await supabase
-      .from('push_subscriptions')
-      .select('subscription')
-      .eq('user_email', userEmail)
-      .single();
+    const { data: dbRecord, error } = await supabase
+      .from("push_subscriptions")
+      .select("subscription")
+      .eq("user_email", userEmail)
+      .maybeSingle();
+
+    if (error) throw error;
 
     if (!dbRecord) {
       // No DB record - user should subscribe
@@ -204,40 +218,40 @@ export const validateAndCleanupSubscription = async (userEmail: string): Promise
     }
 
     // Check browser's current subscription
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       return false; // Can't check, assume OK
     }
 
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
       // No service worker - delete stale DB record
-      await supabase.from('push_subscriptions').delete().eq('user_email', userEmail);
+      await supabase.from("push_subscriptions").delete().eq("user_email", userEmail);
       return true;
     }
 
     const browserSub = await registration.pushManager.getSubscription();
-    
+
     if (!browserSub) {
       // Browser has no subscription but DB does - delete stale record
-      await supabase.from('push_subscriptions').delete().eq('user_email', userEmail);
-      console.log('Cleaned up stale subscription for', userEmail);
+      await supabase.from("push_subscriptions").delete().eq("user_email", userEmail);
+      console.log("Cleaned up stale subscription for", userEmail);
       return true;
     }
 
-    // Compare endpoints - cast to access nested property
+    // Compare endpoints
     const subscription = dbRecord.subscription as { endpoint?: string } | null;
     const dbEndpoint = subscription?.endpoint;
     if (dbEndpoint !== browserSub.endpoint) {
       // Mismatch - unsubscribe browser and delete DB record
       await browserSub.unsubscribe();
-      await supabase.from('push_subscriptions').delete().eq('user_email', userEmail);
-      console.log('Cleaned up mismatched subscription for', userEmail);
+      await supabase.from("push_subscriptions").delete().eq("user_email", userEmail);
+      console.log("Cleaned up mismatched subscription for", userEmail);
       return true;
     }
 
     return false; // All good
   } catch (error) {
-    console.error('Error validating subscription:', error);
+    console.error("Error validating subscription:", error);
     return false;
   }
 };
