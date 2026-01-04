@@ -6,12 +6,25 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { 
-  Bell, Send, Loader2, Users, Image, Sparkles, 
-  Copy, Trash2, Plus, Eye, Megaphone, Clock,
-  CheckCircle2, XCircle, Upload
+import {
+  Bell,
+  Send,
+  Loader2,
+  Users,
+  Image,
+  Sparkles,
+  Copy,
+  Trash2,
+  Plus,
+  Eye,
+  Megaphone,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Upload,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeToPushNotifications } from "@/lib/pushNotifications";
 
 interface NotificationTemplate {
   id: string;
@@ -24,7 +37,7 @@ interface NotificationTemplate {
 export const NotificationsSection = () => {
   const [activeTab, setActiveTab] = useState("compose");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Compose state
   const [title, setTitle] = useState("🎯 SPORTY CODES Alert!");
   const [body, setBody] = useState("Check out our latest sure odds predictions!");
@@ -33,11 +46,15 @@ export const NotificationsSection = () => {
   const [sendToAll, setSendToAll] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
+  // Quick Test (This Device)
+  const [myDeviceEmail, setMyDeviceEmail] = useState("");
+  const [testingSelf, setTestingSelf] = useState(false);
+
   // Stats
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [loadingStats, setLoadingStats] = useState(true);
-  
+
   // Templates
   const [templates, setTemplates] = useState<NotificationTemplate[]>([
     {
@@ -45,36 +62,36 @@ export const NotificationsSection = () => {
       name: "New Sure Odds",
       title: "🔥 New Sure Odds Available!",
       body: "Don't miss out! Fresh predictions with high confidence just dropped.",
-      image_url: ""
+      image_url: "",
     },
     {
-      id: "2", 
+      id: "2",
       name: "Match Going Live",
       title: "⚽ Match Starting Now!",
       body: "Your selected match is about to begin. Check the predictions!",
-      image_url: ""
+      image_url: "",
     },
     {
       id: "3",
       name: "Payment Approved",
       title: "✅ Payment Confirmed!",
       body: "Your payment has been approved. Access your betting codes now!",
-      image_url: ""
+      image_url: "",
     },
     {
       id: "4",
       name: "Big Win Alert",
       title: "🏆 Jackpot Alert!",
       body: "Major wins happening today! Get in on the action before it's too late.",
-      image_url: ""
+      image_url: "",
     },
     {
       id: "5",
       name: "Daily Bonus",
       title: "🎁 Daily Bonus Ready!",
       body: "Your daily free predictions are waiting. Claim them now!",
-      image_url: ""
-    }
+      image_url: "",
+    },
   ]);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -84,19 +101,31 @@ export const NotificationsSection = () => {
 
   useEffect(() => {
     fetchSubscriberCount();
+
+    // Keep the same "guest" identity strategy used on user pages
+    try {
+      let email = localStorage.getItem("user_payment_email");
+      if (!email) {
+        email = `guest_${Date.now()}`;
+        localStorage.setItem("user_payment_email", email);
+      }
+      setMyDeviceEmail(email);
+    } catch {
+      // ignore
+    }
   }, []);
 
   const fetchSubscriberCount = async () => {
     setLoadingStats(true);
     try {
       const { count, error } = await supabase
-        .from('push_subscriptions')
-        .select('*', { count: 'exact', head: true });
-      
+        .from("push_subscriptions")
+        .select("*", { count: "exact", head: true });
+
       if (error) throw error;
       setSubscriberCount(count || 0);
     } catch (error) {
-      console.error('Error fetching subscriber count:', error);
+      console.error("Error fetching subscriber count:", error);
     } finally {
       setLoadingStats(false);
     }
@@ -186,6 +215,57 @@ export const NotificationsSection = () => {
       toast.error(error.message || "Failed to send notification");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleTestSendToMyDevice = async () => {
+    if (!myDeviceEmail) {
+      toast.error("No device id found on this browser");
+      return;
+    }
+
+    setTestingSelf(true);
+    try {
+      // Ensure this browser has an active subscription (will prompt permission if needed)
+      const subscribed = await subscribeToPushNotifications(myDeviceEmail);
+      if (!subscribed) return;
+
+      const payload: any = {
+        title,
+        body,
+        data: {},
+      };
+
+      if (imageUrl) {
+        payload.data.image = imageUrl;
+      }
+
+      payload.userEmail = myDeviceEmail;
+
+      const { data, error } = await supabase.functions.invoke("send-push-notification", {
+        body: payload,
+      });
+
+      if (error) throw error;
+
+      console.log("Test send result:", data);
+      toast.success("Test notification sent to this device");
+      fetchSubscriberCount();
+    } catch (error: any) {
+      console.error("Error test-sending notification:", error);
+      toast.error(error.message || "Failed to send test notification");
+    } finally {
+      setTestingSelf(false);
+    }
+  };
+
+  const copyMyDeviceId = async () => {
+    if (!myDeviceEmail) return;
+    try {
+      await navigator.clipboard.writeText(myDeviceEmail);
+      toast.success("Device ID copied");
+    } catch {
+      toast.error("Couldn't copy device ID");
     }
   };
 
@@ -446,6 +526,52 @@ export const NotificationsSection = () => {
                     placeholder="user@example.com"
                   />
                 )}
+              </div>
+
+              {/* Test Send (This Device) */}
+              <div className="p-4 bg-cyber-dark/50 border border-cyber-neon-green/30 rounded-lg space-y-3">
+                <Label className="text-cyber-neon-green font-mono text-sm">TEST SEND (THIS DEVICE)</Label>
+
+                <div className="flex gap-2">
+                  <Input
+                    value={myDeviceEmail}
+                    readOnly
+                    className="bg-cyber-dark/50 border-cyber-neon-green/40 text-cyber-neon-green font-mono"
+                  />
+                  <Button
+                    type="button"
+                    onClick={copyMyDeviceId}
+                    disabled={!myDeviceEmail}
+                    variant="outline"
+                    className="border-cyber-neon-green text-cyber-neon-green hover:bg-cyber-neon-green/20"
+                    title="Copy device ID"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleTestSendToMyDevice}
+                  disabled={testingSelf}
+                  className="w-full bg-cyber-neon-green/20 hover:bg-cyber-neon-green/30 text-cyber-neon-green border border-cyber-neon-green/40 font-bold font-mono"
+                >
+                  {testingSelf ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      TESTING...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-4 h-4 mr-2" />
+                      SEND TEST TO THIS DEVICE
+                    </>
+                  )}
+                </Button>
+
+                <p className="text-xs text-cyber-neon-green/70 font-mono">
+                  This will subscribe this browser if needed, then send a push to its saved subscription.
+                </p>
               </div>
 
               {/* Save as Template */}
