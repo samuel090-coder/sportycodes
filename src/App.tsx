@@ -8,6 +8,11 @@ import LoadingScreen from "./components/LoadingScreen";
 import InstallGate from "./components/InstallGate";
 import SureOdds from "./pages/SureOdds";
 import Payment from "./pages/Payment";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import TapToEarn from "./pages/TapToEarn";
+import Wallet from "./pages/Wallet";
+import Profile from "./pages/Profile";
 import { AdminLayout } from "./pages/AdminLayout";
 import { SecuritySection } from "./components/admin/SecuritySection";
 import { AdsSection } from "./components/admin/AdsSection";
@@ -49,6 +54,11 @@ const App = () => {
             <Routes>
               <Route path="/" element={<SureOdds />} />
               <Route path="/payment" element={<Payment />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/tap" element={<TapToEarn />} />
+              <Route path="/wallet" element={<Wallet />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="security" element={<SecuritySection />} />
                 <Route path="ads" element={<AdsSection />} />
