@@ -13,6 +13,8 @@ import Dashboard from "./pages/Dashboard";
 import TapToEarn from "./pages/TapToEarn";
 import Wallet from "./pages/Wallet";
 import Profile from "./pages/Profile";
+import Shorts from "./pages/Shorts";
+import Leaderboard from "./pages/Leaderboard";
 import { AdminLayout } from "./pages/AdminLayout";
 import { SecuritySection } from "./components/admin/SecuritySection";
 import { AdsSection } from "./components/admin/AdsSection";
@@ -60,6 +62,8 @@ const App = () => {
               <Route path="/tap" element={<TapToEarn />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/shorts" element={<Shorts />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="security" element={<SecuritySection />} />
                 <Route path="ads" element={<AdsSection />} />

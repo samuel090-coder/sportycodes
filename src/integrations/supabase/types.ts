@@ -133,6 +133,27 @@ export type Database = {
         }
         Relationships: []
       }
+      follows: {
+        Row: {
+          created_at: string | null
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       global_ad_zones: {
         Row: {
           created_at: string | null
@@ -211,6 +232,51 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          daily_tap_reminder: boolean | null
+          deposit_approved: boolean | null
+          id: string
+          new_follower: boolean | null
+          post_comments: boolean | null
+          post_likes: boolean | null
+          referral_signup: boolean | null
+          streak_reminder: boolean | null
+          updated_at: string | null
+          user_id: string
+          withdrawal_completed: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_tap_reminder?: boolean | null
+          deposit_approved?: boolean | null
+          id?: string
+          new_follower?: boolean | null
+          post_comments?: boolean | null
+          post_likes?: boolean | null
+          referral_signup?: boolean | null
+          streak_reminder?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          withdrawal_completed?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_tap_reminder?: boolean | null
+          deposit_approved?: boolean | null
+          id?: string
+          new_follower?: boolean | null
+          post_comments?: boolean | null
+          post_likes?: boolean | null
+          referral_signup?: boolean | null
+          streak_reminder?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          withdrawal_completed?: boolean | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number | null
@@ -250,6 +316,38 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          option_index: number
+          short_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          option_index: number
+          short_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          option_index?: number
+          short_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_short_id_fkey"
+            columns: ["short_id"]
+            isOneToOne: false
+            referencedRelation: "shorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -257,9 +355,13 @@ export type Database = {
           country: string | null
           created_at: string
           display_name: string | null
+          followers_count: number | null
+          following_count: number | null
           id: string
           phone: string | null
+          posts_count: number | null
           referral_code: string | null
+          referral_earnings: number | null
           referred_by: string | null
           total_earned: number | null
           updated_at: string
@@ -271,9 +373,13 @@ export type Database = {
           country?: string | null
           created_at?: string
           display_name?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id: string
           phone?: string | null
+          posts_count?: number | null
           referral_code?: string | null
+          referral_earnings?: number | null
           referred_by?: string | null
           total_earned?: number | null
           updated_at?: string
@@ -285,15 +391,26 @@ export type Database = {
           country?: string | null
           created_at?: string
           display_name?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id?: string
           phone?: string | null
+          posts_count?: number | null
           referral_code?: string | null
+          referral_earnings?: number | null
           referred_by?: string | null
           total_earned?: number | null
           updated_at?: string
           username?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_referred_by_fkey"
             columns: ["referred_by"]
@@ -323,6 +440,158 @@ export type Database = {
           user_email?: string
         }
         Relationships: []
+      }
+      referrals: {
+        Row: {
+          bonus_amount: number | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          referred_id: string
+          referrer_id: string
+          status: string | null
+        }
+        Insert: {
+          bonus_amount?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          referred_id: string
+          referrer_id: string
+          status?: string | null
+        }
+        Update: {
+          bonus_amount?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      shorts: {
+        Row: {
+          comments_count: number | null
+          content: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          likes_count: number | null
+          media_type: string | null
+          media_url: string | null
+          poll_options: Json | null
+          shares_count: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comments_count?: number | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          poll_options?: Json | null
+          shares_count?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comments_count?: number | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          poll_options?: Json | null
+          shares_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shorts_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          likes_count: number | null
+          parent_id: string | null
+          short_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          parent_id?: string | null
+          short_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          parent_id?: string | null
+          short_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shorts_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "shorts_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shorts_comments_short_id_fkey"
+            columns: ["short_id"]
+            isOneToOne: false
+            referencedRelation: "shorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shorts_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          short_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          short_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          short_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shorts_likes_short_id_fkey"
+            columns: ["short_id"]
+            isOneToOne: false
+            referencedRelation: "shorts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sure_odds: {
         Row: {
@@ -411,6 +680,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_streaks: {
+        Row: {
+          created_at: string | null
+          current_streak: number | null
+          id: string
+          last_tap_date: string | null
+          longest_streak: number | null
+          streak_multiplier: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_tap_date?: string | null
+          longest_streak?: number | null
+          streak_multiplier?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_tap_date?: string | null
+          longest_streak?: number | null
+          streak_multiplier?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallets: {
         Row: {
           balance: number | null
@@ -482,7 +784,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      leaderboard: {
+        Row: {
+          avatar_url: string | null
+          current_streak: number | null
+          display_name: string | null
+          followers_count: number | null
+          id: string | null
+          longest_streak: number | null
+          referral_earnings: number | null
+          total_earned: number | null
+          username: string | null
+          weekly_earnings: number | null
+          weekly_taps: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_tap_earnings: {
@@ -497,6 +814,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { user_email: string }; Returns: boolean }
+      update_user_streak: { Args: { _user_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
