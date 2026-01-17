@@ -295,14 +295,14 @@ const TapToEarn = () => {
             {particles.map(particle => (
               <div
                 key={particle.id}
-                className="absolute pointer-events-none animate-fade-in"
+                className="absolute pointer-events-none animate-float-up"
                 style={{
                   left: particle.x,
                   top: particle.y,
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                <span className="text-primary font-black text-lg animate-slide-up">
+                <span className="text-primary font-black text-lg drop-shadow-lg">
                   +₦{CENTS_PER_TAP.toFixed(2)}
                 </span>
               </div>

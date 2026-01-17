@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -25,7 +25,7 @@ const menuItems = [
     icon: DollarSign,
     items: [
       { title: "Ad Management", path: "/admin/ads", icon: DollarSign },
-      { title: "Payment Approvals", path: "/admin/payments", icon: Users },
+      { title: "Deposits & Withdrawals", path: "/admin/payments", icon: Wallet },
     ],
   },
   {
@@ -42,7 +42,7 @@ const menuItems = [
       { title: "SEO Manager", path: "/admin/seo", icon: Search },
       { title: "Site Verification", path: "/admin/verification", icon: BadgeCheck },
       { title: "Notifications", path: "/admin/notifications", icon: Bell },
-      { title: "Settings", path: "/admin/settings", icon: Settings },
+      { title: "Bank & Settings", path: "/admin/settings", icon: Settings },
     ],
   },
 ];
