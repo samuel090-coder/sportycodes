@@ -530,7 +530,10 @@ const Shorts = () => {
             {/* User Info */}
             <div className="absolute bottom-32 left-4 right-20 text-white">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-cyber-neon-purple p-0.5">
+                <button 
+                  onClick={() => navigate(`/user/${currentShort.user_id}`)}
+                  className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-cyber-neon-purple p-0.5"
+                >
                   <div className="w-full h-full rounded-full bg-black overflow-hidden">
                     {currentShort.profile?.avatar_url ? (
                       <img src={currentShort.profile.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -540,11 +543,14 @@ const Shorts = () => {
                       </div>
                     )}
                   </div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold">{currentShort.profile?.display_name || "Unknown"}</p>
+                </button>
+                <button 
+                  onClick={() => navigate(`/user/${currentShort.user_id}`)}
+                  className="flex-1 text-left"
+                >
+                  <p className="font-bold hover:underline">{currentShort.profile?.display_name || "Unknown"}</p>
                   <p className="text-white/60 text-sm">@{currentShort.profile?.username || "user"}</p>
-                </div>
+                </button>
                 {currentShort.user_id !== user?.id && (
                   <Button
                     onClick={() => handleFollow(currentShort.user_id)}
@@ -791,15 +797,15 @@ const Shorts = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Comments Modal */}
+      {/* Comments Modal - Fixed positioning */}
       <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
-        <DialogContent className="bg-card border-border rounded-t-3xl fixed bottom-0 left-0 right-0 max-h-[70vh] p-0 gap-0">
-          <div className="p-4 border-b border-border">
+        <DialogContent className="bg-card border-border rounded-2xl max-w-md mx-auto p-0 gap-0 max-h-[70vh] flex flex-col">
+          <div className="p-4 border-b border-border flex-shrink-0">
             <div className="w-12 h-1 bg-border rounded-full mx-auto mb-3" />
             <h3 className="text-lg font-bold text-foreground text-center">Comments</h3>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 max-h-[50vh]">
+          <div className="flex-1 overflow-y-auto p-4 min-h-0">
             {loadingComments ? (
               <div className="flex items-center justify-center py-8">
                 <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -813,12 +819,16 @@ const Shorts = () => {
               <div className="space-y-4">
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
-                      {comment.profile?.display_name?.[0] || "?"}
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
+                      {comment.profile?.avatar_url ? (
+                        <img src={comment.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        comment.profile?.display_name?.[0] || "?"
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-foreground">{comment.profile?.display_name}</p>
-                      <p className="text-sm text-foreground/80">{comment.content}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground">{comment.profile?.display_name || "User"}</p>
+                      <p className="text-sm text-foreground/80 break-words">{comment.content}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(comment.created_at).toLocaleDateString()}
                       </p>
@@ -829,7 +839,7 @@ const Shorts = () => {
             )}
           </div>
 
-          <div className="p-4 border-t border-border flex gap-2">
+          <div className="p-4 border-t border-border flex gap-2 flex-shrink-0 bg-card">
             <Input
               placeholder="Add a comment..."
               value={newComment}
@@ -840,7 +850,7 @@ const Shorts = () => {
             <Button
               onClick={postComment}
               size="icon"
-              className="rounded-full"
+              className="rounded-full flex-shrink-0"
               disabled={!newComment.trim()}
             >
               <Send className="w-4 h-4" />

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Settings, Save, Building2 } from "lucide-react";
+import { Settings, Save, Building2, Zap, Gift, Flame } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const SettingsSection = () => {
@@ -18,6 +18,13 @@ export const SettingsSection = () => {
     account_number: ""
   });
 
+  const [tapSettings, setTapSettings] = useState({
+    tap_earnings_amount: "0.50",
+    max_daily_taps: "100",
+    referral_bonus: "50",
+    streak_bonus_multiplier: "0.1"
+  });
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -27,17 +34,24 @@ export const SettingsSection = () => {
     try {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("setting_key, setting_value")
-        .in("setting_key", ["bank_name", "account_name", "account_number"]);
+        .select("setting_key, setting_value");
 
       if (error) throw error;
 
       if (data) {
-        const settings: any = { ...bankSettings };
+        const bank: any = { ...bankSettings };
+        const tap: any = { ...tapSettings };
+        
         data.forEach(item => {
-          settings[item.setting_key] = item.setting_value;
+          if (["bank_name", "account_name", "account_number"].includes(item.setting_key)) {
+            bank[item.setting_key] = item.setting_value;
+          } else if (["tap_earnings_amount", "max_daily_taps", "referral_bonus", "streak_bonus_multiplier"].includes(item.setting_key)) {
+            tap[item.setting_key] = item.setting_value;
+          }
         });
-        setBankSettings(settings);
+        
+        setBankSettings(bank);
+        setTapSettings(tap);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -50,8 +64,11 @@ export const SettingsSection = () => {
   const saveSettings = async () => {
     setIsSaving(true);
     try {
+      // Combine all settings
+      const allSettings = { ...bankSettings, ...tapSettings };
+      
       // Upsert each setting
-      for (const [key, value] of Object.entries(bankSettings)) {
+      for (const [key, value] of Object.entries(allSettings)) {
         const { error } = await supabase
           .from("app_settings")
           .upsert(
@@ -75,12 +92,89 @@ export const SettingsSection = () => {
     return (
       <div className="space-y-6">
         <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Tap to Earn Settings */}
+      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
+        <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+          <Zap className="w-5 h-5 text-primary" />
+          Tap to Earn Settings
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Control how much users earn from tapping and other rewards.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-foreground flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Earnings Per Tap (₦)
+            </Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={tapSettings.tap_earnings_amount}
+              onChange={(e) => setTapSettings(prev => ({ ...prev, tap_earnings_amount: e.target.value }))}
+              placeholder="0.50"
+              className="bg-background border-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground">Max Daily Taps</Label>
+            <Input
+              type="number"
+              value={tapSettings.max_daily_taps}
+              onChange={(e) => setTapSettings(prev => ({ ...prev, max_daily_taps: e.target.value }))}
+              placeholder="100"
+              className="bg-background border-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground flex items-center gap-2">
+              <Gift className="w-4 h-4" />
+              Referral Bonus (₦)
+            </Label>
+            <Input
+              type="number"
+              value={tapSettings.referral_bonus}
+              onChange={(e) => setTapSettings(prev => ({ ...prev, referral_bonus: e.target.value }))}
+              placeholder="50"
+              className="bg-background border-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground flex items-center gap-2">
+              <Flame className="w-4 h-4" />
+              Streak Bonus Multiplier (₦/day)
+            </Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={tapSettings.streak_bonus_multiplier}
+              onChange={(e) => setTapSettings(prev => ({ ...prev, streak_bonus_multiplier: e.target.value }))}
+              placeholder="0.1"
+              className="bg-background border-border"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-secondary/30 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            💡 <strong>Streak Bonus:</strong> Users earn an extra ₦{tapSettings.streak_bonus_multiplier} per tap for each consecutive day they tap. 
+            For example, a 5-day streak = ₦{(parseFloat(tapSettings.streak_bonus_multiplier) * 5).toFixed(2)} extra per tap.
+          </p>
+        </div>
+      </Card>
+
+      {/* Bank Account Settings */}
       <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
         <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
           <Building2 className="w-5 h-5 text-primary" />
@@ -120,36 +214,28 @@ export const SettingsSection = () => {
               className="bg-background border-border"
             />
           </div>
-
-          <Button
-            onClick={saveSettings}
-            disabled={isSaving}
-            className="w-full mt-4 bg-primary hover:bg-primary/90"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                Saving...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Save className="w-4 h-4" />
-                Save Settings
-              </span>
-            )}
-          </Button>
         </div>
       </Card>
 
-      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
-        <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-muted-foreground" />
-          App Configuration
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          More app settings coming soon. Manage tap-to-earn rates, referral bonuses, and more.
-        </p>
-      </Card>
+      {/* Save Button */}
+      <Button
+        onClick={saveSettings}
+        disabled={isSaving}
+        className="w-full bg-primary hover:bg-primary/90"
+        size="lg"
+      >
+        {isSaving ? (
+          <span className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            Saving...
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <Save className="w-4 h-4" />
+            Save All Settings
+          </span>
+        )}
+      </Button>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Zap, Wallet, Gift, TrendingUp, ChevronRight, LogOut, User } from "lucide-react";
+import { Zap, Wallet, Gift, TrendingUp, ChevronRight, LogOut, User, Flame, Trophy } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 const TapToEarn = () => {
@@ -12,13 +12,16 @@ const TapToEarn = () => {
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [todayTaps, setTodayTaps] = useState<any>(null);
+  const [streak, setStreak] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTapping, setIsTapping] = useState(false);
   const [tapAnimation, setTapAnimation] = useState(false);
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([]);
-
-  const CENTS_PER_TAP = 0.50;
-  const MAX_DAILY_TAPS = 100;
+  
+  // Dynamic settings from admin
+  const [centsPerTap, setCentsPerTap] = useState(0.50);
+  const [maxDailyTaps, setMaxDailyTaps] = useState(100);
+  const [streakMultiplier, setStreakMultiplier] = useState(0.1);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -28,7 +31,10 @@ const TapToEarn = () => {
         return;
       }
       setUser(session.user);
-      await loadUserData(session.user.id);
+      await Promise.all([
+        loadUserData(session.user.id),
+        loadSettings()
+      ]);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -44,6 +50,29 @@ const TapToEarn = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const loadSettings = async () => {
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("setting_key, setting_value")
+        .in("setting_key", ["tap_earnings_amount", "max_daily_taps", "streak_bonus_multiplier"]);
+
+      if (data) {
+        data.forEach(item => {
+          if (item.setting_key === "tap_earnings_amount") {
+            setCentsPerTap(parseFloat(item.setting_value) || 0.50);
+          } else if (item.setting_key === "max_daily_taps") {
+            setMaxDailyTaps(parseInt(item.setting_value) || 100);
+          } else if (item.setting_key === "streak_bonus_multiplier") {
+            setStreakMultiplier(parseFloat(item.setting_value) || 0.1);
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
 
   const loadUserData = async (userId: string) => {
     setIsLoading(true);
@@ -63,6 +92,14 @@ const TapToEarn = () => {
         .eq("user_id", userId)
         .single();
       setWallet(walletData);
+
+      // Load streak data
+      const { data: streakData } = await supabase
+        .from("user_streaks")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+      setStreak(streakData);
 
       // Load today's taps
       const today = new Date().toISOString().split("T")[0];
@@ -84,7 +121,7 @@ const TapToEarn = () => {
     if (!user || isTapping) return;
     
     const currentTaps = todayTaps?.tap_count || 0;
-    if (currentTaps >= MAX_DAILY_TAPS) {
+    if (currentTaps >= maxDailyTaps) {
       toast.error("Daily tap limit reached! Come back tomorrow.");
       return;
     }
@@ -106,9 +143,13 @@ const TapToEarn = () => {
     }, 1000);
 
     try {
+      // Calculate earnings with streak bonus
+      const streakBonus = (streak?.current_streak || 0) * streakMultiplier;
+      const earnAmount = centsPerTap + streakBonus;
+      
       const today = new Date().toISOString().split("T")[0];
       const newTapCount = currentTaps + 1;
-      const newEarnings = (todayTaps?.earnings || 0) + CENTS_PER_TAP;
+      const newEarnings = (todayTaps?.earnings || 0) + earnAmount;
 
       // Upsert daily taps
       const { error: tapError } = await supabase
@@ -126,9 +167,21 @@ const TapToEarn = () => {
 
       // Update wallet using the database function
       const { data: newBalance, error: walletError } = await supabase
-        .rpc("add_tap_earnings", { _user_id: user.id, _amount: CENTS_PER_TAP });
+        .rpc("add_tap_earnings", { _user_id: user.id, _amount: earnAmount });
 
       if (walletError) throw walletError;
+
+      // Update streak if first tap of the day
+      if (newTapCount === 1) {
+        await supabase.rpc("update_user_streak", { _user_id: user.id });
+        // Reload streak data
+        const { data: newStreak } = await supabase
+          .from("user_streaks")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+        setStreak(newStreak);
+      }
 
       // Update local state
       setTodayTaps({ ...todayTaps, tap_count: newTapCount, earnings: newEarnings });
@@ -136,7 +189,7 @@ const TapToEarn = () => {
 
       // Show floating text
       if (newTapCount % 10 === 0) {
-        toast.success(`+₦${CENTS_PER_TAP.toFixed(2)} earned! Total today: ₦${newEarnings.toFixed(2)}`);
+        toast.success(`+₦${earnAmount.toFixed(2)} earned! Total today: ₦${newEarnings.toFixed(2)}`);
       }
     } catch (error) {
       console.error("Tap error:", error);
@@ -147,7 +200,7 @@ const TapToEarn = () => {
         setTapAnimation(false);
       }, 100);
     }
-  }, [user, isTapping, todayTaps]);
+  }, [user, isTapping, todayTaps, streak, centsPerTap, maxDailyTaps, streakMultiplier]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -165,8 +218,12 @@ const TapToEarn = () => {
     );
   }
 
-  const tapsRemaining = MAX_DAILY_TAPS - (todayTaps?.tap_count || 0);
-  const progressPercentage = ((todayTaps?.tap_count || 0) / MAX_DAILY_TAPS) * 100;
+  const tapsRemaining = maxDailyTaps - (todayTaps?.tap_count || 0);
+  const progressPercentage = ((todayTaps?.tap_count || 0) / maxDailyTaps) * 100;
+  const currentStreak = streak?.current_streak || 0;
+  const longestStreak = streak?.longest_streak || 0;
+  const streakBonus = currentStreak * streakMultiplier;
+  const currentEarnRate = centsPerTap + streakBonus;
 
   return (
     <div className="min-h-screen bg-background pb-24 relative overflow-hidden">
@@ -240,7 +297,7 @@ const TapToEarn = () => {
             <div className="mt-4 pt-4 border-t border-border/30">
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Today's Progress</span>
-                <span className="font-bold text-primary">{todayTaps?.tap_count || 0} / {MAX_DAILY_TAPS} taps</span>
+                <span className="font-bold text-primary">{todayTaps?.tap_count || 0} / {maxDailyTaps} taps</span>
               </div>
               <div className="h-3 bg-secondary rounded-full overflow-hidden">
                 <div 
@@ -251,6 +308,43 @@ const TapToEarn = () => {
               <p className="text-xs text-muted-foreground mt-2">
                 Earned today: <span className="text-primary font-bold">₦{todayTaps?.earnings?.toFixed(2) || "0.00"}</span>
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Streak Card */}
+        <div className="relative mb-6">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-bet-warning via-orange-500 to-red-500 rounded-2xl blur opacity-20" />
+          <div className="relative bg-card/80 backdrop-blur-xl rounded-xl border border-border/50 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-bet-warning to-orange-600 flex items-center justify-center">
+                  <Flame className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Daily Streak</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-black text-foreground">{currentStreak}</p>
+                    <span className="text-sm text-muted-foreground">days</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-1 text-bet-success">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="text-sm font-bold">+₦{streakBonus.toFixed(2)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">streak bonus</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-bet-warning" />
+                <span className="text-muted-foreground">Best: <span className="text-foreground font-bold">{longestStreak} days</span></span>
+              </div>
+              <span className="text-muted-foreground">
+                Earning: <span className="text-primary font-bold">₦{currentEarnRate.toFixed(2)}/tap</span>
+              </span>
             </div>
           </div>
         </div>
@@ -288,7 +382,7 @@ const TapToEarn = () => {
             <div className="relative z-10 flex flex-col items-center justify-center h-full">
               <Zap className={`w-16 h-16 text-white mb-2 ${tapAnimation ? "animate-pulse" : ""}`} />
               <span className="text-xl font-black text-white">TAP!</span>
-              <span className="text-xs text-white/80 mt-1">+₦{CENTS_PER_TAP.toFixed(2)}</span>
+              <span className="text-xs text-white/80 mt-1">+₦{currentEarnRate.toFixed(2)}</span>
             </div>
 
             {/* Floating particles */}
@@ -303,7 +397,7 @@ const TapToEarn = () => {
                 }}
               >
                 <span className="text-primary font-black text-lg drop-shadow-lg">
-                  +₦{CENTS_PER_TAP.toFixed(2)}
+                  +₦{currentEarnRate.toFixed(2)}
                 </span>
               </div>
             ))}
