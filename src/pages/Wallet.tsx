@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Wallet as WalletIcon, 
   ArrowUpRight, 
@@ -26,6 +33,35 @@ import {
   Smartphone
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+
+const nigerianBanks = [
+  "Access Bank",
+  "Citibank Nigeria",
+  "Ecobank Nigeria",
+  "Fidelity Bank",
+  "First Bank of Nigeria",
+  "First City Monument Bank (FCMB)",
+  "Globus Bank",
+  "Guaranty Trust Bank (GTBank)",
+  "Heritage Bank",
+  "Keystone Bank",
+  "Kuda Bank",
+  "OPay",
+  "PalmPay",
+  "Polaris Bank",
+  "Providus Bank",
+  "Stanbic IBTC Bank",
+  "Standard Chartered Bank",
+  "Sterling Bank",
+  "SunTrust Bank",
+  "Titan Trust Bank",
+  "Union Bank of Nigeria",
+  "United Bank for Africa (UBA)",
+  "Unity Bank",
+  "VFD Microfinance Bank",
+  "Wema Bank",
+  "Zenith Bank",
+];
 
 const Wallet = () => {
   const navigate = useNavigate();
@@ -45,8 +81,9 @@ const Wallet = () => {
   // Withdraw Modal State
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawMethod, setWithdrawMethod] = useState("");
-  const [accountDetails, setAccountDetails] = useState("");
+  const [withdrawBank, setWithdrawBank] = useState("");
+  const [withdrawAccountName, setWithdrawAccountName] = useState("");
+  const [withdrawAccountNumber, setWithdrawAccountNumber] = useState("");
 
   // Bank account details for deposits
   const [bankDetails, setBankDetails] = useState({
@@ -181,8 +218,8 @@ const Wallet = () => {
   };
 
   const handleWithdraw = async () => {
-    if (!user || !withdrawAmount || !withdrawMethod || !accountDetails) {
-      toast.error("Please fill all fields");
+    if (!user || !withdrawAmount || !withdrawBank || !withdrawAccountName || !withdrawAccountNumber) {
+      toast.error("Please fill all bank details");
       return;
     }
 
@@ -199,13 +236,20 @@ const Wallet = () => {
 
     setIsSubmitting(true);
     try {
+      // Format account details as structured string
+      const accountDetails = JSON.stringify({
+        bank: withdrawBank,
+        account_name: withdrawAccountName,
+        account_number: withdrawAccountNumber
+      });
+
       // Create withdrawal request
       const { error } = await supabase
         .from("withdrawal_requests")
         .insert({
           user_id: user.id,
           amount,
-          payment_method: withdrawMethod,
+          payment_method: withdrawBank,
           account_details: accountDetails,
           status: "pending"
         });
@@ -215,8 +259,9 @@ const Wallet = () => {
       toast.success("Withdrawal request submitted! Processing within 24 hours.");
       setWithdrawOpen(false);
       setWithdrawAmount("");
-      setWithdrawMethod("");
-      setAccountDetails("");
+      setWithdrawBank("");
+      setWithdrawAccountName("");
+      setWithdrawAccountNumber("");
       loadData(user.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit withdrawal");
@@ -239,6 +284,14 @@ const Wallet = () => {
         return <XCircle className="w-4 h-4 text-destructive" />;
       default:
         return <Clock className="w-4 h-4 text-bet-warning" />;
+    }
+  };
+
+  const parseAccountDetails = (details: string) => {
+    try {
+      return JSON.parse(details);
+    } catch {
+      return { bank: details, account_name: "", account_number: "" };
     }
   };
 
@@ -366,31 +419,34 @@ const Wallet = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {withdrawals.map((withdrawal) => (
-                  <div
-                    key={withdrawal.id}
-                    className="bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <ArrowUpRight className="w-5 h-5 text-primary" />
+                {withdrawals.map((withdrawal) => {
+                  const details = parseAccountDetails(withdrawal.account_details);
+                  return (
+                    <div
+                      key={withdrawal.id}
+                      className="bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <ArrowUpRight className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground">-₦{withdrawal.amount.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">{details.bank || withdrawal.payment_method}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-foreground">-₦{withdrawal.amount.toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">{withdrawal.payment_method}</p>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(withdrawal.status)}
+                        <span className={`text-xs font-medium capitalize ${
+                          withdrawal.status === "approved" ? "text-bet-success" :
+                          withdrawal.status === "declined" ? "text-destructive" : "text-bet-warning"
+                        }`}>
+                          {withdrawal.status}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(withdrawal.status)}
-                      <span className={`text-xs font-medium capitalize ${
-                        withdrawal.status === "approved" ? "text-bet-success" :
-                        withdrawal.status === "declined" ? "text-destructive" : "text-bet-warning"
-                      }`}>
-                        {withdrawal.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -476,15 +532,15 @@ const Wallet = () => {
                 />
                 <label
                   htmlFor="screenshot-upload"
-                  className={`flex items-center justify-center gap-2 h-14 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
-                    screenshot
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-primary/50"
+                  className={`flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                    screenshot 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border/50 hover:border-primary/50"
                   }`}
                 >
-                  <Upload className="w-5 h-5" />
-                  <span className="font-medium">
-                    {screenshot ? screenshot.name : "Upload Screenshot"}
+                  <Upload className={`w-6 h-6 mb-1 ${screenshot ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`text-sm ${screenshot ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                    {screenshot ? screenshot.name : "Upload payment proof"}
                   </span>
                 </label>
               </div>
@@ -492,8 +548,8 @@ const Wallet = () => {
 
             <Button
               onClick={handleDeposit}
-              disabled={isSubmitting || !depositAmount || !paymentMethod || !screenshot}
-              className="w-full h-14 bg-gradient-to-r from-bet-success to-bet-success/80 text-white font-bold rounded-xl"
+              disabled={isSubmitting}
+              className="w-full h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl"
             >
               {isSubmitting ? "Submitting..." : "Submit Deposit Request"}
             </Button>
@@ -507,11 +563,11 @@ const Wallet = () => {
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground">Withdraw Funds</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Enter your account details for withdrawal (Min: ₦500)
+              Enter your bank details to receive payment
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 mt-4">
+          <div className="space-y-4 mt-4">
             {/* Amount */}
             <div className="space-y-2">
               <Label className="text-foreground">Amount (₦)</Label>
@@ -527,42 +583,51 @@ const Wallet = () => {
               </p>
             </div>
 
-            {/* Payment Method */}
+            {/* Bank Selection */}
             <div className="space-y-2">
-              <Label className="text-foreground">Withdraw To</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {paymentMethods.map((method) => (
-                  <button
-                    key={method.id}
-                    onClick={() => setWithdrawMethod(method.id)}
-                    className={`p-3 rounded-xl border transition-all text-center ${
-                      withdrawMethod === method.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-primary/50"
-                    }`}
-                  >
-                    <method.icon className="w-5 h-5 mx-auto mb-1" />
-                    <span className="text-xs font-medium">{method.name}</span>
-                  </button>
-                ))}
-              </div>
+              <Label className="text-foreground">Select Bank</Label>
+              <Select value={withdrawBank} onValueChange={setWithdrawBank}>
+                <SelectTrigger className="h-12 bg-secondary/50 border-border/50 rounded-xl">
+                  <SelectValue placeholder="Choose your bank" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border max-h-60">
+                  {nigerianBanks.map((bank) => (
+                    <SelectItem key={bank} value={bank}>
+                      {bank}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Account Details */}
+            {/* Account Name */}
             <div className="space-y-2">
-              <Label className="text-foreground">Account Details</Label>
-              <textarea
-                placeholder="Enter your bank name, account number and account name"
-                value={accountDetails}
-                onChange={(e) => setAccountDetails(e.target.value)}
-                className="w-full h-24 p-3 bg-secondary/50 border border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground resize-none focus:border-primary focus:ring-1 focus:ring-primary"
+              <Label className="text-foreground">Account Name</Label>
+              <Input
+                placeholder="Enter account name"
+                value={withdrawAccountName}
+                onChange={(e) => setWithdrawAccountName(e.target.value)}
+                className="h-12 bg-secondary/50 border-border/50 rounded-xl"
+              />
+            </div>
+
+            {/* Account Number */}
+            <div className="space-y-2">
+              <Label className="text-foreground">Account Number</Label>
+              <Input
+                type="number"
+                placeholder="10-digit account number"
+                value={withdrawAccountNumber}
+                onChange={(e) => setWithdrawAccountNumber(e.target.value)}
+                maxLength={10}
+                className="h-12 bg-secondary/50 border-border/50 rounded-xl"
               />
             </div>
 
             <Button
               onClick={handleWithdraw}
-              disabled={isSubmitting || !withdrawAmount || !withdrawMethod || !accountDetails}
-              className="w-full h-14 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-bold rounded-xl"
+              disabled={isSubmitting}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
             >
               {isSubmitting ? "Submitting..." : "Submit Withdrawal Request"}
             </Button>
