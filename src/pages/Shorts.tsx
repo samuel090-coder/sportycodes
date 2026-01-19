@@ -27,11 +27,11 @@ import {
   BarChart3,
   Send,
   X,
-  MoreVertical,
   UserPlus,
   UserMinus,
   Bookmark,
-  Flag
+  Reply,
+  CornerDownRight
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
@@ -60,10 +60,12 @@ interface Comment {
   content: string;
   created_at: string;
   user_id: string;
+  parent_id: string | null;
   profile?: {
     display_name: string;
     avatar_url: string;
   };
+  replies?: Comment[];
 }
 
 const Shorts = () => {
@@ -91,6 +93,7 @@ const Shorts = () => {
   const [newComment, setNewComment] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
   const [selectedShortId, setSelectedShortId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   // Touch handling for swipe
   const touchStartY = useRef<number>(0);
@@ -106,6 +109,45 @@ const Shorts = () => {
     }
   }, [user]);
 
+  // Realtime comments subscription
+  useEffect(() => {
+    if (!selectedShortId) return;
+
+    const channel = supabase
+      .channel(`comments-${selectedShortId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shorts_comments", filter: `short_id=eq.${selectedShortId}` },
+        async (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newComment = payload.new as any;
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("id, display_name, avatar_url")
+              .eq("id", newComment.user_id)
+              .single();
+            
+            setComments(prev => {
+              if (newComment.parent_id) {
+                // It's a reply - add to parent's replies
+                return prev.map(c => {
+                  if (c.id === newComment.parent_id) {
+                    return { ...c, replies: [...(c.replies || []), { ...newComment, profile }] };
+                  }
+                  return c;
+                });
+              }
+              // New top-level comment
+              return [{ ...newComment, profile, replies: [] }, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedShortId]);
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
@@ -115,21 +157,30 @@ const Shorts = () => {
     setUser(session.user);
   };
 
+  // Algorithm: Mix content - trending, following, recent
   const loadShorts = async () => {
     setIsLoading(true);
     try {
-      // Load shorts with profile info
-      const { data: shortsData, error } = await supabase
+      // Get user's follows
+      const { data: userFollows } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id);
+      
+      const followingIds = userFollows?.map(f => f.following_id) || [];
+
+      // Load all active shorts
+      const { data: allShorts, error } = await supabase
         .from("shorts")
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) throw error;
 
-      // Get profile info for each short
-      const userIds = [...new Set(shortsData?.map(s => s.user_id) || [])];
+      // Get profile info
+      const userIds = [...new Set(allShorts?.map(s => s.user_id) || [])];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, display_name, username, avatar_url")
@@ -141,23 +192,50 @@ const Shorts = () => {
         .select("short_id")
         .eq("user_id", user.id);
 
-      // Get user's follows
-      const { data: userFollows } = await supabase
-        .from("follows")
-        .select("following_id")
-        .eq("follower_id", user.id);
-
       const likesSet = new Set(userLikes?.map(l => l.short_id));
-      const followsSet = new Set(userFollows?.map(f => f.following_id));
+      const followsSet = new Set(followingIds);
 
-      const enrichedShorts = shortsData?.map(short => ({
+      const enrichedShorts = allShorts?.map(short => ({
         ...short,
         profile: profiles?.find(p => p.id === short.user_id),
         is_liked: likesSet.has(short.id),
         is_following: followsSet.has(short.user_id)
       })) || [];
 
-      setShorts(enrichedShorts);
+      // Algorithm: Mix content
+      // 1. Trending (high engagement) - 40%
+      // 2. Following users - 30%
+      // 3. Recent content - 30%
+      const trending = [...enrichedShorts]
+        .sort((a, b) => (b.likes_count + b.comments_count * 2) - (a.likes_count + a.comments_count * 2));
+      
+      const fromFollowing = enrichedShorts.filter(s => followsSet.has(s.user_id));
+      const recent = enrichedShorts.slice(0, 20);
+
+      // Create mixed feed
+      const mixed: Short[] = [];
+      const addedIds = new Set<string>();
+
+      const addUnique = (item: Short) => {
+        if (!addedIds.has(item.id)) {
+          mixed.push(item);
+          addedIds.add(item.id);
+        }
+      };
+
+      // Interleave content
+      for (let i = 0; i < Math.max(trending.length, fromFollowing.length, recent.length); i++) {
+        if (i < trending.length && mixed.length < 50) addUnique(trending[i]);
+        if (i < fromFollowing.length && mixed.length < 50) addUnique(fromFollowing[i]);
+        if (i < recent.length && mixed.length < 50) addUnique(recent[i]);
+      }
+
+      // Add remaining if needed
+      enrichedShorts.forEach(s => {
+        if (mixed.length < 50) addUnique(s);
+      });
+
+      setShorts(mixed);
     } catch (error) {
       console.error("Error loading shorts:", error);
     } finally {
@@ -173,7 +251,6 @@ const Shorts = () => {
 
     const isLiked = short.is_liked;
 
-    // Optimistic update
     setShorts(prev => prev.map(s => 
       s.id === shortId 
         ? { ...s, is_liked: !isLiked, likes_count: isLiked ? s.likes_count - 1 : s.likes_count + 1 }
@@ -187,7 +264,6 @@ const Shorts = () => {
         await supabase.from("shorts_likes").insert({ short_id: shortId, user_id: user.id });
       }
     } catch (error) {
-      // Revert on error
       setShorts(prev => prev.map(s => 
         s.id === shortId 
           ? { ...s, is_liked: isLiked, likes_count: isLiked ? s.likes_count + 1 : s.likes_count - 1 }
@@ -201,7 +277,6 @@ const Shorts = () => {
 
     const isFollowing = shorts.find(s => s.user_id === userId)?.is_following;
 
-    // Optimistic update
     setShorts(prev => prev.map(s => 
       s.user_id === userId ? { ...s, is_following: !isFollowing } : s
     ));
@@ -223,23 +298,44 @@ const Shorts = () => {
     setSelectedShortId(shortId);
     setCommentsOpen(true);
     setLoadingComments(true);
+    setReplyingTo(null);
 
     try {
+      // Load top-level comments
       const { data: commentsData } = await supabase
         .from("shorts_comments")
         .select("*")
         .eq("short_id", shortId)
+        .is("parent_id", null)
         .order("created_at", { ascending: false });
 
-      const userIds = [...new Set(commentsData?.map(c => c.user_id) || [])];
+      const commentIds = commentsData?.map(c => c.id) || [];
+      
+      // Load replies
+      const { data: repliesData } = await supabase
+        .from("shorts_comments")
+        .select("*")
+        .in("parent_id", commentIds)
+        .order("created_at", { ascending: true });
+
+      // Get all user IDs
+      const userIds = [...new Set([
+        ...(commentsData?.map(c => c.user_id) || []),
+        ...(repliesData?.map(r => r.user_id) || [])
+      ])];
+
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, display_name, avatar_url")
         .in("id", userIds);
 
+      // Build comment tree
       const enrichedComments = commentsData?.map(comment => ({
         ...comment,
-        profile: profiles?.find(p => p.id === comment.user_id)
+        profile: profiles?.find(p => p.id === comment.user_id),
+        replies: repliesData
+          ?.filter(r => r.parent_id === comment.id)
+          .map(r => ({ ...r, profile: profiles?.find(p => p.id === r.user_id) })) || []
       })) || [];
 
       setComments(enrichedComments);
@@ -254,33 +350,26 @@ const Shorts = () => {
     if (!user || !selectedShortId || !newComment.trim()) return;
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("shorts_comments")
         .insert({ 
           short_id: selectedShortId, 
           user_id: user.id, 
-          content: newComment.trim() 
-        })
-        .select()
-        .single();
+          content: newComment.trim(),
+          parent_id: replyingTo?.id || null
+        });
 
       if (error) throw error;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url")
-        .eq("id", user.id)
-        .single();
-
-      setComments(prev => [{ ...data, profile }, ...prev]);
       setNewComment("");
+      setReplyingTo(null);
 
       // Update comment count
       setShorts(prev => prev.map(s => 
         s.id === selectedShortId ? { ...s, comments_count: s.comments_count + 1 } : s
       ));
 
-      toast.success("Comment posted!");
+      toast.success(replyingTo ? "Reply posted!" : "Comment posted!");
     } catch (error) {
       toast.error("Failed to post comment");
     }
@@ -396,7 +485,6 @@ const Shorts = () => {
     if (!user) return;
 
     try {
-      // Check if already voted
       const { data: existingVote } = await supabase
         .from("poll_votes")
         .select("id")
@@ -415,7 +503,6 @@ const Shorts = () => {
         option_index: optionIndex
       });
 
-      // Update local state
       setShorts(prev => prev.map(s => {
         if (s.id === shortId && s.poll_options) {
           const newOptions = { ...s.poll_options };
@@ -430,6 +517,14 @@ const Shorts = () => {
       toast.success("Vote recorded!");
     } catch (error) {
       toast.error("Failed to vote");
+    }
+  };
+
+  const navigateToProfile = (userId: string) => {
+    if (userId === user?.id) {
+      navigate("/profile");
+    } else {
+      navigate(`/user/${userId}`);
     }
   };
 
@@ -531,7 +626,7 @@ const Shorts = () => {
             <div className="absolute bottom-32 left-4 right-20 text-white">
               <div className="flex items-center gap-3 mb-3">
                 <button 
-                  onClick={() => navigate(`/user/${currentShort.user_id}`)}
+                  onClick={() => navigateToProfile(currentShort.user_id)}
                   className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-cyber-neon-purple p-0.5"
                 >
                   <div className="w-full h-full rounded-full bg-black overflow-hidden">
@@ -545,7 +640,7 @@ const Shorts = () => {
                   </div>
                 </button>
                 <button 
-                  onClick={() => navigate(`/user/${currentShort.user_id}`)}
+                  onClick={() => navigateToProfile(currentShort.user_id)}
                   className="flex-1 text-left"
                 >
                   <p className="font-bold hover:underline">{currentShort.profile?.display_name || "Unknown"}</p>
@@ -677,7 +772,6 @@ const Shorts = () => {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            {/* Post Type Selection */}
             <div className="grid grid-cols-4 gap-2">
               {[
                 { type: "text", icon: MessageCircle, label: "Text" },
@@ -700,7 +794,6 @@ const Shorts = () => {
               ))}
             </div>
 
-            {/* Content */}
             <Textarea
               placeholder={postType === "poll" ? "Ask a question..." : "What's on your mind?"}
               value={postContent}
@@ -708,7 +801,6 @@ const Shorts = () => {
               className="min-h-[100px] bg-secondary/50 border-border rounded-xl"
             />
 
-            {/* Media Upload */}
             {(postType === "image" || postType === "video") && (
               <div>
                 {postMediaPreview ? (
@@ -746,7 +838,6 @@ const Shorts = () => {
               </div>
             )}
 
-            {/* Poll Options */}
             {postType === "poll" && (
               <div className="space-y-2">
                 {pollOptions.map((option, i) => (
@@ -797,8 +888,8 @@ const Shorts = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Comments Modal - Fixed positioning */}
-      <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
+      {/* Comments Modal with Replies */}
+      <Dialog open={commentsOpen} onOpenChange={(open) => { setCommentsOpen(open); if (!open) setReplyingTo(null); }}>
         <DialogContent className="bg-card border-border rounded-2xl max-w-md mx-auto p-0 gap-0 max-h-[70vh] flex flex-col">
           <div className="p-4 border-b border-border flex-shrink-0">
             <div className="w-12 h-1 bg-border rounded-full mx-auto mb-3" />
@@ -818,43 +909,98 @@ const Shorts = () => {
             ) : (
               <div className="space-y-4">
                 {comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
-                      {comment.profile?.avatar_url ? (
-                        <img src={comment.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        comment.profile?.display_name?.[0] || "?"
-                      )}
+                  <div key={comment.id}>
+                    {/* Main Comment */}
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => navigateToProfile(comment.user_id)}
+                        className="w-10 h-10 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center text-sm font-bold text-primary overflow-hidden"
+                      >
+                        {comment.profile?.avatar_url ? (
+                          <img src={comment.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          comment.profile?.display_name?.[0] || "?"
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground">{comment.profile?.display_name || "User"}</p>
+                        <p className="text-sm text-foreground/80 break-words">{comment.content}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </p>
+                          <button 
+                            onClick={() => setReplyingTo(comment)}
+                            className="text-xs text-primary font-medium flex items-center gap-1 hover:underline"
+                          >
+                            <Reply className="w-3 h-3" />
+                            Reply
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground">{comment.profile?.display_name || "User"}</p>
-                      <p className="text-sm text-foreground/80 break-words">{comment.content}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
+
+                    {/* Replies */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="ml-10 mt-3 space-y-3 border-l-2 border-border/50 pl-4">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.id} className="flex gap-3">
+                            <button 
+                              onClick={() => navigateToProfile(reply.user_id)}
+                              className="w-8 h-8 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center text-xs font-bold text-primary overflow-hidden"
+                            >
+                              {reply.profile?.avatar_url ? (
+                                <img src={reply.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                reply.profile?.display_name?.[0] || "?"
+                              )}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-foreground">{reply.profile?.display_name || "User"}</p>
+                              <p className="text-xs text-foreground/80 break-words">{reply.content}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(reply.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="p-4 border-t border-border flex gap-2 flex-shrink-0 bg-card">
-            <Input
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && postComment()}
-              className="bg-secondary/50 border-border rounded-full"
-            />
-            <Button
-              onClick={postComment}
-              size="icon"
-              className="rounded-full flex-shrink-0"
-              disabled={!newComment.trim()}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
+          <div className="p-4 border-t border-border flex-shrink-0 bg-card">
+            {replyingTo && (
+              <div className="flex items-center justify-between mb-2 px-2 py-1 bg-secondary/30 rounded-lg">
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CornerDownRight className="w-3 h-3" />
+                  Replying to {replyingTo.profile?.display_name}
+                </span>
+                <button onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && postComment()}
+                className="bg-secondary/50 border-border rounded-full"
+              />
+              <Button
+                onClick={postComment}
+                size="icon"
+                className="rounded-full flex-shrink-0"
+                disabled={!newComment.trim()}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -67,6 +67,130 @@ export type Database = {
         }
         Relationships: []
       }
+      betting_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_winner: boolean | null
+          payout: number | null
+          pool_id: string
+          selected_option: number
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          is_winner?: boolean | null
+          payout?: number | null
+          pool_id: string
+          selected_option: number
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_winner?: boolean | null
+          payout?: number | null
+          pool_id?: string
+          selected_option?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "betting_entries_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "betting_pools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "betting_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "betting_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      betting_pools: {
+        Row: {
+          closes_at: string
+          created_at: string
+          creator_deposit: number
+          creator_id: string
+          description: string | null
+          entry_fee: number
+          id: string
+          match_details: Json
+          options: Json
+          prize_pool: number
+          settled_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          winning_option: number | null
+        }
+        Insert: {
+          closes_at: string
+          created_at?: string
+          creator_deposit?: number
+          creator_id: string
+          description?: string | null
+          entry_fee?: number
+          id?: string
+          match_details?: Json
+          options?: Json
+          prize_pool?: number
+          settled_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          winning_option?: number | null
+        }
+        Update: {
+          closes_at?: string
+          created_at?: string
+          creator_deposit?: number
+          creator_id?: string
+          description?: string | null
+          entry_fee?: number
+          id?: string
+          match_details?: Json
+          options?: Json
+          prize_pool?: number
+          settled_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          winning_option?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "betting_pools_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "betting_pools_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_taps: {
         Row: {
           created_at: string
