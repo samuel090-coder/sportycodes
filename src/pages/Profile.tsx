@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   ChevronLeft, 
   User, 
@@ -16,11 +23,15 @@ import {
   Gift, 
   Save,
   Camera,
-  Sparkles,
   Bell,
   Grid3X3,
   Settings,
-  Trash2
+  Trash2,
+  Edit2,
+  Eye,
+  LogOut,
+  Heart,
+  MessageCircle
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -41,6 +52,13 @@ const Profile = () => {
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
   const [bio, setBio] = useState("");
+
+  // Edit post modal
+  const [editOpen, setEditOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isSavingPost, setIsSavingPost] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -66,7 +84,6 @@ const Profile = () => {
   const loadProfile = async (userId: string) => {
     setIsLoading(true);
     try {
-      // Load profile
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -82,7 +99,6 @@ const Profile = () => {
       setCountry(data?.country || "");
       setBio(data?.bio || "");
 
-      // Load user's posts
       const { data: posts } = await supabase
         .from("shorts")
         .select("*")
@@ -91,7 +107,6 @@ const Profile = () => {
         .order("created_at", { ascending: false });
       setUserPosts(posts || []);
 
-      // Load referral count
       const { count } = await supabase
         .from("referrals")
         .select("*", { count: "exact", head: true })
@@ -114,7 +129,6 @@ const Profile = () => {
       const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}/avatar.${fileExt}`;
       
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from("shorts-media")
         .upload(fileName, file, { upsert: true });
@@ -125,7 +139,6 @@ const Profile = () => {
         .from("shorts-media")
         .getPublicUrl(fileName);
 
-      // Update profile
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
@@ -199,6 +212,52 @@ const Profile = () => {
     }
   };
 
+  const openEditPost = (post: any) => {
+    setSelectedPost(post);
+    setEditContent(post.content || "");
+    setEditOpen(true);
+  };
+
+  const openPreviewPost = (post: any) => {
+    setSelectedPost(post);
+    setPreviewOpen(true);
+  };
+
+  const handleSavePost = async () => {
+    if (!selectedPost) return;
+
+    setIsSavingPost(true);
+    try {
+      const { error } = await supabase
+        .from("shorts")
+        .update({ content: editContent.trim() || null })
+        .eq("id", selectedPost.id)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+
+      setUserPosts(prev => prev.map(p => 
+        p.id === selectedPost.id ? { ...p, content: editContent.trim() || null } : p
+      ));
+      setEditOpen(false);
+      toast.success("Post updated!");
+    } catch (error) {
+      toast.error("Failed to update post");
+    } finally {
+      setIsSavingPost(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate("/auth");
+      toast.success("Logged out successfully");
+    } catch (error) {
+      toast.error("Failed to logout");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -216,7 +275,7 @@ const Profile = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/")}
               className="rounded-xl"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -226,15 +285,25 @@ const Profile = () => {
               <p className="text-xs text-muted-foreground">Manage your account</p>
             </div>
           </div>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            size="sm"
-            className="rounded-xl bg-primary text-primary-foreground"
-          >
-            <Save className="w-4 h-4 mr-1" />
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              size="sm"
+              className="rounded-xl bg-primary text-primary-foreground"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              {isSaving ? "..." : "Save"}
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -346,7 +415,6 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="profile">
-            {/* Profile Form */}
             <div className="space-y-5">
               <div className="space-y-2">
                 <Label className="text-foreground flex items-center gap-2">
@@ -422,21 +490,9 @@ const Profile = () => {
                 />
               </div>
             </div>
-
-            {/* Danger Zone */}
-            <div className="mt-10 pt-6 border-t border-border/30">
-              <h3 className="text-sm font-bold text-destructive mb-4">Danger Zone</h3>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
-              >
-                Delete Account
-              </Button>
-            </div>
           </TabsContent>
 
           <TabsContent value="posts">
-            {/* User's Posts Grid */}
             {userPosts.length === 0 ? (
               <div className="text-center py-12">
                 <Grid3X3 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -472,20 +528,42 @@ const Profile = () => {
                         </p>
                       </div>
                     )}
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
-                      <div className="text-center text-white text-sm">
-                        <p className="font-bold">{post.likes_count || 0} ❤️</p>
-                        <p className="font-bold">{post.comments_count || 0} 💬</p>
+                    {/* Overlay with actions */}
+                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-2 p-2">
+                      <div className="flex items-center gap-3 text-white text-xs">
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3" /> {post.likes_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" /> {post.comments_count || 0}
+                        </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeletePost(post.id)}
-                        className="absolute top-2 right-2 text-white hover:bg-destructive/50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-white hover:bg-white/20"
+                          onClick={() => openPreviewPost(post)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-white hover:bg-white/20"
+                          onClick={() => openEditPost(post)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/20"
+                          onClick={() => handleDeletePost(post.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -494,12 +572,82 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="notifications">
-            {user && (
-              <NotificationSettings userId={user.id} userEmail={user.email} />
-            )}
+            <NotificationSettings />
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Edit Post Modal */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="bg-card border-border rounded-2xl max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-foreground">Edit Post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {selectedPost?.media_url && (
+              <div className="rounded-xl overflow-hidden">
+                {selectedPost.media_type === "video" ? (
+                  <video src={selectedPost.media_url} className="w-full h-48 object-cover" controls />
+                ) : (
+                  <img src={selectedPost.media_url} className="w-full h-48 object-cover" alt="" />
+                )}
+              </div>
+            )}
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              placeholder="Update your caption..."
+              className="min-h-[100px] bg-secondary/50 border-border rounded-xl"
+            />
+            <Button
+              onClick={handleSavePost}
+              disabled={isSavingPost}
+              className="w-full rounded-xl"
+            >
+              {isSavingPost ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Post Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="bg-card border-border rounded-2xl max-w-md mx-4 p-0 overflow-hidden">
+          {selectedPost && (
+            <div className="relative">
+              {selectedPost.media_url ? (
+                selectedPost.media_type === "video" ? (
+                  <video src={selectedPost.media_url} className="w-full aspect-square object-cover" controls autoPlay />
+                ) : (
+                  <img src={selectedPost.media_url} className="w-full aspect-square object-cover" alt="" />
+                )
+              ) : (
+                <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-cyber-neon-purple/20 flex items-center justify-center p-6">
+                  <p className="text-lg text-foreground text-center font-medium">
+                    {selectedPost.content}
+                  </p>
+                </div>
+              )}
+              {selectedPost.content && selectedPost.media_url && (
+                <div className="p-4 bg-card">
+                  <p className="text-sm text-foreground">{selectedPost.content}</p>
+                </div>
+              )}
+              <div className="p-4 bg-card border-t border-border flex items-center gap-4">
+                <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Heart className="w-4 h-4" /> {selectedPost.likes_count || 0}
+                </span>
+                <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <MessageCircle className="w-4 h-4" /> {selectedPost.comments_count || 0}
+                </span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {new Date(selectedPost.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
