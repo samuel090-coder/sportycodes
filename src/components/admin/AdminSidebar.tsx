@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -26,6 +26,7 @@ const menuItems = [
     items: [
       { title: "Ad Management", path: "/admin/ads", icon: DollarSign },
       { title: "Deposits & Withdrawals", path: "/admin/payments", icon: Wallet },
+      { title: "Betting Pools", path: "/admin/betting-pools", icon: Trophy },
     ],
   },
   {

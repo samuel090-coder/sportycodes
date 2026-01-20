@@ -6,8 +6,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye } from "lucide-react";
+import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const PaymentsSection = () => {
@@ -313,8 +314,41 @@ export const PaymentsSection = () => {
                         <TableCell className="text-foreground capitalize">
                           {withdrawal.payment_method}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">
-                          {withdrawal.account_details}
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                                <CreditCard className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-72 bg-card border-border p-4">
+                              <h4 className="font-bold text-foreground mb-3">Bank Details</h4>
+                              {(() => {
+                                try {
+                                  const details = JSON.parse(withdrawal.account_details);
+                                  return (
+                                    <div className="space-y-2 text-sm">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Bank:</span>
+                                        <span className="text-foreground font-medium">{details.bank_name}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Account:</span>
+                                        <span className="text-foreground font-medium">{details.account_number}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Name:</span>
+                                        <span className="text-foreground font-medium">{details.account_name}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                } catch {
+                                  return <p className="text-muted-foreground text-sm">{withdrawal.account_details}</p>;
+                                }
+                              })()}
+                            </PopoverContent>
+                          </Popover>
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-bold border ${getStatusBadge(withdrawal.status)}`}>

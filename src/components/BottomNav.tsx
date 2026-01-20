@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Target, Coins, Wallet, User, Trophy, Video } from "lucide-react";
+import { Target, Coins, Wallet, User, Trophy, Video, Gamepad2 } from "lucide-react";
 
 const BottomNav = () => {
   return (
@@ -32,6 +32,15 @@ const BottomNav = () => {
             <Coins className="w-5 h-5 text-primary-foreground" />
           </div>
           <span className="text-[9px] font-bold tracking-wide">EARN</span>
+        </NavLink>
+
+        <NavLink
+          to="/betting"
+          className="flex-1 flex flex-col items-center gap-0.5 py-2 text-muted-foreground transition-all duration-300 hover:text-primary group"
+          activeClassName="text-primary"
+        >
+          <Gamepad2 className="w-5 h-5 transition-transform group-hover:scale-110" />
+          <span className="text-[9px] font-bold tracking-wide">PREDICT</span>
         </NavLink>
 
         <NavLink

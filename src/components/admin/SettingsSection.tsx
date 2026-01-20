@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Settings, Save, Building2, Zap, Gift, Flame } from "lucide-react";
+import { Settings, Save, Building2, Zap, Gift, Flame, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const SettingsSection = () => {
@@ -24,6 +24,8 @@ export const SettingsSection = () => {
     referral_bonus: "50",
     streak_bonus_multiplier: "0.1"
   });
+
+  const [whatsappNumber, setWhatsappNumber] = useState("");
 
   useEffect(() => {
     loadSettings();
@@ -47,6 +49,8 @@ export const SettingsSection = () => {
             bank[item.setting_key] = item.setting_value;
           } else if (["tap_earnings_amount", "max_daily_taps", "referral_bonus", "streak_bonus_multiplier"].includes(item.setting_key)) {
             tap[item.setting_key] = item.setting_value;
+          } else if (item.setting_key === "whatsapp_number") {
+            setWhatsappNumber(item.setting_value);
           }
         });
         
@@ -65,7 +69,7 @@ export const SettingsSection = () => {
     setIsSaving(true);
     try {
       // Combine all settings
-      const allSettings = { ...bankSettings, ...tapSettings };
+      const allSettings = { ...bankSettings, ...tapSettings, whatsapp_number: whatsappNumber };
       
       // Upsert each setting
       for (const [key, value] of Object.entries(allSettings)) {
@@ -170,6 +174,30 @@ export const SettingsSection = () => {
           <p className="text-sm text-muted-foreground">
             💡 <strong>Streak Bonus:</strong> Users earn an extra ₦{tapSettings.streak_bonus_multiplier} per tap for each consecutive day they tap. 
             For example, a 5-day streak = ₦{(parseFloat(tapSettings.streak_bonus_multiplier) * 5).toFixed(2)} extra per tap.
+          </p>
+        </div>
+      </Card>
+
+      {/* WhatsApp Contact */}
+      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
+        <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+          <MessageCircle className="w-5 h-5 text-primary" />
+          WhatsApp Contact
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          This number is used for customer support and payment verification messages.
+        </p>
+
+        <div className="space-y-2">
+          <Label className="text-foreground">WhatsApp Number (with country code)</Label>
+          <Input
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value)}
+            placeholder="e.g., +2349067423764"
+            className="bg-background border-border"
+          />
+          <p className="text-xs text-muted-foreground">
+            Include country code without spaces (e.g., +234 for Nigeria)
           </p>
         </div>
       </Card>
