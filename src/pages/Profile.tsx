@@ -572,7 +572,7 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="notifications">
-            <NotificationSettings />
+            {user && <NotificationSettings userId={user.id} userEmail={user.email || ''} />}
           </TabsContent>
         </Tabs>
       </main>
