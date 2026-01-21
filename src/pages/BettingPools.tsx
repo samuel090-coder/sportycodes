@@ -104,10 +104,11 @@ const BettingPools = () => {
   const loadPools = async () => {
     setIsLoading(true);
     try {
+      // Only show OPEN pools to users (closed/settled/cancelled pools are hidden)
       const { data: poolsData, error } = await supabase
         .from("betting_pools")
         .select("*")
-        .in("status", ["open", "closed"])
+        .eq("status", "open")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

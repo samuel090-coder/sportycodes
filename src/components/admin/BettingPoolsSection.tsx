@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Trophy, Users, Coins, CheckCircle, Clock, Award, XCircle } from "lucide-react";
+import { Trophy, Users, Coins, CheckCircle, Clock, Award, XCircle, ThumbsUp, ThumbsDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface BettingPool {
@@ -38,7 +38,6 @@ interface BettingEntry {
     display_name: string;
     avatar_url: string;
   };
-  user_email?: string;
 }
 
 export const BettingPoolsSection = () => {
@@ -49,6 +48,7 @@ export const BettingPoolsSection = () => {
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
   const [winningOption, setWinningOption] = useState<string>("");
+  const [settlementType, setSettlementType] = useState<"win" | "lose">("win");
   const [isSettling, setIsSettling] = useState(false);
 
   useEffect(() => {
@@ -72,7 +72,6 @@ export const BettingPoolsSection = () => {
 
       if (error) throw error;
 
-      // Get entries count
       const poolIds = poolsData?.map(p => p.id) || [];
       const { data: entriesData } = await supabase
         .from("betting_entries")
@@ -104,41 +103,20 @@ export const BettingPoolsSection = () => {
 
       if (error) throw error;
 
-      // Get profiles and emails
       const userIds = entriesData?.map(e => e.user_id) || [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, display_name, avatar_url")
         .in("id", userIds);
 
-      // Note: Cannot access admin auth from client, emails fetched server-side
-      const emailMap = new Map<string, string>();
-
       const enrichedEntries = entriesData?.map(entry => ({
         ...entry,
-        profile: profiles?.find(p => p.id === entry.user_id),
-        user_email: emailMap.get(entry.user_id) || ""
+        profile: profiles?.find(p => p.id === entry.user_id)
       })) || [];
 
       setEntries(enrichedEntries);
     } catch (error) {
       console.error("Error fetching entries:", error);
-      // Fallback without emails
-      const { data: entriesData } = await supabase
-        .from("betting_entries")
-        .select("*")
-        .eq("pool_id", pool.id);
-      
-      const userIds = entriesData?.map(e => e.user_id) || [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", userIds);
-
-      setEntries(entriesData?.map(entry => ({
-        ...entry,
-        profile: profiles?.find(p => p.id === entry.user_id)
-      })) || []);
     } finally {
       setLoadingEntries(false);
     }
@@ -152,21 +130,21 @@ export const BettingPoolsSection = () => {
   const handleOpenSettle = (pool: BettingPool) => {
     setSelectedPool(pool);
     setWinningOption("");
+    setSettlementType("win");
     setSettleOpen(true);
   };
 
   const handleSettlePool = async () => {
-    if (!selectedPool || !winningOption) {
+    if (!selectedPool) return;
+
+    // For "win" mode, require a winning option
+    if (settlementType === "win" && !winningOption) {
       toast.error("Please select a winning option");
       return;
     }
 
     setIsSettling(true);
     try {
-      const winningIdx = parseInt(winningOption);
-      const winningOptionLabel = selectedPool.options[winningIdx]?.text || `Option ${winningIdx + 1}`;
-
-      // 1. Get all entries for this pool
       const { data: entriesData, error: entriesError } = await supabase
         .from("betting_entries")
         .select("*")
@@ -174,61 +152,109 @@ export const BettingPoolsSection = () => {
 
       if (entriesError) throw entriesError;
 
-      // 2. Find winners
-      const winners = entriesData?.filter(e => e.selected_option === winningIdx) || [];
       const prizePool = selectedPool.prize_pool;
-      const payoutPerWinner = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-      // 3. Update entries - mark winners and losers
-      for (const entry of entriesData || []) {
-        const isWinner = entry.selected_option === winningIdx;
+      if (settlementType === "win") {
+        // WIN MODE: Distribute to participants who picked the winning option
+        const winningIdx = parseInt(winningOption);
+        const winningOptionLabel = selectedPool.options[winningIdx]?.text || `Option ${winningIdx + 1}`;
+        
+        const winners = entriesData?.filter(e => e.selected_option === winningIdx) || [];
+        const payoutPerWinner = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
+
+        // Mark entries as winners/losers
+        for (const entry of entriesData || []) {
+          const isWinner = entry.selected_option === winningIdx;
+          await supabase
+            .from("betting_entries")
+            .update({
+              is_winner: isWinner,
+              payout: isWinner ? payoutPerWinner : 0
+            })
+            .eq("id", entry.id);
+        }
+
+        // Credit winners' wallets
+        for (const winner of winners) {
+          const { data: wallet } = await supabase
+            .from("wallets")
+            .select("balance")
+            .eq("user_id", winner.user_id)
+            .single();
+
+          await supabase
+            .from("wallets")
+            .update({ balance: (wallet?.balance || 0) + payoutPerWinner })
+            .eq("user_id", winner.user_id);
+
+          // Send winner notification
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-pool-winner`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: winner.user_id,
+              poolTitle: selectedPool.title,
+              amount: payoutPerWinner
+            })
+          }).catch(console.error);
+        }
+
+        // Update pool status
         await supabase
-          .from("betting_entries")
+          .from("betting_pools")
           .update({
-            is_winner: isWinner,
-            payout: isWinner ? payoutPerWinner : 0
+            status: "settled",
+            winning_option: winningIdx,
+            settled_at: new Date().toISOString()
           })
-          .eq("id", entry.id);
-      }
+          .eq("id", selectedPool.id);
 
-      // 4. Credit winners' wallets
-      for (const winner of winners) {
-        // Update wallet
-        const { data: wallet } = await supabase
+        // Send results notification
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-pool-results`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            poolId: selectedPool.id,
+            poolTitle: selectedPool.title,
+            winningOption: winningIdx,
+            winningOptionLabel
+          })
+        }).catch(console.error);
+
+        toast.success(`Pool settled! ${winners.length} winners received ₦${payoutPerWinner.toLocaleString()} each`);
+      } else {
+        // LOSE MODE: Return prize pool to creator
+        const { data: creatorWallet } = await supabase
           .from("wallets")
           .select("balance")
-          .eq("user_id", winner.user_id)
+          .eq("user_id", selectedPool.creator_id)
           .single();
 
         await supabase
           .from("wallets")
-          .update({ balance: (wallet?.balance || 0) + payoutPerWinner })
-          .eq("user_id", winner.user_id);
+          .update({ balance: (creatorWallet?.balance || 0) + prizePool })
+          .eq("user_id", selectedPool.creator_id);
+
+        // Mark all entries as lost
+        for (const entry of entriesData || []) {
+          await supabase
+            .from("betting_entries")
+            .update({ is_winner: false, payout: 0 })
+            .eq("id", entry.id);
+        }
+
+        // Update pool status as cancelled/lost
+        await supabase
+          .from("betting_pools")
+          .update({
+            status: "cancelled",
+            settled_at: new Date().toISOString()
+          })
+          .eq("id", selectedPool.id);
+
+        toast.success(`Pool marked as lost. ₦${prizePool.toLocaleString()} returned to creator.`);
       }
 
-      // 5. Update pool status
-      await supabase
-        .from("betting_pools")
-        .update({
-          status: "settled",
-          winning_option: winningIdx,
-          settled_at: new Date().toISOString()
-        })
-        .eq("id", selectedPool.id);
-
-      // 6. Send results notification to all participants
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-pool-results`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          poolId: selectedPool.id,
-          poolTitle: selectedPool.title,
-          winningOption: winningIdx,
-          winningOptionLabel
-        })
-      });
-
-      toast.success(`Pool settled! ${winners.length} winners received ₦${payoutPerWinner.toLocaleString()} each`);
       setSettleOpen(false);
       setSelectedPool(null);
       fetchPools();
@@ -247,7 +273,6 @@ export const BettingPoolsSection = () => {
         .update({ status: "closed" })
         .eq("id", pool.id);
 
-      // Send close notification
       await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-pool-closed`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -255,7 +280,7 @@ export const BettingPoolsSection = () => {
           poolId: pool.id,
           poolTitle: pool.title
         })
-      });
+      }).catch(console.error);
 
       toast.success("Pool closed and participants notified");
       fetchPools();
@@ -266,13 +291,11 @@ export const BettingPoolsSection = () => {
 
   const handleRefundPool = async (pool: BettingPool) => {
     try {
-      // Get all entries
       const { data: entriesData } = await supabase
         .from("betting_entries")
         .select("*")
         .eq("pool_id", pool.id);
 
-      // Refund each participant
       for (const entry of entriesData || []) {
         const { data: wallet } = await supabase
           .from("wallets")
@@ -286,7 +309,6 @@ export const BettingPoolsSection = () => {
           .eq("user_id", entry.user_id);
       }
 
-      // Refund creator deposit
       const { data: creatorWallet } = await supabase
         .from("wallets")
         .select("balance")
@@ -298,7 +320,6 @@ export const BettingPoolsSection = () => {
         .update({ balance: (creatorWallet?.balance || 0) + pool.creator_deposit })
         .eq("user_id", pool.creator_id);
 
-      // Update pool status
       await supabase
         .from("betting_pools")
         .update({ status: "cancelled" })
@@ -308,6 +329,27 @@ export const BettingPoolsSection = () => {
       fetchPools();
     } catch (error) {
       toast.error("Failed to refund pool");
+    }
+  };
+
+  const handleDeletePool = async (pool: BettingPool) => {
+    try {
+      // Delete entries first
+      await supabase
+        .from("betting_entries")
+        .delete()
+        .eq("pool_id", pool.id);
+
+      // Delete pool
+      await supabase
+        .from("betting_pools")
+        .delete()
+        .eq("id", pool.id);
+
+      toast.success("Pool removed from system");
+      fetchPools();
+    } catch (error) {
+      toast.error("Failed to delete pool");
     }
   };
 
@@ -415,9 +457,19 @@ export const BettingPoolsSection = () => {
                               className="border-red-500 text-red-500"
                             >
                               <XCircle className="w-4 h-4 mr-1" />
-                              Refund All
+                              Refund
                             </Button>
                           </>
+                        )}
+                        {(pool.status === "settled" || pool.status === "cancelled") && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeletePool(pool)}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Remove
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -514,7 +566,7 @@ export const BettingPoolsSection = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Settle Pool Dialog */}
+      {/* Settle Pool Dialog with Win/Lose Toggle */}
       <Dialog open={settleOpen} onOpenChange={setSettleOpen}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
@@ -524,21 +576,73 @@ export const BettingPoolsSection = () => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <p className="text-muted-foreground text-sm">
-              Select the winning option. The prize pool of ₦{selectedPool?.prize_pool.toLocaleString()} will be split equally among all winners.
-            </p>
+          <div className="space-y-6">
+            {/* Win/Lose Toggle */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Settlement Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSettlementType("win")}
+                  className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
+                    settlementType === "win"
+                      ? "border-green-500 bg-green-500/10"
+                      : "border-border hover:border-green-500/50"
+                  }`}
+                >
+                  <ThumbsUp className={`w-6 h-6 ${settlementType === "win" ? "text-green-500" : "text-muted-foreground"}`} />
+                  <span className={`font-bold ${settlementType === "win" ? "text-green-500" : "text-foreground"}`}>
+                    WIN
+                  </span>
+                  <span className="text-xs text-muted-foreground text-center">
+                    Distribute to participants
+                  </span>
+                </button>
+                <button
+                  onClick={() => setSettlementType("lose")}
+                  className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
+                    settlementType === "lose"
+                      ? "border-red-500 bg-red-500/10"
+                      : "border-border hover:border-red-500/50"
+                  }`}
+                >
+                  <ThumbsDown className={`w-6 h-6 ${settlementType === "lose" ? "text-red-500" : "text-muted-foreground"}`} />
+                  <span className={`font-bold ${settlementType === "lose" ? "text-red-500" : "text-foreground"}`}>
+                    LOSE
+                  </span>
+                  <span className="text-xs text-muted-foreground text-center">
+                    Return to pool creator
+                  </span>
+                </button>
+              </div>
+            </div>
 
-            <RadioGroup value={winningOption} onValueChange={setWinningOption}>
-              {selectedPool?.options.map((opt: any, idx: number) => (
-                <div key={idx} className="flex items-center space-x-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                  <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
-                  <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer font-medium">
-                    {opt.text}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
+            {settlementType === "win" && (
+              <>
+                <p className="text-muted-foreground text-sm">
+                  Select the winning option. The prize pool of ₦{selectedPool?.prize_pool.toLocaleString()} will be split equally among all winners.
+                </p>
+
+                <RadioGroup value={winningOption} onValueChange={setWinningOption}>
+                  {selectedPool?.options.map((opt: any, idx: number) => (
+                    <div key={idx} className="flex items-center space-x-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
+                      <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer font-medium">
+                        {opt.text}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </>
+            )}
+
+            {settlementType === "lose" && (
+              <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/30">
+                <p className="text-sm text-foreground">
+                  The entire prize pool of <strong>₦{selectedPool?.prize_pool.toLocaleString()}</strong> will be returned to the pool creator.
+                  All participants will be marked as lost.
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -547,8 +651,8 @@ export const BettingPoolsSection = () => {
             </Button>
             <Button
               onClick={handleSettlePool}
-              disabled={!winningOption || isSettling}
-              className="bg-primary hover:bg-primary/90"
+              disabled={isSettling || (settlementType === "win" && !winningOption)}
+              className={settlementType === "win" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
             >
               {isSettling ? (
                 <span className="flex items-center gap-2">
@@ -557,8 +661,8 @@ export const BettingPoolsSection = () => {
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Confirm & Distribute
+                  {settlementType === "win" ? <ThumbsUp className="w-4 h-4" /> : <ThumbsDown className="w-4 h-4" />}
+                  Confirm {settlementType === "win" ? "Win" : "Lose"}
                 </span>
               )}
             </Button>
