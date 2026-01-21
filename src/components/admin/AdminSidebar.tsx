@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
+  {
+    category: "Overview",
+    icon: Activity,
+    items: [
+      { title: "Analytics", path: "/admin/analytics", icon: Activity },
+    ],
+  },
   {
     category: "Security",
     icon: Shield,
@@ -58,7 +65,6 @@ export function AdminSidebar() {
       collapsible="icon"
     >
       <SidebarContent>
-        {/* Header */}
         <div className={`p-4 border-b border-cyber-neon-green/30 ${isCollapsed ? "px-2" : ""}`}>
           <h2 className={`font-black text-cyber-neon-green font-mono ${isCollapsed ? "text-sm text-center" : "text-xl"}`}>
             {isCollapsed ? "SC" : "SPORTY CODES"}

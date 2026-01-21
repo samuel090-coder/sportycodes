@@ -27,6 +27,7 @@ import { SEOSection } from "./components/admin/SEOSection";
 import { VerificationSection } from "./components/admin/VerificationSection";
 import { SettingsSection } from "./components/admin/SettingsSection";
 import { BettingPoolsSection } from "./components/admin/BettingPoolsSection";
+import { AnalyticsSection } from "./components/admin/AnalyticsSection";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 
@@ -70,6 +71,7 @@ const App = () => {
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/betting" element={<BettingPools />} />
               <Route path="/admin" element={<AdminLayout />}>
+                <Route path="analytics" element={<AnalyticsSection />} />
                 <Route path="security" element={<SecuritySection />} />
                 <Route path="ads" element={<AdsSection />} />
                 <Route path="sure-odds" element={<SureOddsSection />} />
