@@ -154,13 +154,34 @@ export const BettingPoolsSection = () => {
 
       const prizePool = selectedPool.prize_pool;
 
+      // Load house fee percentage
+      const { data: feeData } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "house_fee_percentage")
+        .maybeSingle();
+      
+      const houseFeePercent = parseFloat(feeData?.setting_value || "15");
+      const houseFee = Math.floor(prizePool * (houseFeePercent / 100));
+      const distributablePrize = prizePool - houseFee;
+
       if (settlementType === "win") {
         // WIN MODE: Distribute to participants who picked the winning option
         const winningIdx = parseInt(winningOption);
         const winningOptionLabel = selectedPool.options[winningIdx]?.text || `Option ${winningIdx + 1}`;
         
         const winners = entriesData?.filter(e => e.selected_option === winningIdx) || [];
-        const payoutPerWinner = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
+        const payoutPerWinner = winners.length > 0 ? Math.floor(distributablePrize / winners.length) : 0;
+
+        // Record house earnings
+        if (houseFee > 0) {
+          await supabase.from("house_earnings").insert({
+            betting_pool_id: selectedPool.id,
+            amount: houseFee,
+            percentage: houseFeePercent,
+            description: `Commission from "${selectedPool.title}"`
+          });
+        }
 
         // Mark entries as winners/losers
         for (const entry of entriesData || []) {
@@ -221,7 +242,7 @@ export const BettingPoolsSection = () => {
           })
         }).catch(console.error);
 
-        toast.success(`Pool settled! ${winners.length} winners received ₦${payoutPerWinner.toLocaleString()} each`);
+        toast.success(`Pool settled! ${winners.length} winners received ₦${payoutPerWinner.toLocaleString()} each. House earned ₦${houseFee.toLocaleString()} (${houseFeePercent}%)`);
       } else {
         // LOSE MODE: Return prize pool to creator
         const { data: creatorWallet } = await supabase

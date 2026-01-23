@@ -1,6 +1,6 @@
 import BottomNav from "@/components/BottomNav";
 import { Card } from "@/components/ui/card";
-import { Eye, CreditCard, Play } from "lucide-react";
+import { Eye, CreditCard, Play, Crown } from "lucide-react";
 import { useBettingData } from "@/hooks/useBettingData";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -21,33 +21,57 @@ const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<string[]>([]);
   const [, setRefreshTrigger] = useState(0);
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const [selectedOdd, setSelectedOdd] = useState<typeof sureOdds[0] | null>(null);
   const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
+  const [isVip, setIsVip] = useState(false);
 
   useEffect(() => {
-    // Get or create user email identifier
-    let email = localStorage.getItem('user_payment_email');
+    // Check for authenticated user first
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+        setUserEmail(session.user.email || null);
+        
+        // Check VIP status
+        const { data: vipData } = await supabase
+          .from("vip_subscriptions")
+          .select("status, expires_at")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .maybeSingle();
 
-    // If no email stored yet, create a stable guest id so we can still use notifications
-    if (!email) {
-      email = `guest_${Date.now()}`;
-      localStorage.setItem('user_payment_email', email);
-    }
+        if (vipData && new Date(vipData.expires_at) > new Date()) {
+          setIsVip(true);
+        }
+      } else {
+        // Get or create user email identifier for guests
+        let email = localStorage.getItem('user_payment_email');
+        if (!email) {
+          email = `guest_${Date.now()}`;
+          localStorage.setItem('user_payment_email', email);
+        }
+        setUserEmail(email);
+      }
+    };
 
-    setUserEmail(email);
+    checkSession();
+  }, []);
 
-    // Only check payments for real emails (not generated guest ids)
+  // Check payments when userEmail changes
+  useEffect(() => {
+    if (!userEmail || userEmail.startsWith('guest_')) return;
+
     const checkPaymentStatus = async () => {
-      if (!email || email.startsWith('guest_')) return;
-
       try {
         const { data, error } = await supabase
           .from('payments')
           .select('item_id, item_type, status')
-          .eq('user_email', email)
+          .eq('user_email', userEmail)
           .eq('status', 'approved')
           .eq('item_type', 'sure-odd');
 
@@ -64,32 +88,28 @@ const SureOdds = () => {
 
     checkPaymentStatus();
 
-    // Subscribe to real-time updates for payment approvals (real emails only)
-    if (email && !email.startsWith('guest_')) {
-      const paymentChannel = supabase
-        .channel('payment-approvals')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'payments',
-            filter: `user_email=eq.${email}`
-          },
-          (payload) => {
-            console.log('Payment status updated:', payload);
-            if (payload.new.status === 'approved') {
-              setApprovedItems(prev => [...prev, payload.new.item_id]);
-              toast.success('Your payment has been approved! You can now view the code.');
-            }
+    const paymentChannel = supabase
+      .channel('payment-approvals')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'payments',
+          filter: `user_email=eq.${userEmail}`
+        },
+        (payload) => {
+          if (payload.new.status === 'approved') {
+            setApprovedItems(prev => [...prev, payload.new.item_id]);
+            toast.success('Your payment has been approved! You can now view the code.');
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(paymentChannel);
-      };
-    }
+    return () => {
+      supabase.removeChannel(paymentChannel);
+    };
   }, []);
 
   // Real-time subscription for sure odds updates
@@ -288,6 +308,8 @@ const SureOdds = () => {
   };
 
   const hasAccess = (oddId: string) => {
+    // VIP users have access to everything
+    if (isVip) return true;
     return approvedItems.includes(oddId);
   };
 
@@ -298,8 +320,27 @@ const SureOdds = () => {
       
       <header className="sticky top-0 z-30 bg-gradient-primary shadow-bet">
         <div className="max-w-screen-xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-black text-primary-foreground">SURE ODDS</h1>
-          <p className="text-sm text-primary-foreground/80 mt-1">Copy sure betting codes from verified predictions</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-black text-primary-foreground">SURE ODDS</h1>
+              <p className="text-sm text-primary-foreground/80 mt-1">Copy sure betting codes from verified predictions</p>
+            </div>
+            {isVip ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-bet-warning/20 border border-bet-warning">
+                <Crown className="w-4 h-4 text-bet-warning" />
+                <span className="text-sm font-bold text-bet-warning">VIP</span>
+              </div>
+            ) : (
+              <Button
+                onClick={() => navigate("/vip")}
+                size="sm"
+                className="rounded-full bg-gradient-to-r from-bet-warning to-primary"
+              >
+                <Crown className="w-4 h-4 mr-1" />
+                Get VIP
+              </Button>
+            )}
+          </div>
         </div>
       </header>
       

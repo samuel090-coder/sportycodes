@@ -28,6 +28,9 @@ import { VerificationSection } from "./components/admin/VerificationSection";
 import { SettingsSection } from "./components/admin/SettingsSection";
 import { BettingPoolsSection } from "./components/admin/BettingPoolsSection";
 import { AnalyticsSection } from "./components/admin/AnalyticsSection";
+import { VIPSubscriptionsSection } from "./components/admin/VIPSubscriptionsSection";
+import { HouseEarningsSection } from "./components/admin/HouseEarningsSection";
+import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 
@@ -70,6 +73,7 @@ const App = () => {
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/betting" element={<BettingPools />} />
+              <Route path="/vip" element={<VIPSubscription />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="analytics" element={<AnalyticsSection />} />
                 <Route path="security" element={<SecuritySection />} />
@@ -81,6 +85,8 @@ const App = () => {
                 <Route path="notifications" element={<NotificationsSection />} />
                 <Route path="settings" element={<SettingsSection />} />
                 <Route path="betting-pools" element={<BettingPoolsSection />} />
+                <Route path="vip-subscriptions" element={<VIPSubscriptionsSection />} />
+                <Route path="house-earnings" element={<HouseEarningsSection />} />
               </Route>
               <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />
