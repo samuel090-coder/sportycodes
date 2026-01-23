@@ -308,6 +308,41 @@ export type Database = {
         }
         Relationships: []
       }
+      house_earnings: {
+        Row: {
+          amount: number
+          betting_pool_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          percentage: number
+        }
+        Insert: {
+          amount: number
+          betting_pool_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          percentage?: number
+        }
+        Update: {
+          amount?: number
+          betting_pool_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_earnings_betting_pool_id_fkey"
+            columns: ["betting_pool_id"]
+            isOneToOne: false
+            referencedRelation: "betting_pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           away_odds: number
@@ -833,6 +868,45 @@ export type Database = {
           longest_streak?: number | null
           streak_multiplier?: number | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vip_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          payment_reference: string | null
+          payment_screenshot_url: string | null
+          price: number
+          starts_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_reference?: string | null
+          payment_screenshot_url?: string | null
+          price?: number
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_reference?: string | null
+          payment_screenshot_url?: string | null
+          price?: number
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

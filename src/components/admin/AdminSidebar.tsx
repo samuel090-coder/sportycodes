@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -34,6 +34,8 @@ const menuItems = [
       { title: "Ad Management", path: "/admin/ads", icon: DollarSign },
       { title: "Deposits & Withdrawals", path: "/admin/payments", icon: Wallet },
       { title: "Betting Pools", path: "/admin/betting-pools", icon: Trophy },
+      { title: "VIP Subscriptions", path: "/admin/vip-subscriptions", icon: Crown },
+      { title: "House Earnings", path: "/admin/house-earnings", icon: Percent },
     ],
   },
   {
