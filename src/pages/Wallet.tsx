@@ -26,11 +26,7 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Upload,
-  ChevronLeft,
-  Building2,
-  CreditCard,
-  Smartphone
+  ChevronLeft
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
@@ -74,8 +70,6 @@ const Wallet = () => {
   // Deposit Modal State
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Withdraw Modal State
@@ -84,13 +78,6 @@ const Wallet = () => {
   const [withdrawBank, setWithdrawBank] = useState("");
   const [withdrawAccountName, setWithdrawAccountName] = useState("");
   const [withdrawAccountNumber, setWithdrawAccountNumber] = useState("");
-
-  // Bank account details for deposits
-  const [bankDetails, setBankDetails] = useState({
-    bank_name: "",
-    account_name: "",
-    account_number: ""
-  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -110,29 +97,9 @@ const Wallet = () => {
     });
 
     checkAuth();
-    loadBankDetails();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
-
-  const loadBankDetails = async () => {
-    try {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("setting_key, setting_value")
-        .in("setting_key", ["bank_name", "account_name", "account_number"]);
-
-      if (data) {
-        const details: any = {};
-        data.forEach(item => {
-          details[item.setting_key] = item.setting_value;
-        });
-        setBankDetails(details);
-      }
-    } catch (error) {
-      console.error("Error loading bank details:", error);
-    }
-  };
 
   const loadData = async (userId: string) => {
     setIsLoading(true);
@@ -170,45 +137,34 @@ const Wallet = () => {
   };
 
   const handleDeposit = async () => {
-    if (!user || !depositAmount || !paymentMethod || !screenshot) {
-      toast.error("Please fill all fields and upload a screenshot");
+    if (!user || !depositAmount) {
+      toast.error("Please enter an amount");
+      return;
+    }
+
+    const amount = parseFloat(depositAmount);
+    if (amount < 100) {
+      toast.error("Minimum deposit is ₦100");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Upload screenshot
-      const fileExt = screenshot.name.split(".").pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("payment_screenshots")
-        .upload(fileName, screenshot);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("payment_screenshots")
-        .getPublicUrl(fileName);
-
-      // Create deposit request
+      // Create deposit request without screenshot
       const { error: insertError } = await supabase
         .from("deposit_requests")
         .insert({
           user_id: user.id,
-          amount: parseFloat(depositAmount),
-          payment_method: paymentMethod,
-          screenshot_url: publicUrl,
+          amount,
+          payment_method: "direct_credit",
           status: "pending"
         });
 
       if (insertError) throw insertError;
 
-      toast.success("Deposit request submitted! Awaiting admin approval.");
+      toast.success("Deposit request submitted! Admin will credit your wallet.");
       setDepositOpen(false);
       setDepositAmount("");
-      setPaymentMethod("");
-      setScreenshot(null);
       loadData(user.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit deposit");
@@ -270,11 +226,6 @@ const Wallet = () => {
     }
   };
 
-  const paymentMethods = [
-    { id: "bank_transfer", name: "Bank Transfer", icon: Building2 },
-    { id: "opay", name: "OPay", icon: Smartphone },
-    { id: "palmpay", name: "PalmPay", icon: CreditCard },
-  ];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -453,97 +404,36 @@ const Wallet = () => {
         </div>
       </main>
 
-      {/* Deposit Modal */}
       <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
         <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-foreground">Deposit Funds</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-foreground">Request Deposit</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Transfer to our account and upload proof of payment
+              Enter the amount you want to deposit. Admin will credit your wallet directly.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 mt-4">
-            {/* Bank Details */}
-            <div className="bg-secondary/50 rounded-xl p-4 border border-border/30">
-              <h4 className="font-bold text-foreground mb-3 flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Bank Account Details
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Bank Name:</span>
-                  <span className="font-bold text-foreground">{bankDetails.bank_name || "Not Set"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Account Name:</span>
-                  <span className="font-bold text-foreground">{bankDetails.account_name || "Not Set"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Account Number:</span>
-                  <span className="font-bold text-foreground">{bankDetails.account_number || "Not Set"}</span>
-                </div>
-              </div>
-            </div>
-
             {/* Amount */}
             <div className="space-y-2">
               <Label className="text-foreground">Amount (₦)</Label>
               <Input
                 type="number"
-                placeholder="Enter amount"
+                placeholder="Enter amount (min ₦100)"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 className="h-12 bg-secondary/50 border-border/50 rounded-xl"
               />
+              <p className="text-xs text-muted-foreground">
+                Minimum deposit: ₦100
+              </p>
             </div>
 
-            {/* Payment Method */}
-            <div className="space-y-2">
-              <Label className="text-foreground">Payment Method</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {paymentMethods.map((method) => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.id)}
-                    className={`p-3 rounded-xl border transition-all text-center ${
-                      paymentMethod === method.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-primary/50"
-                    }`}
-                  >
-                    <method.icon className="w-5 h-5 mx-auto mb-1" />
-                    <span className="text-xs font-medium">{method.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Screenshot Upload */}
-            <div className="space-y-2">
-              <Label className="text-foreground">Payment Screenshot</Label>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setScreenshot(e.target.files?.[0] || null)}
-                  className="hidden"
-                  id="screenshot-upload"
-                />
-                <label
-                  htmlFor="screenshot-upload"
-                  className={`flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-                    screenshot 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border/50 hover:border-primary/50"
-                  }`}
-                >
-                  <Upload className={`w-6 h-6 mb-1 ${screenshot ? "text-primary" : "text-muted-foreground"}`} />
-                  <span className={`text-sm ${screenshot ? "text-primary font-medium" : "text-muted-foreground"}`}>
-                    {screenshot ? screenshot.name : "Upload payment proof"}
-                  </span>
-                </label>
-              </div>
+            {/* Info Box */}
+            <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
+              <p className="text-sm text-foreground">
+                💡 <strong>How it works:</strong> Submit your deposit request and admin will credit your wallet directly. No bank transfer needed!
+              </p>
             </div>
 
             <Button
@@ -551,7 +441,7 @@ const Wallet = () => {
               disabled={isSubmitting}
               className="w-full h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl"
             >
-              {isSubmitting ? "Submitting..." : "Submit Deposit Request"}
+              {isSubmitting ? "Submitting..." : "Request Deposit"}
             </Button>
           </div>
         </DialogContent>

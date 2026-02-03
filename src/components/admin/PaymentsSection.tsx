@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard } from "lucide-react";
+import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, PlusCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const PaymentsSection = () => {
@@ -18,6 +20,15 @@ export const PaymentsSection = () => {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
   const [adminNote, setAdminNote] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  // Direct Credit Modal State
+  const [directCreditOpen, setDirectCreditOpen] = useState(false);
+  const [creditUserEmail, setCreditUserEmail] = useState("");
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditNote, setCreditNote] = useState("");
+  const [isCrediting, setIsCrediting] = useState(false);
+  const [foundUser, setFoundUser] = useState<any>(null);
+  const [searchingUser, setSearchingUser] = useState(false);
 
   useEffect(() => {
     fetchDeposits();
@@ -159,6 +170,152 @@ export const PaymentsSection = () => {
     }
   };
 
+  const searchUser = async () => {
+    if (!creditUserEmail.trim()) {
+      toast.error("Please enter a user email");
+      return;
+    }
+
+    setSearchingUser(true);
+    setFoundUser(null);
+    try {
+      // Search for user by email in profiles (via auth)
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, username")
+        .limit(100);
+
+      if (error) throw error;
+
+      // Now check wallets to find matching user
+      const { data: wallets } = await supabase
+        .from("wallets")
+        .select("user_id, balance");
+
+      // Try to find user by checking deposit_requests for matching email pattern
+      const { data: depositUser } = await supabase
+        .from("deposit_requests")
+        .select("user_id")
+        .limit(1);
+
+      // For now, search by user_id if it looks like a UUID, otherwise show profiles list
+      if (creditUserEmail.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        const profile = profiles?.find(p => p.id === creditUserEmail);
+        const wallet = wallets?.find(w => w.user_id === creditUserEmail);
+        
+        if (profile || wallet) {
+          setFoundUser({
+            id: creditUserEmail,
+            display_name: profile?.display_name || profile?.username || "User",
+            balance: wallet?.balance || 0
+          });
+        } else {
+          toast.error("User not found");
+        }
+      } else {
+        // Search by username or display_name
+        const profile = profiles?.find(p => 
+          p.username?.toLowerCase() === creditUserEmail.toLowerCase() ||
+          p.display_name?.toLowerCase().includes(creditUserEmail.toLowerCase())
+        );
+
+        if (profile) {
+          const wallet = wallets?.find(w => w.user_id === profile.id);
+          setFoundUser({
+            id: profile.id,
+            display_name: profile.display_name || profile.username || "User",
+            balance: wallet?.balance || 0
+          });
+        } else {
+          toast.error("User not found. Try using their User ID instead.");
+        }
+      }
+    } catch (error) {
+      console.error("Error searching user:", error);
+      toast.error("Failed to search for user");
+    } finally {
+      setSearchingUser(false);
+    }
+  };
+
+  const handleDirectCredit = async () => {
+    if (!foundUser || !creditAmount) {
+      toast.error("Please find a user and enter an amount");
+      return;
+    }
+
+    const amount = parseFloat(creditAmount);
+    if (amount <= 0) {
+      toast.error("Amount must be greater than 0");
+      return;
+    }
+
+    setIsCrediting(true);
+    try {
+      // Get current wallet
+      const { data: wallet, error: walletFetchError } = await supabase
+        .from("wallets")
+        .select("balance, total_deposited")
+        .eq("user_id", foundUser.id)
+        .maybeSingle();
+
+      if (walletFetchError) throw walletFetchError;
+
+      if (wallet) {
+        // Update existing wallet
+        const { error: updateError } = await supabase
+          .from("wallets")
+          .update({
+            balance: (wallet.balance || 0) + amount,
+            total_deposited: (wallet.total_deposited || 0) + amount
+          })
+          .eq("user_id", foundUser.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new wallet
+        const { error: insertError } = await supabase
+          .from("wallets")
+          .insert({
+            user_id: foundUser.id,
+            balance: amount,
+            total_deposited: amount
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      // Create a deposit record for tracking
+      const { data: sessionData } = await supabase.auth.getSession();
+      const { error: depositError } = await supabase
+        .from("deposit_requests")
+        .insert({
+          user_id: foundUser.id,
+          amount,
+          payment_method: "admin_direct_credit",
+          status: "approved",
+          processed_at: new Date().toISOString(),
+          processed_by: sessionData?.session?.user?.id,
+          admin_note: creditNote || "Direct credit by admin"
+        });
+
+      if (depositError) throw depositError;
+
+      toast.success(`Successfully credited ₦${amount.toLocaleString()} to ${foundUser.display_name}'s wallet!`);
+      setDirectCreditOpen(false);
+      setCreditUserEmail("");
+      setCreditAmount("");
+      setCreditNote("");
+      setFoundUser(null);
+      fetchDeposits();
+    } catch (error) {
+      console.error("Error crediting wallet:", error);
+      toast.error("Failed to credit wallet");
+    } finally {
+      setIsCrediting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       pending: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
@@ -170,6 +327,26 @@ export const PaymentsSection = () => {
 
   return (
     <div className="space-y-6">
+      {/* Direct Credit Button */}
+      <Card className="bg-gradient-to-r from-bet-success/20 to-bet-success/5 border-bet-success/30 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <PlusCircle className="w-5 h-5 text-bet-success" />
+              Direct Wallet Credit
+            </h3>
+            <p className="text-sm text-muted-foreground">Credit any user's wallet directly without bank transfer</p>
+          </div>
+          <Button
+            onClick={() => setDirectCreditOpen(true)}
+            className="bg-bet-success hover:bg-bet-success/90 text-white"
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Credit Wallet
+          </Button>
+        </div>
+      </Card>
+
       <Tabs defaultValue="deposits" className="w-full">
         <TabsList className="grid w-full grid-cols-2 bg-muted/50 border border-border">
           <TabsTrigger value="deposits" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
@@ -185,7 +362,7 @@ export const PaymentsSection = () => {
         <TabsContent value="deposits" className="mt-6">
           <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
             <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-              <ArrowDownCircle className="w-5 h-5 text-green-500" />
+              <ArrowDownCircle className="w-5 h-5 text-bet-success" />
               Deposit Requests
             </h3>
 
@@ -412,6 +589,90 @@ export const PaymentsSection = () => {
               className="w-full h-auto rounded-lg"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Direct Credit Modal */}
+      <Dialog open={directCreditOpen} onOpenChange={setDirectCreditOpen}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
+              <PlusCircle className="w-5 h-5 text-bet-success" />
+              Direct Wallet Credit
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Credit funds directly to any user's wallet
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            {/* User Search */}
+            <div className="space-y-2">
+              <Label className="text-foreground">Find User (Username or User ID)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter username or user ID..."
+                  value={creditUserEmail}
+                  onChange={(e) => {
+                    setCreditUserEmail(e.target.value);
+                    setFoundUser(null);
+                  }}
+                  className="flex-1 bg-secondary/50 border-border"
+                />
+                <Button
+                  onClick={searchUser}
+                  disabled={searchingUser}
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary/10"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Found User Display */}
+            {foundUser && (
+              <div className="bg-bet-success/10 border border-bet-success/30 rounded-xl p-4">
+                <p className="text-sm text-muted-foreground">User Found:</p>
+                <p className="font-bold text-foreground">{foundUser.display_name}</p>
+                <p className="text-xs text-muted-foreground font-mono">{foundUser.id}</p>
+                <p className="text-sm text-bet-success mt-2">
+                  Current Balance: ₦{foundUser.balance?.toLocaleString() || "0"}
+                </p>
+              </div>
+            )}
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <Label className="text-foreground">Amount to Credit (₦)</Label>
+              <Input
+                type="number"
+                placeholder="Enter amount..."
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                className="bg-secondary/50 border-border"
+              />
+            </div>
+
+            {/* Note */}
+            <div className="space-y-2">
+              <Label className="text-foreground">Note (optional)</Label>
+              <Textarea
+                placeholder="Reason for credit..."
+                value={creditNote}
+                onChange={(e) => setCreditNote(e.target.value)}
+                className="bg-secondary/50 border-border"
+              />
+            </div>
+
+            <Button
+              onClick={handleDirectCredit}
+              disabled={isCrediting || !foundUser || !creditAmount}
+              className="w-full bg-bet-success hover:bg-bet-success/90 text-white"
+            >
+              {isCrediting ? "Processing..." : `Credit ₦${creditAmount || "0"} to Wallet`}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
