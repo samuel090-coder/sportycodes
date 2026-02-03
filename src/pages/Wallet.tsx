@@ -71,6 +71,12 @@ const Wallet = () => {
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [bankDetails, setBankDetails] = useState({
+    bank_name: "",
+    account_number: "",
+    account_name: ""
+  });
 
   // Withdraw Modal State
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -112,6 +118,18 @@ const Wallet = () => {
         .single();
       setWallet(walletData);
 
+      // Load bank details for deposit
+      const { data: bankData } = await supabase
+        .from("app_settings")
+        .select("setting_key, setting_value")
+        .in("setting_key", ["bank_name", "account_number", "account_name"]);
+
+      const details: any = {};
+      bankData?.forEach(d => {
+        details[d.setting_key] = d.setting_value;
+      });
+      setBankDetails(details);
+
       // Load deposits
       const { data: depositData } = await supabase
         .from("deposit_requests")
@@ -142,6 +160,11 @@ const Wallet = () => {
       return;
     }
 
+    if (!screenshot) {
+      toast.error("Please upload payment screenshot");
+      return;
+    }
+
     const amount = parseFloat(depositAmount);
     if (amount < 100) {
       toast.error("Minimum deposit is ₦100");
@@ -150,21 +173,36 @@ const Wallet = () => {
 
     setIsSubmitting(true);
     try {
-      // Create deposit request without screenshot
+      // Upload screenshot
+      const fileExt = screenshot.name.split('.').pop();
+      const fileName = `deposit-${user.id}-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("payment-screenshots")
+        .upload(fileName, screenshot);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("payment-screenshots")
+        .getPublicUrl(fileName);
+
+      // Create deposit request with screenshot
       const { error: insertError } = await supabase
         .from("deposit_requests")
         .insert({
           user_id: user.id,
           amount,
-          payment_method: "direct_credit",
+          payment_method: "bank_transfer",
+          screenshot_url: publicUrl,
           status: "pending"
         });
 
       if (insertError) throw insertError;
 
-      toast.success("Deposit request submitted! Admin will credit your wallet.");
+      toast.success("Deposit submitted! Admin will review and credit your wallet.");
       setDepositOpen(false);
       setDepositAmount("");
+      setScreenshot(null);
       loadData(user.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit deposit");
@@ -407,16 +445,26 @@ const Wallet = () => {
       <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
         <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-foreground">Request Deposit</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-foreground">Deposit Funds</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Enter the amount you want to deposit. Admin will credit your wallet directly.
+              Transfer to the account below and upload proof
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 mt-4">
+            {/* Bank Details */}
+            <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+              <p className="text-sm text-muted-foreground mb-2">Transfer to:</p>
+              <div className="space-y-1">
+                <p className="text-foreground font-bold">{bankDetails.bank_name || "Loading..."}</p>
+                <p className="text-foreground font-mono text-lg">{bankDetails.account_number || "..."}</p>
+                <p className="text-muted-foreground">{bankDetails.account_name || "..."}</p>
+              </div>
+            </div>
+
             {/* Amount */}
             <div className="space-y-2">
-              <Label className="text-foreground">Amount (₦)</Label>
+              <Label className="text-foreground">Amount Transferred (₦)</Label>
               <Input
                 type="number"
                 placeholder="Enter amount (min ₦100)"
@@ -424,24 +472,37 @@ const Wallet = () => {
                 onChange={(e) => setDepositAmount(e.target.value)}
                 className="h-12 bg-secondary/50 border-border/50 rounded-xl"
               />
-              <p className="text-xs text-muted-foreground">
-                Minimum deposit: ₦100
-              </p>
             </div>
 
-            {/* Info Box */}
-            <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-              <p className="text-sm text-foreground">
-                💡 <strong>How it works:</strong> Submit your deposit request and admin will credit your wallet directly. No bank transfer needed!
-              </p>
+            {/* Screenshot Upload */}
+            <div className="space-y-2">
+              <Label className="text-foreground">Payment Screenshot</Label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setScreenshot(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="deposit-screenshot"
+                />
+                <label
+                  htmlFor="deposit-screenshot"
+                  className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  <ArrowDownLeft className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    {screenshot ? screenshot.name : "Upload payment proof"}
+                  </span>
+                </label>
+              </div>
             </div>
 
             <Button
               onClick={handleDeposit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !screenshot || !depositAmount}
               className="w-full h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl"
             >
-              {isSubmitting ? "Submitting..." : "Request Deposit"}
+              {isSubmitting ? "Submitting..." : "Submit Deposit"}
             </Button>
           </div>
         </DialogContent>

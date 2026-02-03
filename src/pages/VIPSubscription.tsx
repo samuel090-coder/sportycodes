@@ -4,34 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   Crown, 
-  Check, 
   ChevronLeft, 
   Star, 
   Zap, 
   Shield, 
   Sparkles,
-  Upload
+  Wallet,
+  AlertCircle
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 const VIPSubscription = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [wallet, setWallet] = useState<any>(null);
   const [vipPrice, setVipPrice] = useState(2000);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentReference, setPaymentReference] = useState("");
-  const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [bankDetails, setBankDetails] = useState({
-    bank_name: "",
-    account_number: "",
-    account_name: ""
-  });
 
   useEffect(() => {
     checkAuth();
@@ -61,17 +53,13 @@ const VIPSubscription = () => {
         setVipPrice(parseFloat(priceData.setting_value));
       }
 
-      // Load bank details
-      const { data: bankData } = await supabase
-        .from("app_settings")
-        .select("setting_key, setting_value")
-        .in("setting_key", ["bank_name", "account_number", "account_name"]);
-
-      const details: any = {};
-      bankData?.forEach(d => {
-        details[d.setting_key] = d.setting_value;
-      });
-      setBankDetails(details);
+      // Load wallet
+      const { data: walletData } = await supabase
+        .from("wallets")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+      setWallet(walletData);
 
       // Check current subscription
       const { data: subData } = await supabase
@@ -92,56 +80,50 @@ const VIPSubscription = () => {
     }
   };
 
-  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setScreenshot(file);
-    }
-  };
-
   const handleSubscribe = async () => {
-    if (!user || !paymentReference.trim()) {
-      toast.error("Please enter your payment reference");
+    if (!user || !wallet) {
+      toast.error("Please login to continue");
+      return;
+    }
+
+    if (wallet.balance < vipPrice) {
+      toast.error("Insufficient wallet balance. Please deposit funds first.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      let screenshotUrl = null;
+      // Deduct from wallet
+      const newBalance = wallet.balance - vipPrice;
+      const { error: walletError } = await supabase
+        .from("wallets")
+        .update({ balance: newBalance, updated_at: new Date().toISOString() })
+        .eq("user_id", user.id);
 
-      // Upload screenshot if provided
-      if (screenshot) {
-        const fileName = `vip-${user.id}-${Date.now()}.${screenshot.name.split('.').pop()}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("payment-screenshots")
-          .upload(fileName, screenshot);
+      if (walletError) throw walletError;
 
-        if (uploadError) throw uploadError;
+      // Calculate expiry (1 month from now)
+      const startsAt = new Date();
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
 
-        const { data: { publicUrl } } = supabase.storage
-          .from("payment-screenshots")
-          .getPublicUrl(fileName);
-        
-        screenshotUrl = publicUrl;
-      }
-
-      // Create subscription request
+      // Create subscription (auto-approved since wallet payment)
       const { error } = await supabase.from("vip_subscriptions").insert({
         user_id: user.id,
         price: vipPrice,
-        payment_reference: paymentReference.trim(),
-        payment_screenshot_url: screenshotUrl,
-        status: "pending"
+        payment_reference: "wallet_payment",
+        status: "active",
+        starts_at: startsAt.toISOString(),
+        expires_at: expiresAt.toISOString()
       });
 
       if (error) throw error;
 
-      toast.success("VIP subscription request submitted! Awaiting approval.");
+      toast.success("VIP subscription activated! Enjoy unlimited access.");
+      setWallet({ ...wallet, balance: newBalance });
       loadData(user.id);
-      setPaymentReference("");
-      setScreenshot(null);
     } catch (error: any) {
-      toast.error(error.message || "Failed to submit subscription");
+      toast.error(error.message || "Failed to subscribe");
     } finally {
       setIsSubmitting(false);
     }
@@ -149,6 +131,8 @@ const VIPSubscription = () => {
 
   const isVipActive = currentSubscription?.status === "active" && 
     new Date(currentSubscription.expires_at) > new Date();
+
+  const insufficientBalance = wallet && wallet.balance < vipPrice;
 
   const features = [
     { icon: Star, text: "Unlimited access to ALL Sure Odds" },
@@ -246,63 +230,52 @@ const VIPSubscription = () => {
               </div>
             </Card>
 
-            {/* Payment Section */}
+            {/* Wallet Payment Section */}
             <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
               <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Check className="w-5 h-5 text-primary" />
-                Subscribe Now
+                <Wallet className="w-5 h-5 text-primary" />
+                Pay with Wallet
               </h3>
 
-              {/* Bank Details */}
               <div className="bg-secondary/30 rounded-xl p-4 mb-4">
-                <p className="text-sm text-muted-foreground mb-2">Make payment to:</p>
-                <div className="space-y-1">
-                  <p className="text-foreground font-bold">{bankDetails.bank_name || "Bank Name"}</p>
-                  <p className="text-foreground font-mono text-lg">{bankDetails.account_number || "Account Number"}</p>
-                  <p className="text-muted-foreground">{bankDetails.account_name || "Account Name"}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Your Balance</span>
+                  <span className={`text-xl font-black ${insufficientBalance ? 'text-destructive' : 'text-bet-success'}`}>
+                    ₦{wallet?.balance?.toLocaleString() || '0'}
+                  </span>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Payment Reference / Sender Name</Label>
-                  <Input
-                    value={paymentReference}
-                    onChange={(e) => setPaymentReference(e.target.value)}
-                    placeholder="Enter sender name or reference"
-                    className="bg-secondary/50"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Payment Screenshot (optional)</Label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleScreenshotUpload}
-                      className="hidden"
-                      id="screenshot-upload"
-                    />
-                    <label
-                      htmlFor="screenshot-upload"
-                      className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors"
-                    >
-                      <Upload className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        {screenshot ? screenshot.name : "Upload screenshot"}
-                      </span>
-                    </label>
+              {insufficientBalance && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 mb-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-destructive font-medium">Insufficient Balance</p>
+                    <p className="text-sm text-muted-foreground">
+                      You need ₦{(vipPrice - (wallet?.balance || 0)).toLocaleString()} more. Please deposit funds to your wallet.
+                    </p>
                   </div>
                 </div>
+              )}
 
+              <div className="space-y-3">
                 <Button
                   onClick={handleSubscribe}
-                  disabled={isSubmitting || !paymentReference.trim()}
-                  className="w-full rounded-xl bg-gradient-to-r from-primary to-bet-warning"
+                  disabled={isSubmitting || insufficientBalance}
+                  className="w-full rounded-xl bg-gradient-to-r from-primary to-bet-warning disabled:opacity-50"
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Subscription Request"}
+                  {isSubmitting ? "Processing..." : `Subscribe for ₦${vipPrice.toLocaleString()}`}
                 </Button>
+
+                {insufficientBalance && (
+                  <Button
+                    onClick={() => navigate("/wallet")}
+                    variant="outline"
+                    className="w-full rounded-xl border-border"
+                  >
+                    Go to Wallet to Deposit
+                  </Button>
+                )}
               </div>
             </Card>
           </>
