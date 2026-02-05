@@ -1,0 +1,663 @@
+import { useState, useEffect } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+  Megaphone,
+  Plus,
+  Trash2,
+  Edit,
+  Eye,
+  EyeOff,
+  X,
+  ExternalLink,
+  AlertTriangle,
+  Bell,
+  MessageSquare,
+  Layout,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  display_type: string;
+  priority: number;
+  bg_color: string;
+  text_color: string;
+  link_url?: string;
+  link_text?: string;
+  is_active: boolean;
+  is_dismissible: boolean;
+  show_once: boolean;
+  start_at?: string;
+  end_at?: string;
+  created_at: string;
+}
+
+const DISPLAY_TYPES = [
+  { value: "banner", label: "Banner", description: "Persistent bar at top of page", icon: Layout },
+  { value: "popup", label: "Popup/Modal", description: "Centered dialog box", icon: MessageSquare },
+  { value: "toast", label: "Toast Notification", description: "Slide-in at corner", icon: Bell },
+];
+
+const COLOR_PRESETS = [
+  { name: "Primary", bg: "#6366f1", text: "#ffffff" },
+  { name: "Success", bg: "#22c55e", text: "#ffffff" },
+  { name: "Warning", bg: "#f59e0b", text: "#000000" },
+  { name: "Danger", bg: "#ef4444", text: "#ffffff" },
+  { name: "Info", bg: "#0ea5e9", text: "#ffffff" },
+  { name: "Dark", bg: "#1f2937", text: "#ffffff" },
+];
+
+export const AnnouncementsSection = () => {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<string>("banner");
+  
+  // Form state
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [displayType, setDisplayType] = useState("toast");
+  const [priority, setPriority] = useState(1);
+  const [bgColor, setBgColor] = useState("#6366f1");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [isDismissible, setIsDismissible] = useState(true);
+  const [showOnce, setShowOnce] = useState(false);
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const fetchAnnouncements = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to load announcements");
+    } else {
+      setAnnouncements(data || []);
+    }
+    setLoading(false);
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setContent("");
+    setDisplayType("toast");
+    setPriority(1);
+    setBgColor("#6366f1");
+    setTextColor("#ffffff");
+    setLinkUrl("");
+    setLinkText("");
+    setIsActive(true);
+    setIsDismissible(true);
+    setShowOnce(false);
+    setStartAt("");
+    setEndAt("");
+    setEditingId(null);
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (announcement: Announcement) => {
+    setEditingId(announcement.id);
+    setTitle(announcement.title);
+    setContent(announcement.content);
+    setDisplayType(announcement.display_type);
+    setPriority(announcement.priority);
+    setBgColor(announcement.bg_color);
+    setTextColor(announcement.text_color);
+    setLinkUrl(announcement.link_url || "");
+    setLinkText(announcement.link_text || "");
+    setIsActive(announcement.is_active);
+    setIsDismissible(announcement.is_dismissible);
+    setShowOnce(announcement.show_once);
+    setStartAt(announcement.start_at ? new Date(announcement.start_at).toISOString().slice(0, 16) : "");
+    setEndAt(announcement.end_at ? new Date(announcement.end_at).toISOString().slice(0, 16) : "");
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim() || !content.trim()) {
+      toast.error("Title and content are required");
+      return;
+    }
+
+    setSaving(true);
+    const { data: session } = await supabase.auth.getSession();
+
+    const payload = {
+      title,
+      content,
+      display_type: displayType,
+      priority,
+      bg_color: bgColor,
+      text_color: textColor,
+      link_url: linkUrl || null,
+      link_text: linkText || null,
+      is_active: isActive,
+      is_dismissible: isDismissible,
+      show_once: showOnce,
+      start_at: startAt || null,
+      end_at: endAt || null,
+      created_by: session?.session?.user?.id,
+    };
+
+    let error;
+    if (editingId) {
+      ({ error } = await supabase.from("announcements").update(payload).eq("id", editingId));
+    } else {
+      ({ error } = await supabase.from("announcements").insert(payload));
+    }
+
+    if (error) {
+      toast.error("Failed to save announcement");
+      console.error(error);
+    } else {
+      toast.success(editingId ? "Announcement updated!" : "Announcement created!");
+      setDialogOpen(false);
+      resetForm();
+      fetchAnnouncements();
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this announcement?")) return;
+    
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) {
+      toast.error("Failed to delete");
+    } else {
+      toast.success("Announcement deleted");
+      fetchAnnouncements();
+    }
+  };
+
+  const toggleActive = async (announcement: Announcement) => {
+    const { error } = await supabase
+      .from("announcements")
+      .update({ is_active: !announcement.is_active })
+      .eq("id", announcement.id);
+
+    if (error) {
+      toast.error("Failed to update");
+    } else {
+      fetchAnnouncements();
+    }
+  };
+
+  const getDisplayTypeIcon = (type: string) => {
+    const dt = DISPLAY_TYPES.find(t => t.value === type);
+    return dt ? dt.icon : Bell;
+  };
+
+  const applyColorPreset = (preset: typeof COLOR_PRESETS[0]) => {
+    setBgColor(preset.bg);
+    setTextColor(preset.text);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Megaphone className="w-6 h-6 text-primary" />
+            Announcements
+          </h2>
+          <p className="text-sm text-muted-foreground">Create and manage site-wide announcements</p>
+        </div>
+        <Button onClick={openCreateDialog} className="bg-primary hover:bg-primary/90">
+          <Plus className="w-4 h-4 mr-2" />
+          New Announcement
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-card/50 border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Megaphone className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total</p>
+              <p className="text-2xl font-bold text-foreground">{announcements.length}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-card/50 border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-bet-success/10 rounded-lg">
+              <Eye className="w-5 h-5 text-bet-success" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Active</p>
+              <p className="text-2xl font-bold text-bet-success">
+                {announcements.filter(a => a.is_active).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-card/50 border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-muted rounded-lg">
+              <EyeOff className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Inactive</p>
+              <p className="text-2xl font-bold text-muted-foreground">
+                {announcements.filter(a => !a.is_active).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Announcements Table */}
+      <Card className="bg-card/50 border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border">
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Priority</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : announcements.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  No announcements yet. Create one to get started!
+                </TableCell>
+              </TableRow>
+            ) : (
+              announcements.map((announcement) => {
+                const Icon = getDisplayTypeIcon(announcement.display_type);
+                return (
+                  <TableRow key={announcement.id} className="border-border">
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: announcement.bg_color }}
+                        />
+                        <span className="font-medium text-foreground">{announcement.title}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Icon className="w-4 h-4" />
+                        <span className="capitalize">{announcement.display_type}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleActive(announcement)}
+                        className={announcement.is_active ? "text-bet-success" : "text-muted-foreground"}
+                      >
+                        {announcement.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        <span className="ml-1">{announcement.is_active ? "Active" : "Inactive"}</span>
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-muted-foreground">{announcement.priority}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(announcement.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(announcement)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(announcement.id)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-primary" />
+              {editingId ? "Edit Announcement" : "Create Announcement"}
+            </DialogTitle>
+            <DialogDescription>
+              Create announcements that display as banners, popups, or toast notifications
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs defaultValue="content" className="mt-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="content">Content</TabsTrigger>
+              <TabsTrigger value="style">Style & Display</TabsTrigger>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+            </TabsList>
+
+            {/* Content Tab */}
+            <TabsContent value="content" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="🎉 Exciting News!"
+                  className="bg-secondary/50 border-border"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Content</Label>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Your announcement message..."
+                  className="bg-secondary/50 border-border min-h-[100px]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Link URL (optional)</Label>
+                  <Input
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="bg-secondary/50 border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Link Text</Label>
+                  <Input
+                    value={linkText}
+                    onChange={(e) => setLinkText(e.target.value)}
+                    placeholder="Learn More"
+                    className="bg-secondary/50 border-border"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Style Tab */}
+            <TabsContent value="style" className="space-y-6 mt-4">
+              {/* Display Type */}
+              <div className="space-y-3">
+                <Label>Display Type</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {DISPLAY_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setDisplayType(type.value)}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${
+                        displayType === type.value
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <type.icon className={`w-6 h-6 mb-2 ${displayType === type.value ? "text-primary" : "text-muted-foreground"}`} />
+                      <p className="font-semibold text-foreground">{type.label}</p>
+                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color Presets */}
+              <div className="space-y-3">
+                <Label>Color Preset</Label>
+                <div className="flex flex-wrap gap-2">
+                  {COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => applyColorPreset(preset)}
+                      className="px-3 py-2 rounded-lg border border-border flex items-center gap-2 hover:border-primary/50"
+                    >
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: preset.bg }}
+                      />
+                      <span className="text-sm text-foreground">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Colors */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Background Color</Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={bgColor}
+                      onChange={(e) => setBgColor(e.target.value)}
+                      className="h-10 w-16 rounded cursor-pointer"
+                    />
+                    <Input
+                      value={bgColor}
+                      onChange={(e) => setBgColor(e.target.value)}
+                      className="bg-secondary/50 border-border font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Text Color</Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={textColor}
+                      onChange={(e) => setTextColor(e.target.value)}
+                      className="h-10 w-16 rounded cursor-pointer"
+                    />
+                    <Input
+                      value={textColor}
+                      onChange={(e) => setTextColor(e.target.value)}
+                      className="bg-secondary/50 border-border font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Priority (higher = more important)</Label>
+                  <Input
+                    type="number"
+                    value={priority}
+                    onChange={(e) => setPriority(Number(e.target.value))}
+                    min={1}
+                    max={10}
+                    className="bg-secondary/50 border-border"
+                  />
+                </div>
+                <div className="space-y-4 pt-6">
+                  <div className="flex items-center justify-between">
+                    <Label>Active</Label>
+                    <Switch checked={isActive} onCheckedChange={setIsActive} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Dismissible</Label>
+                    <Switch checked={isDismissible} onCheckedChange={setIsDismissible} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Show Once Per User</Label>
+                    <Switch checked={showOnce} onCheckedChange={setShowOnce} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Schedule */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={startAt}
+                    onChange={(e) => setStartAt(e.target.value)}
+                    className="bg-secondary/50 border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={endAt}
+                    onChange={(e) => setEndAt(e.target.value)}
+                    className="bg-secondary/50 border-border"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Preview Tab */}
+            <TabsContent value="preview" className="mt-4">
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  {DISPLAY_TYPES.map((type) => (
+                    <Button
+                      key={type.value}
+                      variant={previewType === type.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPreviewType(type.value)}
+                    >
+                      <type.icon className="w-4 h-4 mr-1" />
+                      {type.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="bg-background rounded-xl border border-border p-4 min-h-[300px] relative overflow-hidden">
+                  {/* Banner Preview */}
+                  {previewType === "banner" && (
+                    <div
+                      className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center justify-center gap-3"
+                      style={{ backgroundColor: bgColor, color: textColor }}
+                    >
+                      <Megaphone className="w-4 h-4" />
+                      <span className="font-bold">{title || "Announcement Title"}</span>
+                      <span className="opacity-90">{content || "Your message here..."}</span>
+                      {linkUrl && (
+                        <span className="underline">{linkText || "Learn More"}</span>
+                      )}
+                      {isDismissible && <X className="w-4 h-4 ml-auto" />}
+                    </div>
+                  )}
+
+                  {/* Popup Preview */}
+                  {previewType === "popup" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                      <div className="bg-card rounded-2xl border-2 max-w-md w-full m-4" style={{ borderColor: bgColor }}>
+                        <div
+                          className="px-6 py-4 rounded-t-2xl flex items-center gap-3"
+                          style={{ backgroundColor: bgColor, color: textColor }}
+                        >
+                          <Megaphone className="w-6 h-6" />
+                          <span className="font-bold">{title || "Announcement"}</span>
+                        </div>
+                        <div className="p-6">
+                          <p className="text-foreground">{content || "Your message here..."}</p>
+                          {linkUrl && (
+                            <a className="text-primary underline mt-4 inline-flex items-center gap-1">
+                              {linkText || "Learn More"} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
+                            {isDismissible && <Button variant="outline">Dismiss</Button>}
+                            <Button style={{ backgroundColor: bgColor, color: textColor }}>Got it</Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Toast Preview */}
+                  {previewType === "toast" && (
+                    <div className="absolute bottom-4 right-4">
+                      <div
+                        className="p-4 rounded-lg shadow-lg max-w-sm border-2"
+                        style={{ backgroundColor: bgColor, color: textColor, borderColor: bgColor }}
+                      >
+                        <div className="flex items-center gap-2 font-bold mb-1">
+                          <Megaphone className="w-4 h-4" />
+                          {title || "Announcement"}
+                        </div>
+                        <p className="text-sm opacity-90">{content || "Your message here..."}</p>
+                        {linkUrl && (
+                          <a className="text-sm underline mt-2 inline-flex items-center gap-1">
+                            {linkText || "Learn More"} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Page content placeholder */}
+                  <div className={`p-4 ${previewType === "banner" ? "mt-12" : ""}`}>
+                    <div className="bg-muted/30 rounded-lg h-8 w-48 mb-4" />
+                    <div className="bg-muted/30 rounded-lg h-4 w-full mb-2" />
+                    <div className="bg-muted/30 rounded-lg h-4 w-3/4 mb-2" />
+                    <div className="bg-muted/30 rounded-lg h-4 w-1/2" />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
+              {saving ? "Saving..." : editingId ? "Update" : "Create"} Announcement
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
