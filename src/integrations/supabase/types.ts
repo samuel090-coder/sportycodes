@@ -46,6 +46,95 @@ export type Database = {
           },
         ]
       }
+      announcement_dismissals: {
+        Row: {
+          announcement_id: string
+          dismissed_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          dismissed_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          dismissed_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_dismissals_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          bg_color: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          display_type: string
+          end_at: string | null
+          id: string
+          is_active: boolean | null
+          is_dismissible: boolean | null
+          link_text: string | null
+          link_url: string | null
+          priority: number | null
+          show_once: boolean | null
+          start_at: string | null
+          text_color: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bg_color?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          display_type?: string
+          end_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_dismissible?: boolean | null
+          link_text?: string | null
+          link_url?: string | null
+          priority?: number | null
+          show_once?: boolean | null
+          start_at?: string | null
+          text_color?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bg_color?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          display_type?: string
+          end_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_dismissible?: boolean | null
+          link_text?: string | null
+          link_url?: string | null
+          priority?: number | null
+          show_once?: boolean | null
+          start_at?: string | null
+          text_color?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: string

@@ -30,9 +30,13 @@ import { BettingPoolsSection } from "./components/admin/BettingPoolsSection";
 import { AnalyticsSection } from "./components/admin/AnalyticsSection";
 import { VIPSubscriptionsSection } from "./components/admin/VIPSubscriptionsSection";
 import { HouseEarningsSection } from "./components/admin/HouseEarningsSection";
+import { AnnouncementsSection } from "./components/admin/AnnouncementsSection";
 import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
+import { AnnouncementBanner } from "./components/AnnouncementBanner";
+import { AnnouncementPopup } from "./components/AnnouncementPopup";
+import { AnnouncementToast } from "./components/AnnouncementToast";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +64,10 @@ const App = () => {
         <Sonner />
         {showLoading && !hasShownLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
         <BrowserRouter>
+          {/* Global Announcement Components */}
+          <AnnouncementBanner />
+          <AnnouncementPopup />
+          <AnnouncementToast />
           <InstallGate>
             <Routes>
               <Route path="/" element={<SureOdds />} />
@@ -87,6 +95,7 @@ const App = () => {
                 <Route path="betting-pools" element={<BettingPoolsSection />} />
                 <Route path="vip-subscriptions" element={<VIPSubscriptionsSection />} />
                 <Route path="house-earnings" element={<HouseEarningsSection />} />
+                <Route path="announcements" element={<AnnouncementsSection />} />
               </Route>
               <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />

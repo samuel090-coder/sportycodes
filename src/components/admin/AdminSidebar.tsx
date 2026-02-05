@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -46,12 +46,19 @@ const menuItems = [
     ],
   },
   {
+    category: "Engagement",
+    icon: Megaphone,
+    items: [
+      { title: "Announcements", path: "/admin/announcements", icon: Megaphone },
+      { title: "Push Notifications", path: "/admin/notifications", icon: Bell },
+    ],
+  },
+  {
     category: "System",
     icon: Settings,
     items: [
       { title: "SEO Manager", path: "/admin/seo", icon: Search },
       { title: "Site Verification", path: "/admin/verification", icon: BadgeCheck },
-      { title: "Notifications", path: "/admin/notifications", icon: Bell },
       { title: "Bank & Settings", path: "/admin/settings", icon: Settings },
     ],
   },
