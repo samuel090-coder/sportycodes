@@ -84,6 +84,7 @@ export type Database = {
           display_type: string
           end_at: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           is_dismissible: boolean | null
           link_text: string | null
@@ -103,6 +104,7 @@ export type Database = {
           display_type?: string
           end_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_dismissible?: boolean | null
           link_text?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           display_type?: string
           end_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_dismissible?: boolean | null
           link_text?: string | null

@@ -23,6 +23,8 @@ import {
   Bell,
   MessageSquare,
   Layout,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,6 +38,7 @@ interface Announcement {
   text_color: string;
   link_url?: string;
   link_text?: string;
+  image_url?: string;
   is_active: boolean;
   is_dismissible: boolean;
   show_once: boolean;
@@ -81,6 +84,9 @@ export const AnnouncementsSection = () => {
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -116,6 +122,8 @@ export const AnnouncementsSection = () => {
     setStartAt("");
     setEndAt("");
     setEditingId(null);
+    setImageFile(null);
+    setImageUrl("");
   };
 
   const openCreateDialog = () => {
@@ -138,7 +146,37 @@ export const AnnouncementsSection = () => {
     setShowOnce(announcement.show_once);
     setStartAt(announcement.start_at ? new Date(announcement.start_at).toISOString().slice(0, 16) : "");
     setEndAt(announcement.end_at ? new Date(announcement.end_at).toISOString().slice(0, 16) : "");
+    setImageUrl(announcement.image_url || "");
+    setImageFile(null);
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (): Promise<string | null> => {
+    if (!imageFile) return imageUrl || null;
+    
+    setUploadingImage(true);
+    try {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `announcement-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("announcement-images")
+        .upload(fileName, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("announcement-images")
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Image upload error:", error);
+      toast.error("Failed to upload image");
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSave = async () => {
@@ -148,6 +186,16 @@ export const AnnouncementsSection = () => {
     }
 
     setSaving(true);
+    
+    // Upload image if selected
+    let finalImageUrl = imageUrl;
+    if (imageFile) {
+      const uploadedUrl = await handleImageUpload();
+      if (uploadedUrl) {
+        finalImageUrl = uploadedUrl;
+      }
+    }
+    
     const { data: session } = await supabase.auth.getSession();
 
     const payload = {
@@ -159,6 +207,7 @@ export const AnnouncementsSection = () => {
       text_color: textColor,
       link_url: linkUrl || null,
       link_text: linkText || null,
+      image_url: finalImageUrl || null,
       is_active: isActive,
       is_dismissible: isDismissible,
       show_once: showOnce,
@@ -418,6 +467,63 @@ export const AnnouncementsSection = () => {
                     placeholder="Learn More"
                     className="bg-secondary/50 border-border"
                   />
+                </div>
+              </div>
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label>Image (optional)</Label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setImageFile(file);
+                        // Create preview URL
+                        const previewUrl = URL.createObjectURL(file);
+                        setImageUrl(previewUrl);
+                      }
+                    }}
+                    className="hidden"
+                    id="announcement-image"
+                  />
+                  
+                  {imageUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={imageUrl} 
+                        alt="Announcement preview" 
+                        className="w-full h-40 object-cover rounded-xl border border-border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImageUrl("");
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="announcement-image"
+                      className="flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors bg-secondary/30"
+                    >
+                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <span className="text-muted-foreground font-medium">
+                        Upload image from device
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        PNG, JPG, GIF up to 5MB
+                      </span>
+                    </label>
+                  )}
                 </div>
               </div>
             </TabsContent>
