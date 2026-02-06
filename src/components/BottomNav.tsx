@@ -3,7 +3,7 @@ import { Target, Coins, Wallet, User, Trophy, Video, Gamepad2 } from "lucide-rea
 
 const BottomNav = () => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-background via-background/95 to-background/80 backdrop-blur-xl border-t border-primary/20 shadow-[0_-4px_30px_rgba(0,0,0,0.3)]">
+    <nav className="fixed bottom-8 left-0 right-0 z-40 bg-gradient-to-t from-background via-background/95 to-background/80 backdrop-blur-xl border-t border-primary/20 shadow-[0_-4px_30px_rgba(0,0,0,0.3)]">
       <div className="flex items-center justify-around max-w-screen-xl mx-auto px-1">
         <NavLink
           to="/"
