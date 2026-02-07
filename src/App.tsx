@@ -31,6 +31,11 @@ import { AnalyticsSection } from "./components/admin/AnalyticsSection";
 import { VIPSubscriptionsSection } from "./components/admin/VIPSubscriptionsSection";
 import { HouseEarningsSection } from "./components/admin/HouseEarningsSection";
 import { AnnouncementsSection } from "./components/admin/AnnouncementsSection";
+import { LimitsWalletSection } from "./components/admin/LimitsWalletSection";
+import { GamificationSection } from "./components/admin/GamificationSection";
+import { JackpotPoolsSection } from "./components/admin/JackpotPoolsSection";
+import { UIThemeSection } from "./components/admin/UIThemeSection";
+import { UserManagementSection } from "./components/admin/UserManagementSection";
 import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
@@ -85,6 +90,7 @@ const App = () => {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="analytics" element={<AnalyticsSection />} />
                 <Route path="security" element={<SecuritySection />} />
+                <Route path="users" element={<UserManagementSection />} />
                 <Route path="ads" element={<AdsSection />} />
                 <Route path="sure-odds" element={<SureOddsSection />} />
                 <Route path="payments" element={<PaymentsSection />} />
@@ -93,9 +99,13 @@ const App = () => {
                 <Route path="notifications" element={<NotificationsSection />} />
                 <Route path="settings" element={<SettingsSection />} />
                 <Route path="betting-pools" element={<BettingPoolsSection />} />
+                <Route path="jackpot-pools" element={<JackpotPoolsSection />} />
                 <Route path="vip-subscriptions" element={<VIPSubscriptionsSection />} />
                 <Route path="house-earnings" element={<HouseEarningsSection />} />
                 <Route path="announcements" element={<AnnouncementsSection />} />
+                <Route path="gamification" element={<GamificationSection />} />
+                <Route path="limits-wallet" element={<LimitsWalletSection />} />
+                <Route path="ui-theme" element={<UIThemeSection />} />
               </Route>
               <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />
