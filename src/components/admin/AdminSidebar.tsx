@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -25,6 +25,7 @@ const menuItems = [
     icon: Shield,
     items: [
       { title: "Authentication", path: "/admin/security", icon: Lock },
+      { title: "User Management", path: "/admin/users", icon: Users },
     ],
   },
   {
@@ -34,6 +35,7 @@ const menuItems = [
       { title: "Ad Management", path: "/admin/ads", icon: DollarSign },
       { title: "Deposits & Withdrawals", path: "/admin/payments", icon: Wallet },
       { title: "Betting Pools", path: "/admin/betting-pools", icon: Trophy },
+      { title: "Jackpot Pools", path: "/admin/jackpot-pools", icon: Crown },
       { title: "VIP Subscriptions", path: "/admin/vip-subscriptions", icon: Crown },
       { title: "House Earnings", path: "/admin/house-earnings", icon: Percent },
     ],
@@ -51,12 +53,15 @@ const menuItems = [
     items: [
       { title: "Announcements", path: "/admin/announcements", icon: Megaphone },
       { title: "Push Notifications", path: "/admin/notifications", icon: Bell },
+      { title: "Gamification", path: "/admin/gamification", icon: Gamepad2 },
     ],
   },
   {
     category: "System",
     icon: Settings,
     items: [
+      { title: "Limits & Wallet", path: "/admin/limits-wallet", icon: Shield },
+      { title: "UI & Theme", path: "/admin/ui-theme", icon: Palette },
       { title: "SEO Manager", path: "/admin/seo", icon: Search },
       { title: "Site Verification", path: "/admin/verification", icon: BadgeCheck },
       { title: "Bank & Settings", path: "/admin/settings", icon: Settings },

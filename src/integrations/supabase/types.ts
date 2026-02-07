@@ -283,6 +283,48 @@ export type Database = {
           },
         ]
       }
+      daily_challenges: {
+        Row: {
+          challenge_type: string
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          reward_coins: number | null
+          reward_xp: number | null
+          start_date: string | null
+          target_value: number
+          title: string
+        }
+        Insert: {
+          challenge_type: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          reward_coins?: number | null
+          reward_xp?: number | null
+          start_date?: string | null
+          target_value?: number
+          title: string
+        }
+        Update: {
+          challenge_type?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          reward_coins?: number | null
+          reward_xp?: number | null
+          start_date?: string | null
+          target_value?: number
+          title?: string
+        }
+        Relationships: []
+      }
       daily_taps: {
         Row: {
           created_at: string
@@ -370,6 +412,30 @@ export type Database = {
         }
         Relationships: []
       }
+      gamification_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       global_ad_zones: {
         Row: {
           created_at: string | null
@@ -431,6 +497,38 @@ export type Database = {
             columns: ["betting_pool_id"]
             isOneToOne: false
             referencedRelation: "betting_pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jackpot_entries: {
+        Row: {
+          created_at: string | null
+          entry_count: number | null
+          id: string
+          jackpot_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entry_count?: number | null
+          id?: string
+          jackpot_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entry_count?: number | null
+          id?: string
+          jackpot_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jackpot_entries_jackpot_id_fkey"
+            columns: ["jackpot_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_jackpots"
             referencedColumns: ["id"]
           },
         ]
@@ -605,10 +703,12 @@ export type Database = {
           bio: string | null
           country: string | null
           created_at: string
+          daily_bet_count: number | null
           display_name: string | null
           followers_count: number | null
           following_count: number | null
           id: string
+          last_bet_date: string | null
           phone: string | null
           posts_count: number | null
           referral_code: string | null
@@ -623,10 +723,12 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string
+          daily_bet_count?: number | null
           display_name?: string | null
           followers_count?: number | null
           following_count?: number | null
           id: string
+          last_bet_date?: string | null
           phone?: string | null
           posts_count?: number | null
           referral_code?: string | null
@@ -641,10 +743,12 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string
+          daily_bet_count?: number | null
           display_name?: string | null
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          last_bet_date?: string | null
           phone?: string | null
           posts_count?: number | null
           referral_code?: string | null
@@ -910,6 +1014,122 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achieved_at: string | null
+          achievement_name: string
+          achievement_type: string
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string | null
+          achievement_name: string
+          achievement_type: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string | null
+          achievement_name?: string
+          achievement_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_challenge_progress: {
+        Row: {
+          challenge_id: string
+          completed_at: string | null
+          created_at: string | null
+          current_progress: number | null
+          id: string
+          is_completed: boolean | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          current_progress?: number | null
+          id?: string
+          is_completed?: boolean | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          current_progress?: number | null
+          id?: string
+          is_completed?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenge_progress_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_levels: {
+        Row: {
+          current_level: number | null
+          current_xp: number | null
+          id: string
+          total_xp: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          current_level?: number | null
+          current_xp?: number | null
+          id?: string
+          total_xp?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          current_level?: number | null
+          current_xp?: number | null
+          id?: string
+          total_xp?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1030,6 +1250,45 @@ export type Database = {
           total_withdrawn?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      weekly_jackpots: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          ends_at: string
+          entry_fee: number | null
+          id: string
+          prize_pool: number | null
+          starts_at: string
+          status: string | null
+          title: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          ends_at: string
+          entry_fee?: number | null
+          id?: string
+          prize_pool?: number | null
+          starts_at: string
+          status?: string | null
+          title: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          ends_at?: string
+          entry_fee?: number | null
+          id?: string
+          prize_pool?: number | null
+          starts_at?: string
+          status?: string | null
+          title?: string
+          winner_id?: string | null
         }
         Relationships: []
       }
