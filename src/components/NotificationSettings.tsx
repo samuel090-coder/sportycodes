@@ -99,7 +99,7 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
   };
 
   const handleToggle = (key: keyof NotificationPreferences) => {
-    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+    setPreferences(prev => ({ ...prev, [key]: !prev[key] as any }));
   };
 
   const savePreferences = async () => {

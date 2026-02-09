@@ -228,6 +228,13 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Daily Bonus Wheel */}
+        {user && (
+          <div className="mb-6">
+            <DailyBonusWheel userId={user.id} onRewardClaimed={() => loadUserData(user.id)} />
+          </div>
+        )}
+
         {/* Menu Items */}
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Quick Access</h3>

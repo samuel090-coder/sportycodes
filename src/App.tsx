@@ -108,6 +108,8 @@ const App = () => {
                 <Route path="gamification" element={<GamificationSection />} />
                 <Route path="limits-wallet" element={<LimitsWalletSection />} />
                 <Route path="ui-theme" element={<UIThemeSection />} />
+                <Route path="bonus-wheel" element={<BonusWheelSection />} />
+                <Route path="leaderboard-prizes" element={<LeaderboardPrizesSection />} />
               </Route>
               <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />
