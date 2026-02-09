@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette, Disc, Award } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
