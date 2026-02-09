@@ -81,6 +81,9 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
           post_comments: data.post_comments ?? true,
           referral_signup: data.referral_signup ?? true,
           streak_reminder: data.streak_reminder ?? true,
+          quiet_hours_enabled: data.quiet_hours_enabled ?? false,
+          quiet_hours_start: data.quiet_hours_start ?? "22:00",
+          quiet_hours_end: data.quiet_hours_end ?? "07:00",
         });
       }
     } catch (error) {
