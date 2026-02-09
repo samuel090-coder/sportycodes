@@ -47,6 +47,9 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
     post_comments: true,
     referral_signup: true,
     streak_reminder: true,
+    quiet_hours_enabled: false,
+    quiet_hours_start: "22:00",
+    quiet_hours_end: "07:00",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
