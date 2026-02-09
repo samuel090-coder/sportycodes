@@ -283,6 +283,39 @@ export type Database = {
           },
         ]
       }
+      bonus_wheel_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          probability: number
+          segment_color: string
+          segment_label: string
+          segment_type: string
+          segment_value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          probability?: number
+          segment_color?: string
+          segment_label: string
+          segment_type?: string
+          segment_value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          probability?: number
+          segment_color?: string
+          segment_label?: string
+          segment_type?: string
+          segment_value?: number
+        }
+        Relationships: []
+      }
       daily_challenges: {
         Row: {
           challenge_type: string
@@ -322,6 +355,36 @@ export type Database = {
           start_date?: string | null
           target_value?: number
           title?: string
+        }
+        Relationships: []
+      }
+      daily_spins: {
+        Row: {
+          created_at: string
+          id: string
+          reward_amount: number
+          reward_type: string
+          segment_label: string | null
+          spin_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reward_amount?: number
+          reward_type?: string
+          segment_label?: string | null
+          spin_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reward_amount?: number
+          reward_type?: string
+          segment_label?: string | null
+          spin_date?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -533,6 +596,36 @@ export type Database = {
           },
         ]
       }
+      leaderboard_prizes: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          prize_amount: number
+          prize_type: string
+          rank_position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          prize_amount?: number
+          prize_type?: string
+          rank_position: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          prize_amount?: number
+          prize_type?: string
+          rank_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       matches: {
         Row: {
           away_odds: number
@@ -590,6 +683,9 @@ export type Database = {
           new_follower: boolean | null
           post_comments: boolean | null
           post_likes: boolean | null
+          quiet_hours_enabled: boolean | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
           referral_signup: boolean | null
           streak_reminder: boolean | null
           updated_at: string | null
@@ -604,6 +700,9 @@ export type Database = {
           new_follower?: boolean | null
           post_comments?: boolean | null
           post_likes?: boolean | null
+          quiet_hours_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
           referral_signup?: boolean | null
           streak_reminder?: boolean | null
           updated_at?: string | null
@@ -618,6 +717,9 @@ export type Database = {
           new_follower?: boolean | null
           post_comments?: boolean | null
           post_likes?: boolean | null
+          quiet_hours_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
           referral_signup?: boolean | null
           streak_reminder?: boolean | null
           updated_at?: string | null
@@ -696,6 +798,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prize_distributions: {
+        Row: {
+          distributed_at: string
+          id: string
+          prize_amount: number
+          rank_position: number
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          distributed_at?: string
+          id?: string
+          prize_amount: number
+          rank_position: number
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          distributed_at?: string
+          id?: string
+          prize_amount?: number
+          rank_position?: number
+          user_id?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
