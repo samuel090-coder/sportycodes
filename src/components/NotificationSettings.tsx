@@ -27,6 +27,9 @@ interface NotificationPreferences {
   post_comments: boolean;
   referral_signup: boolean;
   streak_reminder: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
 }
 
 interface NotificationSettingsProps {
