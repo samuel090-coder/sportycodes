@@ -216,7 +216,7 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
               </div>
             </div>
             <Switch
-              checked={preferences[key as keyof NotificationPreferences]}
+              checked={!!preferences[key as keyof NotificationPreferences]}
               onCheckedChange={() => handleToggle(key as keyof NotificationPreferences)}
               disabled={!isPushEnabled}
             />
