@@ -15,6 +15,7 @@ import {
   Coins
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import DailyBonusWheel from "@/components/DailyBonusWheel";
 
 const Dashboard = () => {
   const navigate = useNavigate();
