@@ -224,6 +224,52 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
         ))}
       </div>
 
+      {/* Quiet Hours */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+          Quiet Hours
+        </h4>
+        <div className="p-3 bg-card/60 rounded-xl border border-border/30">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-secondary/50 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Enable Quiet Hours</p>
+                <p className="text-xs text-muted-foreground">No notifications during set times</p>
+              </div>
+            </div>
+            <Switch
+              checked={preferences.quiet_hours_enabled}
+              onCheckedChange={() => setPreferences(prev => ({ ...prev, quiet_hours_enabled: !prev.quiet_hours_enabled }))}
+            />
+          </div>
+          {preferences.quiet_hours_enabled && (
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground">From</label>
+                <input
+                  type="time"
+                  value={preferences.quiet_hours_start}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, quiet_hours_start: e.target.value }))}
+                  className="w-full h-9 px-2 bg-background border border-border rounded-lg text-foreground text-sm"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground">To</label>
+                <input
+                  type="time"
+                  value={preferences.quiet_hours_end}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, quiet_hours_end: e.target.value }))}
+                  className="w-full h-9 px-2 bg-background border border-border rounded-lg text-foreground text-sm"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Save Button */}
       <Button
         onClick={savePreferences}
