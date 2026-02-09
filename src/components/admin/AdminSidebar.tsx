@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette, Disc, Award } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -54,6 +54,8 @@ const menuItems = [
       { title: "Announcements", path: "/admin/announcements", icon: Megaphone },
       { title: "Push Notifications", path: "/admin/notifications", icon: Bell },
       { title: "Gamification", path: "/admin/gamification", icon: Gamepad2 },
+      { title: "Bonus Wheel", path: "/admin/bonus-wheel", icon: Disc },
+      { title: "Leaderboard Prizes", path: "/admin/leaderboard-prizes", icon: Award },
     ],
   },
   {

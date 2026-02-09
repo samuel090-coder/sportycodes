@@ -36,6 +36,8 @@ import { GamificationSection } from "./components/admin/GamificationSection";
 import { JackpotPoolsSection } from "./components/admin/JackpotPoolsSection";
 import { UIThemeSection } from "./components/admin/UIThemeSection";
 import { UserManagementSection } from "./components/admin/UserManagementSection";
+import { BonusWheelSection } from "./components/admin/BonusWheelSection";
+import { LeaderboardPrizesSection } from "./components/admin/LeaderboardPrizesSection";
 import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
@@ -106,6 +108,8 @@ const App = () => {
                 <Route path="gamification" element={<GamificationSection />} />
                 <Route path="limits-wallet" element={<LimitsWalletSection />} />
                 <Route path="ui-theme" element={<UIThemeSection />} />
+                <Route path="bonus-wheel" element={<BonusWheelSection />} />
+                <Route path="leaderboard-prizes" element={<LeaderboardPrizesSection />} />
               </Route>
               <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />
