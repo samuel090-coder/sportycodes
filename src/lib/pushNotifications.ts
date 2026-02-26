@@ -133,6 +133,22 @@ export const subscribeToPushNotifications = async (userEmail: string): Promise<b
 
     console.log("Push subscription saved to database");
     toast.success("Notifications enabled! You will receive updates.");
+
+    // Send welcome notification
+    try {
+      await supabase.functions.invoke("send-push-notification", {
+        body: {
+          title: "🎉 Welcome to SportyCodes!",
+          body: "You'll get 3 daily alerts: Morning picks ☀️, Afternoon updates ⚽, Night recap 🌙. Never miss a sure tip!",
+          userEmail,
+          tag: "welcome",
+          data: { url: "/" },
+        },
+      });
+    } catch (e) {
+      console.warn("Welcome notification failed:", e);
+    }
+
     return true;
   } catch (error: any) {
     console.error("Error subscribing to push notifications:", error);

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import DailyBonusWheel from "@/components/DailyBonusWheel";
+import DailyTipsSubscribe from "@/components/DailyTipsSubscribe";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -227,6 +228,13 @@ const Dashboard = () => {
             <p className="text-xl font-black text-foreground tracking-wider">{profile?.referral_code || "N/A"}</p>
           </div>
         </div>
+
+        {/* Daily Tips Subscribe CTA */}
+        {user && (
+          <div className="mb-6">
+            <DailyTipsSubscribe userEmail={user.email || ""} />
+          </div>
+        )}
 
         {/* Daily Bonus Wheel */}
         {user && (

@@ -30,7 +30,20 @@ interface NotificationPreferences {
   quiet_hours_enabled: boolean;
   quiet_hours_start: string;
   quiet_hours_end: string;
+  daily_tips_morning: boolean;
+  daily_tips_afternoon: boolean;
+  daily_tips_night: boolean;
 }
+
+const LEAGUES = [
+  { id: "epl", label: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier League" },
+  { id: "laliga", label: "🇪🇸 La Liga" },
+  { id: "ucl", label: "🏆 Champions League" },
+  { id: "seriea", label: "🇮🇹 Serie A" },
+  { id: "bundesliga", label: "🇩🇪 Bundesliga" },
+  { id: "ligue1", label: "🇫🇷 Ligue 1" },
+  { id: "uel", label: "🏅 Europa League" },
+];
 
 interface NotificationSettingsProps {
   userId: string;
@@ -50,7 +63,11 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
     quiet_hours_enabled: false,
     quiet_hours_start: "22:00",
     quiet_hours_end: "07:00",
+    daily_tips_morning: true,
+    daily_tips_afternoon: true,
+    daily_tips_night: true,
   });
+  const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPushEnabled, setIsPushEnabled] = useState(false);
@@ -84,7 +101,20 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
           quiet_hours_enabled: data.quiet_hours_enabled ?? false,
           quiet_hours_start: data.quiet_hours_start ?? "22:00",
           quiet_hours_end: data.quiet_hours_end ?? "07:00",
+          daily_tips_morning: (data as any).daily_tips_morning ?? true,
+          daily_tips_afternoon: (data as any).daily_tips_afternoon ?? true,
+          daily_tips_night: (data as any).daily_tips_night ?? true,
         });
+      }
+
+      // Load league preferences from push_subscriptions
+      const { data: subData } = await supabase
+        .from("push_subscriptions")
+        .select("preferred_leagues")
+        .eq("user_email", userEmail)
+        .maybeSingle();
+      if (subData && (subData as any).preferred_leagues) {
+        setSelectedLeagues((subData as any).preferred_leagues);
       }
     } catch (error) {
       console.error("Error loading preferences:", error);
@@ -111,15 +141,30 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
           user_id: userId,
           ...preferences,
           updated_at: new Date().toISOString()
-        }, { onConflict: "user_id" });
+        } as any, { onConflict: "user_id" });
 
       if (error) throw error;
+
+      // Save league preferences to push_subscriptions
+      await supabase
+        .from("push_subscriptions")
+        .update({ preferred_leagues: selectedLeagues } as any)
+        .eq("user_email", userEmail);
+
       toast.success("Preferences saved!");
     } catch (error) {
       toast.error("Failed to save preferences");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const toggleLeague = (leagueId: string) => {
+    setSelectedLeagues((prev) =>
+      prev.includes(leagueId)
+        ? prev.filter((l) => l !== leagueId)
+        : [...prev, leagueId]
+    );
   };
 
   const togglePushNotifications = async () => {
@@ -195,10 +240,60 @@ const NotificationSettings = ({ userId, userEmail }: NotificationSettingsProps) 
         </div>
       </div>
 
+      {/* Daily Tips Schedule */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+          ⚽ Daily Sure Tips Schedule
+        </h4>
+        {[
+          { key: "daily_tips_morning", label: "☀️ Morning Alert (7:30 AM)", description: "Best predictions & key matches" },
+          { key: "daily_tips_afternoon", label: "⚽ Afternoon Update (2:30 PM)", description: "Live updates & confirmed tips" },
+          { key: "daily_tips_night", label: "🌙 Night Recap (10:30 PM)", description: "Results & tomorrow's teaser" },
+        ].map(({ key, label, description }) => (
+          <div
+            key={key}
+            className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-bet-warning/5 rounded-xl border border-primary/20"
+          >
+            <div>
+              <p className="font-medium text-foreground">{label}</p>
+              <p className="text-xs text-muted-foreground">{description}</p>
+            </div>
+            <Switch
+              checked={!!preferences[key as keyof NotificationPreferences]}
+              onCheckedChange={() => handleToggle(key as keyof NotificationPreferences)}
+              disabled={!isPushEnabled}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Preferred Leagues */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+          🏟️ Preferred Leagues
+        </h4>
+        <p className="text-xs text-muted-foreground">Select leagues you want tips for (all if none selected)</p>
+        <div className="flex flex-wrap gap-2">
+          {LEAGUES.map((league) => (
+            <button
+              key={league.id}
+              onClick={() => toggleLeague(league.id)}
+              className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
+                selectedLeagues.includes(league.id)
+                  ? "bg-primary/20 border-primary text-primary"
+                  : "bg-card/60 border-border/30 text-muted-foreground hover:border-primary/30"
+              }`}
+            >
+              {league.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Individual Preferences */}
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-          Notification Types
+          Other Notification Types
         </h4>
         
         {notificationOptions.map(({ key, label, icon: Icon, description }) => (

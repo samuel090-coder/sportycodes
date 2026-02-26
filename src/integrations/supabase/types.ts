@@ -678,6 +678,9 @@ export type Database = {
         Row: {
           created_at: string | null
           daily_tap_reminder: boolean | null
+          daily_tips_afternoon: boolean | null
+          daily_tips_morning: boolean | null
+          daily_tips_night: boolean | null
           deposit_approved: boolean | null
           id: string
           new_follower: boolean | null
@@ -695,6 +698,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           daily_tap_reminder?: boolean | null
+          daily_tips_afternoon?: boolean | null
+          daily_tips_morning?: boolean | null
+          daily_tips_night?: boolean | null
           deposit_approved?: boolean | null
           id?: string
           new_follower?: boolean | null
@@ -712,6 +718,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           daily_tap_reminder?: boolean | null
+          daily_tips_afternoon?: boolean | null
+          daily_tips_morning?: boolean | null
+          daily_tips_night?: boolean | null
           deposit_approved?: boolean | null
           id?: string
           new_follower?: boolean | null
@@ -911,18 +920,21 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          preferred_leagues: string[] | null
           subscription: Json
           user_email: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          preferred_leagues?: string[] | null
           subscription: Json
           user_email: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          preferred_leagues?: string[] | null
           subscription?: Json
           user_email?: string
         }

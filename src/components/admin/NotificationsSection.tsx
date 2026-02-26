@@ -42,6 +42,122 @@ type DeviceDiagnostics = {
   endpointPreview: string | null;
 };
 
+const AutoSendSection = () => {
+  const [sendingType, setSendingType] = useState<string | null>(null);
+  const [lastResults, setLastResults] = useState<any>(null);
+
+  const triggerAiSend = async (type: "morning" | "afternoon" | "night") => {
+    setSendingType(type);
+    setLastResults(null);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "generate-daily-notifications",
+        { body: { type } }
+      );
+      if (error) throw error;
+      setLastResults(data);
+      toast.success(`${type} AI notification sent!`);
+    } catch (err: any) {
+      console.error("AI send error:", err);
+      toast.error(err.message || "Failed to send AI notification");
+    } finally {
+      setSendingType(null);
+    }
+  };
+
+  const scheduleItems = [
+    {
+      type: "morning" as const,
+      label: "☀️ Morning Alert",
+      time: "7:30 AM",
+      desc: "Best predictions, key matches, 2+ odds",
+      color: "from-yellow-500/20 to-orange-500/20 border-yellow-500/30",
+    },
+    {
+      type: "afternoon" as const,
+      label: "⚽ Afternoon Update",
+      time: "2:30 PM",
+      desc: "Live updates, confirmed tips, odds changes",
+      color: "from-blue-500/20 to-cyan-500/20 border-blue-500/30",
+    },
+    {
+      type: "night" as const,
+      label: "🌙 Night Recap",
+      time: "10:30 PM",
+      desc: "Results, win rate, tomorrow teaser",
+      color: "from-purple-500/20 to-indigo-500/20 border-purple-500/30",
+    },
+  ];
+
+  return (
+    <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 p-6">
+      <h3 className="text-xl font-black text-cyber-neon-green mb-2 font-mono flex items-center gap-2">
+        <Sparkles className="w-5 h-5 animate-neon-pulse" />
+        AI AUTO NOTIFICATIONS
+      </h3>
+      <p className="text-xs text-cyber-neon-green/60 font-mono mb-6">
+        AI generates smart football notification content using today's fixtures. Cron jobs run automatically 3x daily.
+      </p>
+
+      <div className="space-y-4">
+        {scheduleItems.map((item) => (
+          <div
+            key={item.type}
+            className={`p-4 rounded-xl border bg-gradient-to-r ${item.color}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-foreground text-lg">{item.label}</p>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
+                <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
+                  Scheduled: {item.time} daily (auto)
+                </p>
+              </div>
+              <Button
+                onClick={() => triggerAiSend(item.type)}
+                disabled={sendingType === item.type}
+                className="bg-cyber-neon-green/20 hover:bg-cyber-neon-green/30 text-cyber-neon-green border border-cyber-neon-green/40 font-bold font-mono"
+              >
+                {sendingType === item.type ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Test Now
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {lastResults && (
+        <div className="mt-6 p-4 bg-cyber-dark/50 border border-cyber-neon-green/30 rounded-xl">
+          <p className="text-xs text-cyber-neon-green/70 font-mono mb-2">LAST AI RESULT:</p>
+          <p className="text-cyber-neon-green font-bold">{lastResults.title}</p>
+          <p className="text-cyber-neon-green/80 text-sm mt-1">{lastResults.body}</p>
+          {lastResults.sendResult && (
+            <p className="text-xs text-cyber-neon-green/60 mt-2 font-mono">
+              Sent: {lastResults.sendResult.sent || 0} / {lastResults.sendResult.total || 0} subscribers
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-6 p-4 bg-cyber-neon-green/10 border border-cyber-neon-green/20 rounded-xl">
+        <p className="text-xs text-cyber-neon-green/80 font-mono">
+          💡 <strong>AUTO MODE:</strong> Set up cron jobs to trigger these automatically at the scheduled times. 
+          Use "Test Now" to preview what AI generates and verify delivery.
+        </p>
+      </div>
+    </Card>
+  );
+};
+
 export const NotificationsSection = () => {
   const [activeTab, setActiveTab] = useState("compose");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -417,15 +533,19 @@ export const NotificationsSection = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-cyber-dark/50 border border-cyber-neon-purple/30 w-full">
           <TabsTrigger value="compose" className="flex-1 data-[state=active]:bg-cyber-neon-purple/20">
-            <Send className="w-4 h-4 mr-2" />
+            <Send className="w-4 h-4 mr-1" />
             Compose
           </TabsTrigger>
+          <TabsTrigger value="auto" className="flex-1 data-[state=active]:bg-cyber-neon-purple/20">
+            <Clock className="w-4 h-4 mr-1" />
+            AI Auto
+          </TabsTrigger>
           <TabsTrigger value="templates" className="flex-1 data-[state=active]:bg-cyber-neon-purple/20">
-            <Copy className="w-4 h-4 mr-2" />
+            <Copy className="w-4 h-4 mr-1" />
             Templates
           </TabsTrigger>
           <TabsTrigger value="preview" className="flex-1 data-[state=active]:bg-cyber-neon-purple/20">
-            <Eye className="w-4 h-4 mr-2" />
+            <Eye className="w-4 h-4 mr-1" />
             Preview
           </TabsTrigger>
         </TabsList>
@@ -730,6 +850,11 @@ export const NotificationsSection = () => {
               </Button>
             </form>
           </Card>
+        </TabsContent>
+
+        {/* AI Auto Send Tab */}
+        <TabsContent value="auto">
+          <AutoSendSection />
         </TabsContent>
 
         {/* Templates Tab */}
