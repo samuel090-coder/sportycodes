@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
+
+[functions.generate-daily-notifications]
+verify_jwt = false
