@@ -1,0 +1,330 @@
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, MoreVertical } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { RoomSettings } from "@/components/rooms/RoomSettings";
+import { RoomEventSheet } from "@/components/rooms/RoomEventSheet";
+import { RoomTransferSheet } from "@/components/rooms/RoomTransferSheet";
+import { RoomEventCard } from "@/components/rooms/RoomEventCard";
+
+interface Message {
+  id: string;
+  user_id: string;
+  content: string | null;
+  message_type: string;
+  metadata: any;
+  created_at: string;
+  profiles?: { display_name: string | null; avatar_url: string | null; username: string | null };
+}
+
+interface Room {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
+  is_public: boolean;
+  member_count: number;
+  creator_id: string;
+}
+
+const RoomDetail = () => {
+  const { roomId } = useParams<{ roomId: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [room, setRoom] = useState<Room | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isMember, setIsMember] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { navigate("/auth"); return; }
+      setUserId(user.id);
+      await fetchRoom();
+      await checkMembership(user.id);
+      setLoading(false);
+    };
+    init();
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!isMember || !roomId) return;
+    fetchMessages();
+
+    const channel = supabase
+      .channel(`room-${roomId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "room_messages", filter: `room_id=eq.${roomId}` },
+        async (payload) => {
+          const msg = payload.new as any;
+          const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url, username").eq("id", msg.user_id).single();
+          setMessages(prev => [...prev, { ...msg, profiles: profile }]);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isMember, roomId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const fetchRoom = async () => {
+    if (!roomId) return;
+    const { data } = await supabase.from("rooms").select("*").eq("id", roomId).single();
+    if (data) setRoom(data);
+  };
+
+  const checkMembership = async (uid: string) => {
+    if (!roomId) return;
+    const { data } = await supabase.from("room_members").select("role, is_blocked").eq("room_id", roomId).eq("user_id", uid).single();
+    if (data && !data.is_blocked) {
+      setIsMember(true);
+      setIsAdmin(data.role === "admin");
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (!roomId) return;
+    const { data } = await supabase
+      .from("room_messages")
+      .select("*")
+      .eq("room_id", roomId)
+      .order("created_at", { ascending: true })
+      .limit(100);
+
+    if (data) {
+      // Fetch profiles for all unique user_ids
+      const userIds = [...new Set(data.map(m => m.user_id))];
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url, username").in("id", userIds);
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+
+      setMessages(data.map(m => ({
+        ...m,
+        profiles: profileMap[m.user_id] || { display_name: "Unknown", avatar_url: null, username: null }
+      })));
+    }
+  };
+
+  const joinRoom = async () => {
+    if (!userId || !roomId) return;
+    setJoining(true);
+    const { error } = await supabase.from("room_members").insert({ room_id: roomId, user_id: userId, role: "member" });
+    if (error) {
+      toast({ title: "Can't join", description: error.message, variant: "destructive" });
+    } else {
+      setIsMember(true);
+      toast({ title: "Joined! 🎉" });
+      fetchMessages();
+      fetchRoom();
+    }
+    setJoining(false);
+  };
+
+  const leaveRoom = async () => {
+    if (!userId || !roomId) return;
+    await supabase.from("room_members").delete().eq("room_id", roomId).eq("user_id", userId);
+    toast({ title: "Left room" });
+    navigate("/rooms");
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !userId || !roomId) return;
+    const msg = newMessage.trim();
+    setNewMessage("");
+    await supabase.from("room_messages").insert({
+      room_id: roomId,
+      user_id: userId,
+      content: msg,
+      message_type: "text",
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
+  if (!room) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Room not found</div>;
+
+  return (
+    <div className="h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="shrink-0 bg-card border-b border-border px-3 py-2.5 flex items-center gap-3">
+        <button onClick={() => navigate("/rooms")} className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden">
+          {room.avatar_url ? (
+            <img src={room.avatar_url} alt={room.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-primary">{room.name[0]?.toUpperCase()}</span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-semibold text-sm text-foreground truncate">{room.name}</h2>
+          <p className="text-xs text-muted-foreground">{room.member_count} members</p>
+        </div>
+        <div className="flex items-center gap-1">
+          {isMember && (
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEventOpen(true)}>
+                <Tag className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setTransferOpen(true)}>
+                <DollarSign className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          {isAdmin && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsOpen(true)}>
+              <Settings className="w-4 h-4" />
+            </Button>
+          )}
+          {isMember && !isAdmin && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={leaveRoom}>
+              <LogOut className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+        {!isMember ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            {room.cover_url && (
+              <img src={room.cover_url} alt="" className="w-full max-h-32 object-cover rounded-xl" />
+            )}
+            <div className="text-center">
+              <h3 className="font-bold text-lg text-foreground">{room.name}</h3>
+              {room.description && <p className="text-sm text-muted-foreground mt-1">{room.description}</p>}
+              <p className="text-xs text-muted-foreground mt-2">{room.member_count} members</p>
+            </div>
+            {room.is_public ? (
+              <Button onClick={joinRoom} disabled={joining} className="gap-2">
+                <Users className="w-4 h-4" /> {joining ? "Joining..." : "Join Room"}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">This room is private. You need an invite to join.</p>
+            )}
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-muted-foreground">No messages yet. Say something! 👋</p>
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const isMe = msg.user_id === userId;
+
+            if (msg.message_type === "event") {
+              return <RoomEventCard key={msg.id} message={msg} userId={userId} roomId={roomId!} />;
+            }
+
+            if (msg.message_type === "transfer") {
+              return (
+                <div key={msg.id} className="flex justify-center">
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-center">
+                    <DollarSign className="w-3 h-3 inline mr-1" />
+                    {msg.content}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={msg.id} className={`flex gap-2 ${isMe ? "justify-end" : ""}`}>
+                {!isMe && (
+                  <Avatar className="w-7 h-7 shrink-0">
+                    <AvatarImage src={msg.profiles?.avatar_url || ""} />
+                    <AvatarFallback className="text-xs bg-secondary">
+                      {msg.profiles?.display_name?.[0]?.toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={`max-w-[75%] ${isMe ? "order-1" : ""}`}>
+                  {!isMe && (
+                    <p className="text-[10px] font-medium text-primary mb-0.5 ml-1">
+                      {msg.profiles?.display_name || msg.profiles?.username || "User"}
+                    </p>
+                  )}
+                  <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-secondary text-foreground rounded-bl-md"
+                  }`}>
+                    {msg.content}
+                  </div>
+                  <p className={`text-[9px] text-muted-foreground mt-0.5 ${isMe ? "text-right mr-1" : "ml-1"}`}>
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input bar */}
+      {isMember && (
+        <div className="shrink-0 bg-card border-t border-border px-3 py-2 flex items-center gap-2">
+          <Input
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1"
+          />
+          <Button size="icon" onClick={sendMessage} disabled={!newMessage.trim()}>
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Sheets */}
+      {isAdmin && (
+        <RoomSettings
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          room={room}
+          onUpdate={() => { fetchRoom(); }}
+        />
+      )}
+
+      <RoomEventSheet
+        open={eventOpen}
+        onOpenChange={setEventOpen}
+        roomId={roomId!}
+        userId={userId!}
+        isAdmin={isAdmin}
+      />
+
+      <RoomTransferSheet
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        roomId={roomId!}
+        userId={userId!}
+      />
+    </div>
+  );
+};
+
+export default RoomDetail;
