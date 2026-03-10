@@ -41,6 +41,8 @@ import { LeaderboardPrizesSection } from "./components/admin/LeaderboardPrizesSe
 import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
+import Rooms from "./pages/Rooms";
+import RoomDetail from "./pages/RoomDetail";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
@@ -89,6 +91,8 @@ const App = () => {
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/betting" element={<BettingPools />} />
               <Route path="/vip" element={<VIPSubscription />} />
+              <Route path="/rooms" element={<Rooms />} />
+              <Route path="/rooms/:roomId" element={<RoomDetail />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="analytics" element={<AnalyticsSection />} />
                 <Route path="security" element={<SecuritySection />} />
