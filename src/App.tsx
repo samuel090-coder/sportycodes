@@ -91,6 +91,8 @@ const App = () => {
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/betting" element={<BettingPools />} />
               <Route path="/vip" element={<VIPSubscription />} />
+              <Route path="/rooms" element={<Rooms />} />
+              <Route path="/rooms/:roomId" element={<RoomDetail />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="analytics" element={<AnalyticsSection />} />
                 <Route path="security" element={<SecuritySection />} />
