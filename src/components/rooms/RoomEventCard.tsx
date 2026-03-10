@@ -129,7 +129,7 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
           <Badge variant="secondary" className="ml-auto text-[10px]">₦{price}</Badge>
         )}
         {isFree && (
-          <Badge className="ml-auto text-[10px] bg-green-500/20 text-green-400 border-0">Free</Badge>
+          <Badge className="ml-auto text-[10px] bg-accent/20 text-accent border-0">Free</Badge>
         )}
       </div>
 
