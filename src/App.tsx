@@ -41,6 +41,8 @@ import { LeaderboardPrizesSection } from "./components/admin/LeaderboardPrizesSe
 import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
+import Rooms from "./pages/Rooms";
+import RoomDetail from "./pages/RoomDetail";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
