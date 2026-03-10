@@ -178,7 +178,7 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
 
       {purchased && (
         <div className="px-3 pb-2">
-          <p className="text-[10px] text-green-400 flex items-center gap-1">
+          <p className="text-[10px] text-primary flex items-center gap-1">
             <Check className="w-3 h-3" /> Unlocked
           </p>
         </div>
