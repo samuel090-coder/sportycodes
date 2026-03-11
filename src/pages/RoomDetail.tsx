@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, MoreVertical } from "lucide-react";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RoomSettings } from "@/components/rooms/RoomSettings";
 import { RoomEventSheet } from "@/components/rooms/RoomEventSheet";
 import { RoomTransferSheet } from "@/components/rooms/RoomTransferSheet";
 import { RoomEventCard } from "@/components/rooms/RoomEventCard";
+import { RoomInviteSheet } from "@/components/rooms/RoomInviteSheet";
+import { RoomCreatePoolSheet } from "@/components/rooms/RoomCreatePoolSheet";
 
 interface Message {
   id: string;
@@ -48,6 +49,8 @@ const RoomDetail = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [eventOpen, setEventOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [createPoolOpen, setCreatePoolOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,11 +112,9 @@ const RoomDetail = () => {
       .limit(100);
 
     if (data) {
-      // Fetch profiles for all unique user_ids
       const userIds = [...new Set(data.map(m => m.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url, username").in("id", userIds);
       const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
-
       setMessages(data.map(m => ({
         ...m,
         profiles: profileMap[m.user_id] || { display_name: "Unknown", avatar_url: null, username: null }
@@ -189,8 +190,14 @@ const RoomDetail = () => {
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEventOpen(true)}>
                 <Tag className="w-4 h-4" />
               </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCreatePoolOpen(true)}>
+                <Gamepad2 className="w-4 h-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setTransferOpen(true)}>
                 <DollarSign className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setInviteOpen(true)}>
+                <UserPlus className="w-4 h-4" />
               </Button>
             </>
           )}
@@ -320,6 +327,20 @@ const RoomDetail = () => {
       <RoomTransferSheet
         open={transferOpen}
         onOpenChange={setTransferOpen}
+        roomId={roomId!}
+        userId={userId!}
+      />
+
+      <RoomInviteSheet
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        roomId={roomId!}
+        roomName={room.name}
+      />
+
+      <RoomCreatePoolSheet
+        open={createPoolOpen}
+        onOpenChange={setCreatePoolOpen}
         roomId={roomId!}
         userId={userId!}
       />
