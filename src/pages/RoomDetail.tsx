@@ -154,6 +154,10 @@ const RoomDetail = () => {
       content: msg,
       message_type: "text",
     });
+    // Fire notification (non-blocking)
+    supabase.functions.invoke("notify-room-message", {
+      body: { room_id: roomId, sender_id: userId, message_preview: msg.substring(0, 80) },
+    }).catch(() => {});
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
