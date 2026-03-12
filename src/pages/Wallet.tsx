@@ -294,6 +294,19 @@ const Wallet = () => {
       setIsSubmitting(false);
     }
   };
+        {/* Invitation Progress */}
+        <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-foreground">Invite Progress</p>
+            <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3 valid</span>
+          </div>
+          <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
+          <p className="text-xs text-muted-foreground">
+            {validInvites >= 3
+              ? "✅ You're eligible to withdraw!"
+              : `Invite ${3 - validInvites} more people who deposit to unlock withdrawals. Total invited: ${totalInvites}`}
+          </p>
+        </div>
 
 
   const getStatusIcon = (status: string) => {
