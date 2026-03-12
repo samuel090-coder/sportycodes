@@ -66,6 +66,8 @@ const Wallet = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [validInvites, setValidInvites] = useState(0);
+  const [totalInvites, setTotalInvites] = useState(0);
   
   // Deposit Modal State
   const [depositOpen, setDepositOpen] = useState(false);
