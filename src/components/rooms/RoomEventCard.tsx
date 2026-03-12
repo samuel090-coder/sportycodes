@@ -23,7 +23,6 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
   const [purchased, setPurchased] = useState(false);
   const [buying, setBuying] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [betAmount, setBetAmount] = useState("");
   const [placingBet, setPlacingBet] = useState(false);
   const { toast } = useToast();
   const meta = message.metadata || {};
@@ -49,7 +48,7 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
   };
 
   const checkPurchase = async () => {
-    if (isFree) { setPurchased(true); return; }
+    if (isFree || message.user_id === userId) { setPurchased(true); return; }
     const { data: events } = await supabase
       .from("room_events")
       .select("id")
@@ -63,10 +62,9 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
         .select("id")
         .eq("room_event_id", events[0].id)
         .eq("user_id", userId!)
-        .single();
+        .maybeSingle();
       if (data) setPurchased(true);
     }
-    if (message.user_id === userId) setPurchased(true);
   };
 
   const purchaseEvent = async () => {
@@ -87,17 +85,21 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
         .eq("source_id", meta.source_id)
         .limit(1);
 
-      if (!events || events.length === 0) { throw new Error("Event not found"); }
+      if (!events || events.length === 0) throw new Error("Event not found");
       const roomEvent = events[0];
 
-      await supabase.from("wallets").update({ balance: Number(wallet.balance) - price }).eq("user_id", userId);
-      await supabase.rpc("add_tap_earnings", { _user_id: roomEvent.posted_by, _amount: price });
-
-      await supabase.from("room_event_purchases").insert({
+      // Insert purchase record FIRST before deducting
+      const { error: purchaseError } = await supabase.from("room_event_purchases").insert({
         room_event_id: roomEvent.id,
         user_id: userId,
         amount: price,
       });
+
+      if (purchaseError) throw new Error("Purchase failed: " + purchaseError.message);
+
+      // Now deduct wallet and credit poster
+      await supabase.from("wallets").update({ balance: Number(wallet.balance) - price }).eq("user_id", userId);
+      await supabase.rpc("add_tap_earnings", { _user_id: roomEvent.posted_by, _amount: price });
 
       setPurchased(true);
       toast({ title: "Purchased! ✅" });
@@ -119,15 +121,13 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
         return;
       }
 
-      // Check if already entered
-      const { data: existing } = await supabase.from("betting_entries").select("id").eq("pool_id", meta.source_id).eq("user_id", userId).single();
+      const { data: existing } = await supabase.from("betting_entries").select("id").eq("pool_id", meta.source_id).eq("user_id", userId).maybeSingle();
       if (existing) {
         toast({ title: "Already entered this pool", variant: "destructive" });
         setPlacingBet(false);
         return;
       }
 
-      // Deduct and place bet
       await supabase.from("wallets").update({ balance: Number(wallet.balance) - entryFee }).eq("user_id", userId);
       await supabase.from("betting_entries").insert({
         pool_id: meta.source_id,
@@ -136,13 +136,12 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
         amount: entryFee,
       });
 
-      // Update pool prize
       await supabase.from("betting_pools").update({
         prize_pool: Number(eventData.prize_pool) + entryFee,
       }).eq("id", meta.source_id);
 
       toast({ title: "Bet placed! 🎯" });
-      fetchEventData(); // refresh
+      fetchEventData();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -158,7 +157,6 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
 
   return (
     <div className="mx-auto max-w-[90%] bg-gradient-to-br from-card to-secondary border border-border rounded-xl overflow-hidden">
-      {/* Header */}
       <div className="px-3 py-2 flex items-center gap-2 border-b border-border/50">
         {isSureOdd && <Target className="w-4 h-4 text-primary" />}
         {isPool && <Gamepad2 className="w-4 h-4 text-primary" />}
@@ -174,7 +172,6 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
         )}
       </div>
 
-      {/* Content */}
       <div className="p-3">
         {isSureOdd && (
           <>
@@ -182,7 +179,7 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
             <p className="text-xs text-muted-foreground mt-1">
               Prediction: {purchased ? eventData.prediction : "***"} · Odds: {eventData.odds}
             </p>
-            {purchased && (
+            {purchased && eventData.bet_code && (
               <div className="mt-2 p-2 bg-primary/10 rounded-lg">
                 <p className="text-xs text-foreground font-mono">
                   Code: <span className="text-primary font-bold">{eventData.bet_code}</span>
@@ -240,7 +237,6 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
         )}
       </div>
 
-      {/* Purchase action for paid events */}
       {!purchased && !isFree && !isShort && (
         <div className="px-3 pb-3">
           <Button size="sm" onClick={purchaseEvent} disabled={buying} className="w-full gap-1.5">

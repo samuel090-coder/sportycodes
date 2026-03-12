@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2 } from "lucide-react";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RoomSettings } from "@/components/rooms/RoomSettings";
 import { RoomEventSheet } from "@/components/rooms/RoomEventSheet";
@@ -12,6 +12,9 @@ import { RoomTransferSheet } from "@/components/rooms/RoomTransferSheet";
 import { RoomEventCard } from "@/components/rooms/RoomEventCard";
 import { RoomInviteSheet } from "@/components/rooms/RoomInviteSheet";
 import { RoomCreatePoolSheet } from "@/components/rooms/RoomCreatePoolSheet";
+import { RoomGamesSheet } from "@/components/rooms/RoomGamesSheet";
+import { RoomGameCard } from "@/components/rooms/RoomGameCard";
+import { RoomCrossPostSheet } from "@/components/rooms/RoomCrossPostSheet";
 
 interface Message {
   id: string;
@@ -51,6 +54,8 @@ const RoomDetail = () => {
   const [transferOpen, setTransferOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [createPoolOpen, setCreatePoolOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [crossPostOpen, setCrossPostOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -154,7 +159,6 @@ const RoomDetail = () => {
       content: msg,
       message_type: "text",
     });
-    // Fire notification (non-blocking)
     supabase.functions.invoke("notify-room-message", {
       body: { room_id: roomId, sender_id: userId, message_preview: msg.substring(0, 80) },
     }).catch(() => {});
@@ -188,31 +192,34 @@ const RoomDetail = () => {
           <h2 className="font-semibold text-sm text-foreground truncate">{room.name}</h2>
           <p className="text-xs text-muted-foreground">{room.member_count} members</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {isMember && (
             <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEventOpen(true)}>
-                <Tag className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
+                <Tag className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCreatePoolOpen(true)}>
-                <Gamepad2 className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setGamesOpen(true)} title="Games">
+                <Gamepad2 className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setTransferOpen(true)}>
-                <DollarSign className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTransferOpen(true)} title="Transfer">
+                <DollarSign className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setInviteOpen(true)}>
-                <UserPlus className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteOpen(true)} title="Invite">
+                <UserPlus className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCrossPostOpen(true)} title="Tag Group">
+                <Share2 className="w-3.5 h-3.5" />
               </Button>
             </>
           )}
           {isAdmin && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsOpen(true)}>
-              <Settings className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)}>
+              <Settings className="w-3.5 h-3.5" />
             </Button>
           )}
           {isMember && !isAdmin && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={leaveRoom}>
-              <LogOut className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={leaveRoom}>
+              <LogOut className="w-3.5 h-3.5" />
             </Button>
           )}
         </div>
@@ -250,11 +257,15 @@ const RoomDetail = () => {
               return <RoomEventCard key={msg.id} message={msg} userId={userId} roomId={roomId!} />;
             }
 
-            if (msg.message_type === "transfer") {
+            if (msg.message_type === "game") {
+              return <RoomGameCard key={msg.id} message={msg} userId={userId} roomId={roomId!} />;
+            }
+
+            if (msg.message_type === "transfer" || msg.message_type === "system") {
               return (
                 <div key={msg.id} className="flex justify-center">
-                  <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-center">
-                    <DollarSign className="w-3 h-3 inline mr-1" />
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-center max-w-[85%]">
+                    {msg.message_type === "transfer" && <DollarSign className="w-3 h-3 inline mr-1" />}
                     {msg.content}
                   </div>
                 </div>
@@ -320,34 +331,12 @@ const RoomDetail = () => {
         />
       )}
 
-      <RoomEventSheet
-        open={eventOpen}
-        onOpenChange={setEventOpen}
-        roomId={roomId!}
-        userId={userId!}
-        isAdmin={isAdmin}
-      />
-
-      <RoomTransferSheet
-        open={transferOpen}
-        onOpenChange={setTransferOpen}
-        roomId={roomId!}
-        userId={userId!}
-      />
-
-      <RoomInviteSheet
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        roomId={roomId!}
-        roomName={room.name}
-      />
-
-      <RoomCreatePoolSheet
-        open={createPoolOpen}
-        onOpenChange={setCreatePoolOpen}
-        roomId={roomId!}
-        userId={userId!}
-      />
+      <RoomEventSheet open={eventOpen} onOpenChange={setEventOpen} roomId={roomId!} userId={userId!} isAdmin={isAdmin} />
+      <RoomTransferSheet open={transferOpen} onOpenChange={setTransferOpen} roomId={roomId!} userId={userId!} />
+      <RoomInviteSheet open={inviteOpen} onOpenChange={setInviteOpen} roomId={roomId!} roomName={room.name} userId={userId!} />
+      <RoomCreatePoolSheet open={createPoolOpen} onOpenChange={setCreatePoolOpen} roomId={roomId!} userId={userId!} />
+      <RoomGamesSheet open={gamesOpen} onOpenChange={setGamesOpen} roomId={roomId!} userId={userId!} />
+      <RoomCrossPostSheet open={crossPostOpen} onOpenChange={setCrossPostOpen} roomId={roomId!} roomName={room.name} userId={userId!} />
     </div>
   );
 };
