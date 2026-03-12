@@ -149,6 +149,29 @@ const Wallet = () => {
         .order("created_at", { ascending: false })
         .limit(10);
       setWithdrawals(withdrawalData || []);
+
+      // Check referral invites for withdrawal eligibility
+      const { data: referrals } = await supabase
+        .from("referrals")
+        .select("referred_id")
+        .eq("referrer_id", userId)
+        .eq("status", "completed");
+
+      if (referrals && referrals.length > 0) {
+        setTotalInvites(referrals.length);
+        const referredIds = referrals.map(r => r.referred_id);
+        const { data: approvedDeposits } = await supabase
+          .from("deposit_requests")
+          .select("user_id")
+          .in("user_id", referredIds)
+          .eq("status", "approved");
+        
+        const uniqueDepositors = new Set(approvedDeposits?.map(d => d.user_id) || []);
+        setValidInvites(uniqueDepositors.size);
+      } else {
+        setTotalInvites(0);
+        setValidInvites(0);
+      }
     } catch (error) {
       console.error("Error loading wallet data:", error);
     } finally {
