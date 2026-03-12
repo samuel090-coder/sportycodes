@@ -243,6 +243,11 @@ const Wallet = () => {
       return;
     }
 
+    if (validInvites < 3) {
+      toast.error(`You need ${3 - validInvites} more valid invites (who have deposited) before withdrawing`);
+      return;
+    }
+
     const amount = parseFloat(withdrawAmount);
     if (amount > (wallet?.balance || 0)) {
       toast.error("Insufficient balance");
