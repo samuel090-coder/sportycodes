@@ -970,6 +970,51 @@ export type Database = {
         }
         Relationships: []
       }
+      room_cross_posts: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          posted_by: string
+          source_data: Json
+          source_room_id: string
+          target_room_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          posted_by: string
+          source_data?: Json
+          source_room_id: string
+          target_room_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          posted_by?: string
+          source_data?: Json
+          source_room_id?: string
+          target_room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_cross_posts_source_room_id_fkey"
+            columns: ["source_room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_cross_posts_target_room_id_fkey"
+            columns: ["target_room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_event_purchases: {
         Row: {
           amount: number
@@ -1039,6 +1084,97 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "room_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_game_entries: {
+        Row: {
+          created_at: string
+          entry_data: Json
+          game_id: string
+          id: string
+          is_winner: boolean
+          payout: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_data?: Json
+          game_id: string
+          id?: string
+          is_winner?: boolean
+          payout?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_data?: Json
+          game_id?: string
+          id?: string
+          is_winner?: boolean
+          payout?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_game_entries_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "room_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_games: {
+        Row: {
+          created_at: string
+          created_by: string
+          entry_fee: number
+          game_data: Json
+          game_type: string
+          id: string
+          max_players: number
+          prize_pool: number
+          room_id: string
+          status: string
+          title: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          entry_fee?: number
+          game_data?: Json
+          game_type: string
+          id?: string
+          max_players?: number
+          prize_pool?: number
+          room_id: string
+          status?: string
+          title: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          entry_fee?: number
+          game_data?: Json
+          game_type?: string
+          id?: string
+          max_players?: number
+          prize_pool?: number
+          room_id?: string
+          status?: string
+          title?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_games_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
