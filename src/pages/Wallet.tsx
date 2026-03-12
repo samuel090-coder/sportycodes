@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +67,8 @@ const Wallet = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [validInvites, setValidInvites] = useState(0);
+  const [totalInvites, setTotalInvites] = useState(0);
   
   // Deposit Modal State
   const [depositOpen, setDepositOpen] = useState(false);
@@ -147,6 +150,29 @@ const Wallet = () => {
         .order("created_at", { ascending: false })
         .limit(10);
       setWithdrawals(withdrawalData || []);
+
+      // Check referral invites for withdrawal eligibility
+      const { data: referrals } = await supabase
+        .from("referrals")
+        .select("referred_id")
+        .eq("referrer_id", userId)
+        .eq("status", "completed");
+
+      if (referrals && referrals.length > 0) {
+        setTotalInvites(referrals.length);
+        const referredIds = referrals.map(r => r.referred_id);
+        const { data: approvedDeposits } = await supabase
+          .from("deposit_requests")
+          .select("user_id")
+          .in("user_id", referredIds)
+          .eq("status", "approved");
+        
+        const uniqueDepositors = new Set(approvedDeposits?.map(d => d.user_id) || []);
+        setValidInvites(uniqueDepositors.size);
+      } else {
+        setTotalInvites(0);
+        setValidInvites(0);
+      }
     } catch (error) {
       console.error("Error loading wallet data:", error);
     } finally {
@@ -217,6 +243,11 @@ const Wallet = () => {
       return;
     }
 
+    if (validInvites < 3) {
+      toast.error(`You need ${3 - validInvites} more valid invites (who have deposited) before withdrawing`);
+      return;
+    }
+
     const amount = parseFloat(withdrawAmount);
     if (amount > (wallet?.balance || 0)) {
       toast.error("Insufficient balance");
@@ -263,6 +294,19 @@ const Wallet = () => {
       setIsSubmitting(false);
     }
   };
+        {/* Invitation Progress */}
+        <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-foreground">Invite Progress</p>
+            <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3 valid</span>
+          </div>
+          <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
+          <p className="text-xs text-muted-foreground">
+            {validInvites >= 3
+              ? "✅ You're eligible to withdraw!"
+              : `Invite ${3 - validInvites} more people who deposit to unlock withdrawals. Total invited: ${totalInvites}`}
+          </p>
+        </div>
 
 
   const getStatusIcon = (status: string) => {
