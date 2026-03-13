@@ -854,6 +854,7 @@ export type Database = {
           posts_count: number | null
           referral_code: string | null
           referral_earnings: number | null
+          referral_short_code: string
           referred_by: string | null
           total_earned: number | null
           updated_at: string
@@ -874,6 +875,7 @@ export type Database = {
           posts_count?: number | null
           referral_code?: string | null
           referral_earnings?: number | null
+          referral_short_code?: string
           referred_by?: string | null
           total_earned?: number | null
           updated_at?: string
@@ -894,6 +896,7 @@ export type Database = {
           posts_count?: number | null
           referral_code?: string | null
           referral_earnings?: number | null
+          referral_short_code?: string
           referred_by?: string | null
           total_earned?: number | null
           updated_at?: string
@@ -1301,6 +1304,7 @@ export type Database = {
           creator_id: string
           description: string | null
           id: string
+          invite_code: string
           is_public: boolean
           member_count: number
           name: string
@@ -1313,6 +1317,7 @@ export type Database = {
           creator_id: string
           description?: string | null
           id?: string
+          invite_code?: string
           is_public?: boolean
           member_count?: number
           name: string
@@ -1325,6 +1330,7 @@ export type Database = {
           creator_id?: string
           description?: string | null
           id?: string
+          invite_code?: string
           is_public?: boolean
           member_count?: number
           name?: string
@@ -1861,6 +1867,12 @@ export type Database = {
         Args: { _amount: number; _user_id: string }
         Returns: number
       }
+      assert_user_minimum_deposit: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
+      generate_referral_short_code: { Args: never; Returns: string }
+      generate_room_invite_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
