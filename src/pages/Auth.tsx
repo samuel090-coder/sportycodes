@@ -1,20 +1,22 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Mail, Lock, User, Zap, ArrowRight, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Zap, ArrowRight, Sparkles, Gift } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [referralCode, setReferralCode] = useState(searchParams.get("ref") || "");
 
   useEffect(() => {
     // Check if already logged in
@@ -54,6 +56,7 @@ const Auth = () => {
             emailRedirectTo: `${window.location.origin}/dashboard`,
             data: {
               display_name: displayName,
+              ...(referralCode ? { referred_by: referralCode } : {}),
             },
           },
         });
@@ -172,11 +175,30 @@ const Auth = () => {
                       className="pl-12 h-14 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
                       required={!isLogin}
                     />
-                  </div>
-                </div>
-              )}
+                   </div>
+                 </div>
+               )}
 
-              {/* Email */}
+               {/* Referral Code (Sign Up only) */}
+               {!isLogin && (
+                 <div className="space-y-2">
+                   <Label htmlFor="referralCode" className="text-foreground font-medium">
+                     Invitation Code <span className="text-muted-foreground">(optional)</span>
+                   </Label>
+                   <div className="relative">
+                     <Gift className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                     <Input
+                       id="referralCode"
+                       type="text"
+                       placeholder="Enter referral code"
+                       value={referralCode}
+                       onChange={(e) => setReferralCode(e.target.value)}
+                       className="pl-12 h-14 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
+                     />
+                    </div>
+                  </div>
+                )}
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground font-medium">
                   Email Address

@@ -25,9 +25,12 @@ export function RoomInviteSheet({ open, onOpenChange, roomId, roomName, userId }
   const [inviting, setInviting] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(userId || null);
+  const [roomInviteCode, setRoomInviteCode] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const inviteLink = `${window.location.origin}/rooms/${roomId}`;
+  const inviteLink = roomInviteCode 
+    ? `https://sportycodes.lovable.app/r/${roomInviteCode}`
+    : `${window.location.origin}/rooms/${roomId}`;
 
   useEffect(() => {
     if (open) {
@@ -37,6 +40,8 @@ export function RoomInviteSheet({ open, onOpenChange, roomId, roomName, userId }
           if (user) setCurrentUserId(user.id);
         }
         fetchExistingMembers();
+        const { data: roomData } = await supabase.from("rooms").select("invite_code").eq("id", roomId).single();
+        if (roomData?.invite_code) setRoomInviteCode(roomData.invite_code);
       };
       init();
     }

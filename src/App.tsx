@@ -43,6 +43,8 @@ import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import Rooms from "./pages/Rooms";
 import RoomDetail from "./pages/RoomDetail";
+import Invite from "./pages/Invite";
+import RoomInvite from "./pages/RoomInvite";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
@@ -93,6 +95,8 @@ const App = () => {
               <Route path="/vip" element={<VIPSubscription />} />
               <Route path="/rooms" element={<Rooms />} />
               <Route path="/rooms/:roomId" element={<RoomDetail />} />
+              <Route path="/ref/:code" element={<Invite />} />
+              <Route path="/r/:inviteCode" element={<RoomInvite />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="analytics" element={<AnalyticsSection />} />
                 <Route path="security" element={<SecuritySection />} />

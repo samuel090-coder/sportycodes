@@ -88,27 +88,34 @@ const SureOdds = () => {
 
     checkPaymentStatus();
 
+    // Listen for BOTH inserts (wallet auto-approved) and updates (admin approval)
     const paymentChannel = supabase
       .channel(`payment-approvals-${userEmail}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'payments',
           filter: `user_email=eq.${userEmail}`
         },
         (payload) => {
-          if (payload.new.status === 'approved' && payload.new.item_type === 'sure-odd') {
-            setApprovedItems(prev => [...new Set([...prev, payload.new.item_id])]);
-            toast.success('Your payment has been approved! You can now view the code.');
+          const record = payload.new as any;
+          if (record?.status === 'approved' && record?.item_type === 'sure-odd' && record?.item_id) {
+            setApprovedItems(prev => [...new Set([...prev, record.item_id])]);
+            toast.success('Payment approved! You can now view the code.');
           }
         }
       )
       .subscribe();
 
+    // Re-check when user returns from payment page
+    const handleFocus = () => checkPaymentStatus();
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       supabase.removeChannel(paymentChannel);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [userEmail]);
 

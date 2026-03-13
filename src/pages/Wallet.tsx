@@ -32,32 +32,13 @@ import {
 import BottomNav from "@/components/BottomNav";
 
 const nigerianBanks = [
-  "Access Bank",
-  "Citibank Nigeria",
-  "Ecobank Nigeria",
-  "Fidelity Bank",
-  "First Bank of Nigeria",
-  "First City Monument Bank (FCMB)",
-  "Globus Bank",
-  "Guaranty Trust Bank (GTBank)",
-  "Heritage Bank",
-  "Keystone Bank",
-  "Kuda Bank",
-  "OPay",
-  "PalmPay",
-  "Polaris Bank",
-  "Providus Bank",
-  "Stanbic IBTC Bank",
-  "Standard Chartered Bank",
-  "Sterling Bank",
-  "SunTrust Bank",
-  "Titan Trust Bank",
-  "Union Bank of Nigeria",
-  "United Bank for Africa (UBA)",
-  "Unity Bank",
-  "VFD Microfinance Bank",
-  "Wema Bank",
-  "Zenith Bank",
+  "Access Bank", "Citibank Nigeria", "Ecobank Nigeria", "Fidelity Bank",
+  "First Bank of Nigeria", "First City Monument Bank (FCMB)", "Globus Bank",
+  "Guaranty Trust Bank (GTBank)", "Heritage Bank", "Keystone Bank", "Kuda Bank",
+  "OPay", "PalmPay", "Polaris Bank", "Providus Bank", "Stanbic IBTC Bank",
+  "Standard Chartered Bank", "Sterling Bank", "SunTrust Bank", "Titan Trust Bank",
+  "Union Bank of Nigeria", "United Bank for Africa (UBA)", "Unity Bank",
+  "VFD Microfinance Bank", "Wema Bank", "Zenith Bank",
 ];
 
 const Wallet = () => {
@@ -70,18 +51,12 @@ const Wallet = () => {
   const [validInvites, setValidInvites] = useState(0);
   const [totalInvites, setTotalInvites] = useState(0);
   
-  // Deposit Modal State
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [bankDetails, setBankDetails] = useState({
-    bank_name: "",
-    account_number: "",
-    account_name: ""
-  });
+  const [bankDetails, setBankDetails] = useState({ bank_name: "", account_number: "", account_name: "" });
 
-  // Withdraw Modal State
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawBank, setWithdrawBank] = useState("");
@@ -91,84 +66,40 @@ const Wallet = () => {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        navigate("/auth");
-        return;
-      }
+      if (!session?.user) { navigate("/auth"); return; }
       setUser(session.user);
       await loadData(session.user.id);
     };
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session?.user) {
-        navigate("/auth");
-      }
+      if (!session?.user) navigate("/auth");
     });
-
     checkAuth();
-
     return () => subscription.unsubscribe();
   }, [navigate]);
 
   const loadData = async (userId: string) => {
     setIsLoading(true);
     try {
-      // Load wallet
-      const { data: walletData } = await supabase
-        .from("wallets")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      const { data: walletData } = await supabase.from("wallets").select("*").eq("user_id", userId).single();
       setWallet(walletData);
 
-      // Load bank details for deposit
-      const { data: bankData } = await supabase
-        .from("app_settings")
-        .select("setting_key, setting_value")
-        .in("setting_key", ["bank_name", "account_number", "account_name"]);
-
+      const { data: bankData } = await supabase.from("app_settings").select("setting_key, setting_value").in("setting_key", ["bank_name", "account_number", "account_name"]);
       const details: any = {};
-      bankData?.forEach(d => {
-        details[d.setting_key] = d.setting_value;
-      });
+      bankData?.forEach(d => { details[d.setting_key] = d.setting_value; });
       setBankDetails(details);
 
-      // Load deposits
-      const { data: depositData } = await supabase
-        .from("deposit_requests")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      const { data: depositData } = await supabase.from("deposit_requests").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10);
       setDeposits(depositData || []);
 
-      // Load withdrawals
-      const { data: withdrawalData } = await supabase
-        .from("withdrawal_requests")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      const { data: withdrawalData } = await supabase.from("withdrawal_requests").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10);
       setWithdrawals(withdrawalData || []);
 
-      // Check referral invites for withdrawal eligibility
-      const { data: referrals } = await supabase
-        .from("referrals")
-        .select("referred_id")
-        .eq("referrer_id", userId)
-        .eq("status", "completed");
-
+      // Check referral invites
+      const { data: referrals } = await supabase.from("referrals").select("referred_id, status").eq("referrer_id", userId);
       if (referrals && referrals.length > 0) {
         setTotalInvites(referrals.length);
-        const referredIds = referrals.map(r => r.referred_id);
-        const { data: approvedDeposits } = await supabase
-          .from("deposit_requests")
-          .select("user_id")
-          .in("user_id", referredIds)
-          .eq("status", "approved");
-        
-        const uniqueDepositors = new Set(approvedDeposits?.map(d => d.user_id) || []);
-        setValidInvites(uniqueDepositors.size);
+        const completedRefs = referrals.filter(r => r.status === 'completed');
+        setValidInvites(completedRefs.length);
       } else {
         setTotalInvites(0);
         setValidInvites(0);
@@ -181,54 +112,26 @@ const Wallet = () => {
   };
 
   const handleDeposit = async () => {
-    if (!user || !depositAmount) {
-      toast.error("Please enter an amount");
-      return;
-    }
-
-    if (!screenshot) {
-      toast.error("Please upload payment screenshot");
-      return;
-    }
-
+    if (!user || !depositAmount) { toast.error("Please enter an amount"); return; }
+    if (!screenshot) { toast.error("Please upload payment screenshot"); return; }
     const amount = parseFloat(depositAmount);
-    if (amount < 100) {
-      toast.error("Minimum deposit is ₦100");
-      return;
-    }
+    if (amount < 100) { toast.error("Minimum deposit is ₦100"); return; }
 
     setIsSubmitting(true);
     try {
-      // Upload screenshot
       const fileExt = screenshot.name.split('.').pop();
       const fileName = `deposit-${user.id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from("payment-screenshots")
-        .upload(fileName, screenshot);
-
+      const { error: uploadError } = await supabase.storage.from("payment-screenshots").upload(fileName, screenshot);
       if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from("payment-screenshots").getPublicUrl(fileName);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("payment-screenshots")
-        .getPublicUrl(fileName);
-
-      // Create deposit request with screenshot
-      const { error: insertError } = await supabase
-        .from("deposit_requests")
-        .insert({
-          user_id: user.id,
-          amount,
-          payment_method: "bank_transfer",
-          screenshot_url: publicUrl,
-          status: "pending"
-        });
-
+      const { error: insertError } = await supabase.from("deposit_requests").insert({
+        user_id: user.id, amount, payment_method: "bank_transfer", screenshot_url: publicUrl, status: "pending"
+      });
       if (insertError) throw insertError;
 
       toast.success("Deposit submitted! Admin will review and credit your wallet.");
-      setDepositOpen(false);
-      setDepositAmount("");
-      setScreenshot(null);
+      setDepositOpen(false); setDepositAmount(""); setScreenshot(null);
       loadData(user.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit deposit");
@@ -239,54 +142,25 @@ const Wallet = () => {
 
   const handleWithdraw = async () => {
     if (!user || !withdrawAmount || !withdrawBank || !withdrawAccountName || !withdrawAccountNumber) {
-      toast.error("Please fill all bank details");
-      return;
+      toast.error("Please fill all bank details"); return;
     }
-
     if (validInvites < 3) {
-      toast.error(`You need ${3 - validInvites} more valid invites (who have deposited) before withdrawing`);
-      return;
+      toast.error(`You need ${3 - validInvites} more valid invites (who have deposited) before withdrawing`); return;
     }
-
     const amount = parseFloat(withdrawAmount);
-    if (amount > (wallet?.balance || 0)) {
-      toast.error("Insufficient balance");
-      return;
-    }
-
-    if (amount < 500) {
-      toast.error("Minimum withdrawal is ₦500");
-      return;
-    }
+    if (amount > (wallet?.balance || 0)) { toast.error("Insufficient balance"); return; }
+    if (amount < 500) { toast.error("Minimum withdrawal is ₦500"); return; }
 
     setIsSubmitting(true);
     try {
-      // Format account details as structured string
-      const accountDetails = JSON.stringify({
-        bank: withdrawBank,
-        account_name: withdrawAccountName,
-        account_number: withdrawAccountNumber
+      const accountDetails = JSON.stringify({ bank: withdrawBank, account_name: withdrawAccountName, account_number: withdrawAccountNumber });
+      const { error } = await supabase.from("withdrawal_requests").insert({
+        user_id: user.id, amount, payment_method: withdrawBank, account_details: accountDetails, status: "pending"
       });
-
-      // Create withdrawal request
-      const { error } = await supabase
-        .from("withdrawal_requests")
-        .insert({
-          user_id: user.id,
-          amount,
-          payment_method: withdrawBank,
-          account_details: accountDetails,
-          status: "pending"
-        });
-
       if (error) throw error;
 
       toast.success("Withdrawal request submitted! Processing within 24 hours.");
-      setWithdrawOpen(false);
-      setWithdrawAmount("");
-      setWithdrawBank("");
-      setWithdrawAccountName("");
-      setWithdrawAccountNumber("");
+      setWithdrawOpen(false); setWithdrawAmount(""); setWithdrawBank(""); setWithdrawAccountName(""); setWithdrawAccountNumber("");
       loadData(user.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit withdrawal");
@@ -294,38 +168,17 @@ const Wallet = () => {
       setIsSubmitting(false);
     }
   };
-        {/* Invitation Progress */}
-        <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-bold text-foreground">Invite Progress</p>
-            <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3 valid</span>
-          </div>
-          <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
-          <p className="text-xs text-muted-foreground">
-            {validInvites >= 3
-              ? "✅ You're eligible to withdraw!"
-              : `Invite ${3 - validInvites} more people who deposit to unlock withdrawals. Total invited: ${totalInvites}`}
-          </p>
-        </div>
-
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "approved":
-        return <CheckCircle2 className="w-4 h-4 text-bet-success" />;
-      case "declined":
-        return <XCircle className="w-4 h-4 text-destructive" />;
-      default:
-        return <Clock className="w-4 h-4 text-bet-warning" />;
+      case "approved": return <CheckCircle2 className="w-4 h-4 text-bet-success" />;
+      case "declined": return <XCircle className="w-4 h-4 text-destructive" />;
+      default: return <Clock className="w-4 h-4 text-bet-warning" />;
     }
   };
 
   const parseAccountDetails = (details: string) => {
-    try {
-      return JSON.parse(details);
-    } catch {
-      return { bank: details, account_name: "", account_number: "" };
-    }
+    try { return JSON.parse(details); } catch { return { bank: details, account_name: "", account_number: "" }; }
   };
 
   if (isLoading) {
@@ -338,15 +191,9 @@ const Wallet = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-screen-xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate("/dashboard")}
-            className="rounded-xl"
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="rounded-xl">
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -370,25 +217,29 @@ const Wallet = () => {
                 <p className="text-4xl font-black text-foreground">₦{wallet?.balance?.toFixed(2) || "0.00"}</p>
               </div>
             </div>
-
-            {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-3 mt-6">
-              <Button
-                onClick={() => setDepositOpen(true)}
-                className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl"
-              >
-                <ArrowDownLeft className="w-5 h-5 mr-2" />
-                Deposit
+              <Button onClick={() => setDepositOpen(true)} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl">
+                <ArrowDownLeft className="w-5 h-5 mr-2" /> Deposit
               </Button>
-              <Button
-                onClick={() => setWithdrawOpen(true)}
-                className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl"
-              >
-                <ArrowUpRight className="w-5 h-5 mr-2" />
-                Withdraw
+              <Button onClick={() => setWithdrawOpen(true)} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
+                <ArrowUpRight className="w-5 h-5 mr-2" /> Withdraw
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Invitation Progress */}
+        <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-foreground">Invite Progress</p>
+            <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3 valid</span>
+          </div>
+          <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
+          <p className="text-xs text-muted-foreground">
+            {validInvites >= 3
+              ? "✅ You're eligible to withdraw!"
+              : `Invite ${3 - validInvites} more people who deposit to unlock withdrawals. Total invited: ${totalInvites}`}
+          </p>
         </div>
 
         {/* Stats */}
@@ -405,7 +256,6 @@ const Wallet = () => {
 
         {/* Transaction History */}
         <div className="space-y-6">
-          {/* Deposits */}
           <div>
             <h3 className="text-lg font-bold text-foreground mb-3">Recent Deposits</h3>
             {deposits.length === 0 ? (
@@ -415,10 +265,7 @@ const Wallet = () => {
             ) : (
               <div className="space-y-2">
                 {deposits.map((deposit) => (
-                  <div
-                    key={deposit.id}
-                    className="bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4 flex items-center justify-between"
-                  >
+                  <div key={deposit.id} className="bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-bet-success/10 flex items-center justify-center">
                         <ArrowDownLeft className="w-5 h-5 text-bet-success" />
@@ -430,10 +277,7 @@ const Wallet = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusIcon(deposit.status)}
-                      <span className={`text-xs font-medium capitalize ${
-                        deposit.status === "approved" ? "text-bet-success" :
-                        deposit.status === "declined" ? "text-destructive" : "text-bet-warning"
-                      }`}>
+                      <span className={`text-xs font-medium capitalize ${deposit.status === "approved" ? "text-bet-success" : deposit.status === "declined" ? "text-destructive" : "text-bet-warning"}`}>
                         {deposit.status}
                       </span>
                     </div>
@@ -443,7 +287,6 @@ const Wallet = () => {
             )}
           </div>
 
-          {/* Withdrawals */}
           <div>
             <h3 className="text-lg font-bold text-foreground mb-3">Recent Withdrawals</h3>
             {withdrawals.length === 0 ? (
@@ -455,10 +298,7 @@ const Wallet = () => {
                 {withdrawals.map((withdrawal) => {
                   const details = parseAccountDetails(withdrawal.account_details);
                   return (
-                    <div
-                      key={withdrawal.id}
-                      className="bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4 flex items-center justify-between"
-                    >
+                    <div key={withdrawal.id} className="bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                           <ArrowUpRight className="w-5 h-5 text-primary" />
@@ -470,10 +310,7 @@ const Wallet = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(withdrawal.status)}
-                        <span className={`text-xs font-medium capitalize ${
-                          withdrawal.status === "approved" ? "text-bet-success" :
-                          withdrawal.status === "declined" ? "text-destructive" : "text-bet-warning"
-                        }`}>
+                        <span className={`text-xs font-medium capitalize ${withdrawal.status === "approved" ? "text-bet-success" : withdrawal.status === "declined" ? "text-destructive" : "text-bet-warning"}`}>
                           {withdrawal.status}
                         </span>
                       </div>
@@ -486,17 +323,14 @@ const Wallet = () => {
         </div>
       </main>
 
+      {/* Deposit Modal */}
       <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
         <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground">Deposit Funds</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Transfer to the account below and upload proof
-            </DialogDescription>
+            <DialogDescription className="text-muted-foreground">Transfer to the account below and upload proof</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-5 mt-4">
-            {/* Bank Details */}
             <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
               <p className="text-sm text-muted-foreground mb-2">Transfer to:</p>
               <div className="space-y-1">
@@ -505,47 +339,21 @@ const Wallet = () => {
                 <p className="text-muted-foreground">{bankDetails.account_name || "..."}</p>
               </div>
             </div>
-
-            {/* Amount */}
             <div className="space-y-2">
               <Label className="text-foreground">Amount Transferred (₦)</Label>
-              <Input
-                type="number"
-                placeholder="Enter amount (min ₦100)"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl"
-              />
+              <Input type="number" placeholder="Enter amount (min ₦100)" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="h-12 bg-secondary/50 border-border/50 rounded-xl" />
             </div>
-
-            {/* Screenshot Upload */}
             <div className="space-y-2">
               <Label className="text-foreground">Payment Screenshot</Label>
               <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setScreenshot(e.target.files?.[0] || null)}
-                  className="hidden"
-                  id="deposit-screenshot"
-                />
-                <label
-                  htmlFor="deposit-screenshot"
-                  className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors"
-                >
+                <input type="file" accept="image/*" onChange={(e) => setScreenshot(e.target.files?.[0] || null)} className="hidden" id="deposit-screenshot" />
+                <label htmlFor="deposit-screenshot" className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
                   <ArrowDownLeft className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    {screenshot ? screenshot.name : "Upload payment proof"}
-                  </span>
+                  <span className="text-muted-foreground">{screenshot ? screenshot.name : "Upload payment proof"}</span>
                 </label>
               </div>
             </div>
-
-            <Button
-              onClick={handleDeposit}
-              disabled={isSubmitting || !screenshot || !depositAmount}
-              className="w-full h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl"
-            >
+            <Button onClick={handleDeposit} disabled={isSubmitting || !screenshot || !depositAmount} className="w-full h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl">
               {isSubmitting ? "Submitting..." : "Submit Deposit"}
             </Button>
           </div>
@@ -557,73 +365,32 @@ const Wallet = () => {
         <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground">Withdraw Funds</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Enter your bank details to receive payment
-            </DialogDescription>
+            <DialogDescription className="text-muted-foreground">Enter your bank details to receive payment</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4 mt-4">
-            {/* Amount */}
             <div className="space-y-2">
               <Label className="text-foreground">Amount (₦)</Label>
-              <Input
-                type="number"
-                placeholder="Minimum ₦500"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl"
-              />
-              <p className="text-xs text-muted-foreground">
-                Available: ₦{wallet?.balance?.toFixed(2) || "0.00"}
-              </p>
+              <Input type="number" placeholder="Minimum ₦500" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="h-12 bg-secondary/50 border-border/50 rounded-xl" />
+              <p className="text-xs text-muted-foreground">Available: ₦{wallet?.balance?.toFixed(2) || "0.00"}</p>
             </div>
-
-            {/* Bank Selection */}
             <div className="space-y-2">
               <Label className="text-foreground">Select Bank</Label>
               <Select value={withdrawBank} onValueChange={setWithdrawBank}>
-                <SelectTrigger className="h-12 bg-secondary/50 border-border/50 rounded-xl">
-                  <SelectValue placeholder="Choose your bank" />
-                </SelectTrigger>
+                <SelectTrigger className="h-12 bg-secondary/50 border-border/50 rounded-xl"><SelectValue placeholder="Choose your bank" /></SelectTrigger>
                 <SelectContent className="bg-card border-border max-h-60">
-                  {nigerianBanks.map((bank) => (
-                    <SelectItem key={bank} value={bank}>
-                      {bank}
-                    </SelectItem>
-                  ))}
+                  {nigerianBanks.map((bank) => (<SelectItem key={bank} value={bank}>{bank}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Account Name */}
             <div className="space-y-2">
               <Label className="text-foreground">Account Name</Label>
-              <Input
-                placeholder="Enter account name"
-                value={withdrawAccountName}
-                onChange={(e) => setWithdrawAccountName(e.target.value)}
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl"
-              />
+              <Input placeholder="Enter account name" value={withdrawAccountName} onChange={(e) => setWithdrawAccountName(e.target.value)} className="h-12 bg-secondary/50 border-border/50 rounded-xl" />
             </div>
-
-            {/* Account Number */}
             <div className="space-y-2">
               <Label className="text-foreground">Account Number</Label>
-              <Input
-                type="number"
-                placeholder="10-digit account number"
-                value={withdrawAccountNumber}
-                onChange={(e) => setWithdrawAccountNumber(e.target.value)}
-                maxLength={10}
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl"
-              />
+              <Input type="number" placeholder="10-digit account number" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} maxLength={10} className="h-12 bg-secondary/50 border-border/50 rounded-xl" />
             </div>
-
-            <Button
-              onClick={handleWithdraw}
-              disabled={isSubmitting}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-            >
+            <Button onClick={handleWithdraw} disabled={isSubmitting} className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               {isSubmitting ? "Submitting..." : "Submit Withdrawal Request"}
             </Button>
           </div>
