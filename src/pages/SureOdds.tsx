@@ -89,7 +89,7 @@ const SureOdds = () => {
     checkPaymentStatus();
 
     const paymentChannel = supabase
-      .channel('payment-approvals')
+      .channel(`payment-approvals-${userEmail}`)
       .on(
         'postgres_changes',
         {
@@ -99,8 +99,8 @@ const SureOdds = () => {
           filter: `user_email=eq.${userEmail}`
         },
         (payload) => {
-          if (payload.new.status === 'approved') {
-            setApprovedItems(prev => [...prev, payload.new.item_id]);
+          if (payload.new.status === 'approved' && payload.new.item_type === 'sure-odd') {
+            setApprovedItems(prev => [...new Set([...prev, payload.new.item_id])]);
             toast.success('Your payment has been approved! You can now view the code.');
           }
         }
@@ -110,7 +110,7 @@ const SureOdds = () => {
     return () => {
       supabase.removeChannel(paymentChannel);
     };
-  }, []);
+  }, [userEmail]);
 
   // Real-time subscription for sure odds updates
   useEffect(() => {
