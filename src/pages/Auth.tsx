@@ -195,9 +195,10 @@ const Auth = () => {
                        onChange={(e) => setReferralCode(e.target.value)}
                        className="pl-12 h-14 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
                      />
-                   </div>
+                    </div>
+                  </div>
+                )}
 
-              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground font-medium">
                   Email Address
