@@ -43,6 +43,8 @@ import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import Rooms from "./pages/Rooms";
 import RoomDetail from "./pages/RoomDetail";
+import Invite from "./pages/Invite";
+import RoomInvite from "./pages/RoomInvite";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
