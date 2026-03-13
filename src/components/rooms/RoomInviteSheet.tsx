@@ -35,13 +35,11 @@ export function RoomInviteSheet({ open, onOpenChange, roomId, roomName, userId }
   useEffect(() => {
     if (open) {
       const init = async () => {
-      const init = async () => {
         if (!currentUserId) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) setCurrentUserId(user.id);
         }
         fetchExistingMembers();
-        // Fetch room invite code
         const { data: roomData } = await supabase.from("rooms").select("invite_code").eq("id", roomId).single();
         if (roomData?.invite_code) setRoomInviteCode(roomData.invite_code);
       };
