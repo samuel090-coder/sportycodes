@@ -370,7 +370,7 @@ const Profile = () => {
 
         {/* Referral Code Section */}
         <div className="bg-gradient-to-r from-primary/10 to-cyber-neon-purple/10 rounded-xl border border-primary/20 p-4 mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                 <Gift className="w-5 h-5 text-primary" />
@@ -392,8 +392,31 @@ const Profile = () => {
               Copy
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
+          {/* Short referral link */}
+          {profile?.referral_short_code && (
+            <div className="bg-card/60 rounded-lg p-2 mb-2">
+              <p className="text-xs text-muted-foreground mb-1">Your Invite Link</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-mono text-primary flex-1 truncate">
+                  sportycodes.lovable.app/ref/{profile.referral_short_code}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://sportycodes.lovable.app/ref/${profile.referral_short_code}`);
+                    toast.success("Invite link copied!");
+                  }}
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
             Earnings from referrals: <span className="text-primary font-bold">₦{profile?.referral_earnings?.toFixed(2) || "0.00"}</span>
+            {" · "}{referralCount} referrals
           </p>
         </div>
 
