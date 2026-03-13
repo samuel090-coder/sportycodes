@@ -9,12 +9,14 @@ import { Eye, EyeOff, Mail, Lock, User, Zap, ArrowRight, Sparkles, Gift } from "
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [referralCode, setReferralCode] = useState(searchParams.get("ref") || "");
 
   useEffect(() => {
     // Check if already logged in
