@@ -56,6 +56,7 @@ const Auth = () => {
             emailRedirectTo: `${window.location.origin}/dashboard`,
             data: {
               display_name: displayName,
+              ...(referralCode ? { referred_by: referralCode } : {}),
             },
           },
         });
