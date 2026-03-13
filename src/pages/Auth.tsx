@@ -175,9 +175,27 @@ const Auth = () => {
                       className="pl-12 h-14 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
                       required={!isLogin}
                     />
-                  </div>
-                </div>
-              )}
+                   </div>
+                 </div>
+               )}
+
+               {/* Referral Code (Sign Up only) */}
+               {!isLogin && (
+                 <div className="space-y-2">
+                   <Label htmlFor="referralCode" className="text-foreground font-medium">
+                     Invitation Code <span className="text-muted-foreground">(optional)</span>
+                   </Label>
+                   <div className="relative">
+                     <Gift className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                     <Input
+                       id="referralCode"
+                       type="text"
+                       placeholder="Enter referral code"
+                       value={referralCode}
+                       onChange={(e) => setReferralCode(e.target.value)}
+                       className="pl-12 h-14 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
+                     />
+                   </div>
 
               {/* Email */}
               <div className="space-y-2">
