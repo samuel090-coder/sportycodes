@@ -1185,6 +1185,44 @@ export type Database = {
           },
         ]
       }
+      room_join_requests: {
+        Row: {
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          room_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          room_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          room_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_join_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_members: {
         Row: {
           id: string
@@ -1216,6 +1254,38 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "room_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -1306,8 +1376,10 @@ export type Database = {
           id: string
           invite_code: string
           is_public: boolean
+          join_fee: number
           member_count: number
           name: string
+          require_approval: boolean
           updated_at: string
         }
         Insert: {
@@ -1319,8 +1391,10 @@ export type Database = {
           id?: string
           invite_code?: string
           is_public?: boolean
+          join_fee?: number
           member_count?: number
           name: string
+          require_approval?: boolean
           updated_at?: string
         }
         Update: {
@@ -1332,8 +1406,10 @@ export type Database = {
           id?: string
           invite_code?: string
           is_public?: boolean
+          join_fee?: number
           member_count?: number
           name?: string
+          require_approval?: boolean
           updated_at?: string
         }
         Relationships: []
