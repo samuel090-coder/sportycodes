@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2 } from "lucide-react";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RoomSettings } from "@/components/rooms/RoomSettings";
 import { RoomEventSheet } from "@/components/rooms/RoomEventSheet";
@@ -15,6 +15,11 @@ import { RoomCreatePoolSheet } from "@/components/rooms/RoomCreatePoolSheet";
 import { RoomGamesSheet } from "@/components/rooms/RoomGamesSheet";
 import { RoomGameCard } from "@/components/rooms/RoomGameCard";
 import { RoomCrossPostSheet } from "@/components/rooms/RoomCrossPostSheet";
+import { RoomMediaMessage } from "@/components/rooms/RoomMediaMessage";
+import { RoomVoiceNote } from "@/components/rooms/RoomVoiceNote";
+import { RoomVoicePlayer } from "@/components/rooms/RoomVoicePlayer";
+import { RoomMessageReactions } from "@/components/rooms/RoomMessageReactions";
+import { Badge } from "@/components/ui/badge";
 
 interface Message {
   id: string;
@@ -35,6 +40,8 @@ interface Room {
   is_public: boolean;
   member_count: number;
   creator_id: string;
+  require_approval?: boolean;
+  join_fee?: number;
 }
 
 const RoomDetail = () => {
@@ -49,6 +56,7 @@ const RoomDetail = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [eventOpen, setEventOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -56,7 +64,9 @@ const RoomDetail = () => {
   const [createPoolOpen, setCreatePoolOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [crossPostOpen, setCrossPostOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -95,7 +105,7 @@ const RoomDetail = () => {
   const fetchRoom = async () => {
     if (!roomId) return;
     const { data } = await supabase.from("rooms").select("*").eq("id", roomId).single();
-    if (data) setRoom(data);
+    if (data) setRoom(data as Room);
   };
 
   const checkMembership = async (uid: string) => {
@@ -104,6 +114,10 @@ const RoomDetail = () => {
     if (data && !data.is_blocked) {
       setIsMember(true);
       setIsAdmin(data.role === "admin");
+    } else {
+      // Check if join request already sent
+      const { data: req } = await supabase.from("room_join_requests").select("id").eq("room_id", roomId).eq("user_id", uid).eq("status", "pending").maybeSingle();
+      if (req) setRequestSent(true);
     }
   };
 
@@ -128,8 +142,35 @@ const RoomDetail = () => {
   };
 
   const joinRoom = async () => {
-    if (!userId || !roomId) return;
+    if (!userId || !roomId || !room) return;
     setJoining(true);
+
+    // Handle premium rooms - deduct fee
+    if (room.join_fee && room.join_fee > 0) {
+      const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
+      if (!wallet || Number(wallet.balance) < room.join_fee) {
+        toast({ title: "Insufficient balance", description: `This room requires ₦${room.join_fee} to join`, variant: "destructive" });
+        setJoining(false);
+        return;
+      }
+      await supabase.from("wallets").update({ balance: Number(wallet.balance) - room.join_fee }).eq("user_id", userId);
+      // Credit room creator
+      await supabase.rpc("add_tap_earnings", { _user_id: room.creator_id, _amount: room.join_fee });
+    }
+
+    // Handle approval-required rooms
+    if (room.require_approval) {
+      const { error } = await supabase.from("room_join_requests").insert({ room_id: roomId, user_id: userId });
+      if (error) {
+        toast({ title: "Can't request", description: error.message, variant: "destructive" });
+      } else {
+        setRequestSent(true);
+        toast({ title: "Request sent! ⏳", description: "Waiting for admin approval" });
+      }
+      setJoining(false);
+      return;
+    }
+
     const { error } = await supabase.from("room_members").insert({ room_id: roomId, user_id: userId, role: "member" });
     if (error) {
       toast({ title: "Can't join", description: error.message, variant: "destructive" });
@@ -164,6 +205,53 @@ const RoomDetail = () => {
     }).catch(() => {});
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId || !roomId) return;
+    setUploading(true);
+
+    const ext = file.name.split(".").pop();
+    const path = `${roomId}/chat/${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("room-media").upload(path, file);
+    if (uploadErr) {
+      toast({ title: "Upload failed", variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("room-media").getPublicUrl(path);
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    const mediaType = isVideo ? "video" : isImage ? "image" : "file";
+
+    await supabase.from("room_messages").insert({
+      room_id: roomId,
+      user_id: userId,
+      content: file.name,
+      message_type: "media",
+      metadata: { media_url: publicUrl, media_type: mediaType, file_name: file.name },
+    });
+
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleVoiceSend = async (blob: Blob, duration: number) => {
+    if (!userId || !roomId) return;
+    const path = `${roomId}/voice/${Date.now()}.webm`;
+    const { error: uploadErr } = await supabase.storage.from("room-media").upload(path, blob, { contentType: "audio/webm" });
+    if (uploadErr) { toast({ title: "Upload failed", variant: "destructive" }); return; }
+
+    const { data: { publicUrl } } = supabase.storage.from("room-media").getPublicUrl(path);
+    await supabase.from("room_messages").insert({
+      room_id: roomId,
+      user_id: userId,
+      content: "🎤 Voice note",
+      message_type: "voice",
+      metadata: { audio_url: publicUrl, duration },
+    });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -189,7 +277,14 @@ const RoomDetail = () => {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-sm text-foreground truncate">{room.name}</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-semibold text-sm text-foreground truncate">{room.name}</h2>
+            {room.join_fee && room.join_fee > 0 && (
+              <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
+                <Crown className="w-2.5 h-2.5" /> Premium
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">{room.member_count} members</p>
         </div>
         <div className="flex items-center gap-0.5">
@@ -236,11 +331,29 @@ const RoomDetail = () => {
               <h3 className="font-bold text-lg text-foreground">{room.name}</h3>
               {room.description && <p className="text-sm text-muted-foreground mt-1">{room.description}</p>}
               <p className="text-xs text-muted-foreground mt-2">{room.member_count} members</p>
+              {room.join_fee && room.join_fee > 0 && (
+                <Badge variant="secondary" className="mt-2 gap-1">
+                  <Crown className="w-3 h-3" /> Premium · ₦{room.join_fee}
+                </Badge>
+              )}
+              {room.require_approval && (
+                <p className="text-xs text-muted-foreground mt-1">⏳ Admin approval required</p>
+              )}
             </div>
-            {room.is_public ? (
-              <Button onClick={joinRoom} disabled={joining} className="gap-2">
-                <Users className="w-4 h-4" /> {joining ? "Joining..." : "Join Room"}
-              </Button>
+            {room.is_public || room.require_approval ? (
+              requestSent ? (
+                <p className="text-sm text-muted-foreground">⏳ Join request pending approval...</p>
+              ) : (
+                <Button onClick={joinRoom} disabled={joining} className="gap-2">
+                  <Users className="w-4 h-4" />
+                  {joining ? "Processing..." : room.join_fee && room.join_fee > 0
+                    ? `Join for ₦${room.join_fee}`
+                    : room.require_approval
+                      ? "Request to Join"
+                      : "Join Room"
+                  }
+                </Button>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">This room is private. You need an invite to join.</p>
             )}
@@ -272,6 +385,10 @@ const RoomDetail = () => {
               );
             }
 
+            const isMedia = msg.message_type === "media";
+            const isVoice = msg.message_type === "voice";
+            const meta = msg.metadata || {};
+
             return (
               <div key={msg.id} className={`flex gap-2 ${isMe ? "justify-end" : ""}`}>
                 {!isMe && (
@@ -292,8 +409,19 @@ const RoomDetail = () => {
                     ? "bg-primary text-primary-foreground rounded-br-md"
                     : "bg-secondary text-foreground rounded-bl-md"
                   }`}>
-                    {msg.content}
+                    {isMedia && meta.media_url && (
+                      <RoomMediaMessage
+                        mediaUrl={meta.media_url}
+                        mediaType={meta.media_type || "image"}
+                        caption={msg.content !== meta.file_name ? msg.content || undefined : undefined}
+                      />
+                    )}
+                    {isVoice && meta.audio_url && (
+                      <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
+                    )}
+                    {!isMedia && !isVoice && msg.content}
                   </div>
+                  <RoomMessageReactions messageId={msg.id} userId={userId} />
                   <p className={`text-[9px] text-muted-foreground mt-0.5 ${isMe ? "text-right mr-1" : "ml-1"}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
@@ -307,7 +435,18 @@ const RoomDetail = () => {
 
       {/* Input bar */}
       {isMember && (
-        <div className="shrink-0 bg-card border-t border-border px-3 py-2 flex items-center gap-2">
+        <div className="shrink-0 bg-card border-t border-border px-3 py-2 flex items-center gap-1.5">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <Paperclip className="w-4 h-4" />
+          </Button>
+          <RoomVoiceNote onSend={handleVoiceSend} />
           <Input
             placeholder="Type a message..."
             value={newMessage}
@@ -315,7 +454,7 @@ const RoomDetail = () => {
             onKeyDown={handleKeyDown}
             className="flex-1"
           />
-          <Button size="icon" onClick={sendMessage} disabled={!newMessage.trim()}>
+          <Button size="icon" onClick={sendMessage} disabled={!newMessage.trim() || uploading}>
             <Send className="w-4 h-4" />
           </Button>
         </div>

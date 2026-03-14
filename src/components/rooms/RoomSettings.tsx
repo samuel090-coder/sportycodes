@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Shield, Ban, UserMinus, Crown, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { RoomJoinRequests } from "@/components/rooms/RoomJoinRequests";
 
 interface Room {
   id: string;
@@ -21,6 +22,8 @@ interface Room {
   is_public: boolean;
   member_count: number;
   creator_id: string;
+  require_approval?: boolean;
+  join_fee?: number;
 }
 
 interface Member {
@@ -43,6 +46,8 @@ export function RoomSettings({ open, onOpenChange, room, onUpdate }: RoomSetting
   const [name, setName] = useState(room.name);
   const [description, setDescription] = useState(room.description || "");
   const [isPublic, setIsPublic] = useState(room.is_public);
+  const [requireApproval, setRequireApproval] = useState(room.require_approval || false);
+  const [joinFee, setJoinFee] = useState(room.join_fee || 0);
   const [members, setMembers] = useState<Member[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -52,6 +57,8 @@ export function RoomSettings({ open, onOpenChange, room, onUpdate }: RoomSetting
       setName(room.name);
       setDescription(room.description || "");
       setIsPublic(room.is_public);
+      setRequireApproval(room.require_approval || false);
+      setJoinFee(room.join_fee || 0);
       fetchMembers();
     }
   }, [open, room]);
@@ -77,6 +84,8 @@ export function RoomSettings({ open, onOpenChange, room, onUpdate }: RoomSetting
       name: name.trim(),
       description: description.trim() || null,
       is_public: isPublic,
+      require_approval: requireApproval,
+      join_fee: joinFee,
     }).eq("id", room.id);
 
     if (error) {
@@ -129,8 +138,9 @@ export function RoomSettings({ open, onOpenChange, room, onUpdate }: RoomSetting
 
         <Tabs defaultValue="general" className="mt-4">
           <TabsList className="w-full bg-secondary">
-            <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
-            <TabsTrigger value="members" className="flex-1">Members ({members.length})</TabsTrigger>
+            <TabsTrigger value="general" className="flex-1 text-xs">General</TabsTrigger>
+            <TabsTrigger value="members" className="flex-1 text-xs">Members</TabsTrigger>
+            <TabsTrigger value="requests" className="flex-1 text-xs">Requests</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-4 mt-3">
@@ -188,6 +198,26 @@ export function RoomSettings({ open, onOpenChange, room, onUpdate }: RoomSetting
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             </div>
 
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Require Approval</Label>
+                <p className="text-xs text-muted-foreground">Approve members before they join</p>
+              </div>
+              <Switch checked={requireApproval} onCheckedChange={setRequireApproval} />
+            </div>
+
+            <div>
+              <Label>Join Fee (₦)</Label>
+              <p className="text-xs text-muted-foreground mb-1">Set to 0 for free. Premium rooms charge to join.</p>
+              <Input
+                type="number"
+                min={0}
+                value={joinFee}
+                onChange={(e) => setJoinFee(Number(e.target.value))}
+                className="mt-1"
+              />
+            </div>
+
             <Button onClick={saveSettings} disabled={saving || !name.trim()} className="w-full">
               {saving ? "Saving..." : "Save Changes"}
             </Button>
@@ -242,6 +272,10 @@ export function RoomSettings({ open, onOpenChange, room, onUpdate }: RoomSetting
                 )}
               </div>
             ))}
+          </TabsContent>
+
+          <TabsContent value="requests" className="mt-3">
+            <RoomJoinRequests roomId={room.id} />
           </TabsContent>
         </Tabs>
       </SheetContent>
