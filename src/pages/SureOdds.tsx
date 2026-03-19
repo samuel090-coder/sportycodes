@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { HilltopAdRenderer } from "@/components/HilltopAdRenderer";
+import { LiveVideoBillboard } from "@/components/LiveVideoBillboard";
+import { SiteAdverts } from "@/components/SiteAdverts";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
