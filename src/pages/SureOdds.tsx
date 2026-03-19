@@ -375,6 +375,9 @@ const SureOdds = () => {
           </div>
         ) : (
           <>
+            {/* Sponsored Adverts - Header */}
+            <SiteAdverts placement="header" />
+
             {/* Not Started Games - At Top */}
             {notStartedOdds.length > 0 && (
               <div className="mb-8">
