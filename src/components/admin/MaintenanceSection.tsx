@@ -17,7 +17,14 @@ export function MaintenanceSection() {
   }, []);
 
   const toggle = async (enabled: boolean) => {
-    await supabase.from("app_settings").upsert({ setting_key: "site_maintenance", setting_value: enabled.toString() });
+    const { error } = await supabase.from("app_settings").upsert(
+      { setting_key: "site_maintenance", setting_value: enabled.toString() },
+      { onConflict: "setting_key" }
+    );
+    if (error) {
+      toast.error("Failed to update: " + error.message);
+      return;
+    }
     setMaintenance(enabled);
     toast.success(enabled ? "Site is now in maintenance mode" : "Site is back online");
   };

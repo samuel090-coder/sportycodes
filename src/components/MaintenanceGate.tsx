@@ -9,16 +9,24 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const check = async () => {
-      const [{ data: setting }, { data: { user } }] = await Promise.all([
-        supabase.from("app_settings").select("setting_value").eq("setting_key", "site_maintenance").maybeSingle(),
-        supabase.auth.getUser(),
-      ]);
+      try {
+        const [{ data: setting }, { data: { user } }] = await Promise.all([
+          supabase.from("app_settings").select("setting_value").eq("setting_key", "site_maintenance").maybeSingle(),
+          supabase.auth.getUser(),
+        ]);
 
-      setMaintenance(setting?.setting_value === "true");
+        // Only enable maintenance if explicitly set to "true"
+        const isMaintenance = setting?.setting_value === "true";
+        setMaintenance(isMaintenance);
 
-      if (user) {
-        const { data } = await supabase.rpc("is_admin_user", { _user_id: user.id });
-        setIsAdmin(!!data);
+        if (user && isMaintenance) {
+          const { data } = await supabase.rpc("is_admin_user", { _user_id: user.id });
+          setIsAdmin(!!data);
+        }
+      } catch (err) {
+        console.error("MaintenanceGate check failed:", err);
+        // On error, default to NOT blocking users
+        setMaintenance(false);
       }
       setLoading(false);
     };
@@ -29,7 +37,12 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "app_settings", filter: "setting_key=eq.site_maintenance" },
         (payload) => {
           const record = payload.new as any;
-          setMaintenance(record?.setting_value === "true");
+          if (record && record.setting_value) {
+            setMaintenance(record.setting_value === "true");
+          } else {
+            // Row deleted or empty = maintenance OFF
+            setMaintenance(false);
+          }
         }
       )
       .subscribe();
