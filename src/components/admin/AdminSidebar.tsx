@@ -33,6 +33,7 @@ const menuItems = [
     icon: DollarSign,
     items: [
       { title: "Ad Management", path: "/admin/ads", icon: DollarSign },
+      { title: "Advert Room", path: "/admin/adverts", icon: Megaphone },
       { title: "Deposits & Withdrawals", path: "/admin/payments", icon: Wallet },
       { title: "Betting Pools", path: "/admin/betting-pools", icon: Trophy },
       { title: "Jackpot Pools", path: "/admin/jackpot-pools", icon: Crown },
