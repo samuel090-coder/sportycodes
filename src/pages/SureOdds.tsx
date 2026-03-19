@@ -324,6 +324,9 @@ const SureOdds = () => {
 
   return (
     <div className="min-h-screen bg-bet-dark pb-24">
+      {/* Live Match Video Billboard */}
+      <LiveVideoBillboard />
+
       {/* HilltopAds Renderer - Header Placement */}
       <HilltopAdRenderer placement="header" />
       

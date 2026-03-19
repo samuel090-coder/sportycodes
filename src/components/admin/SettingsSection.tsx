@@ -266,6 +266,12 @@ export const SettingsSection = () => {
           </span>
         )}
       </Button>
+
+      {/* Maintenance Mode */}
+      <MaintenanceSection />
+
+      {/* Live Videos */}
+      <LiveVideosSection />
     </div>
   );
 };
