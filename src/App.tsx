@@ -76,54 +76,57 @@ const App = () => {
         <Sonner />
         {showLoading && !hasShownLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
         <BrowserRouter>
-          {/* Global Announcement Components */}
-          <AnnouncementBanner />
-          <AnnouncementPopup />
-          <AnnouncementToast />
-          <InstallGate>
-            <Routes>
-              <Route path="/" element={<SureOdds />} />
-              <Route path="/payment" element={<Payment />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/tap" element={<TapToEarn />} />
-              <Route path="/wallet" element={<Wallet />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/shorts" element={<Shorts />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/user/:userId" element={<UserProfile />} />
-              <Route path="/betting" element={<BettingPools />} />
-              <Route path="/vip" element={<VIPSubscription />} />
-              <Route path="/rooms" element={<Rooms />} />
-              <Route path="/rooms/:roomId" element={<RoomDetail />} />
-              <Route path="/ref/:code" element={<Invite />} />
-              <Route path="/r/:inviteCode" element={<RoomInvite />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route path="analytics" element={<AnalyticsSection />} />
-                <Route path="security" element={<SecuritySection />} />
-                <Route path="users" element={<UserManagementSection />} />
-                <Route path="ads" element={<AdsSection />} />
-                <Route path="sure-odds" element={<SureOddsSection />} />
-                <Route path="payments" element={<PaymentsSection />} />
-                <Route path="seo" element={<SEOSection />} />
-                <Route path="verification" element={<VerificationSection />} />
-                <Route path="notifications" element={<NotificationsSection />} />
-                <Route path="settings" element={<SettingsSection />} />
-                <Route path="betting-pools" element={<BettingPoolsSection />} />
-                <Route path="jackpot-pools" element={<JackpotPoolsSection />} />
-                <Route path="vip-subscriptions" element={<VIPSubscriptionsSection />} />
-                <Route path="house-earnings" element={<HouseEarningsSection />} />
-                <Route path="announcements" element={<AnnouncementsSection />} />
-                <Route path="gamification" element={<GamificationSection />} />
-                <Route path="limits-wallet" element={<LimitsWalletSection />} />
-                <Route path="ui-theme" element={<UIThemeSection />} />
-                <Route path="bonus-wheel" element={<BonusWheelSection />} />
-                <Route path="leaderboard-prizes" element={<LeaderboardPrizesSection />} />
-              </Route>
-              <Route path="/install" element={<Install />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </InstallGate>
+          <MaintenanceGate>
+            {/* Global Announcement Components */}
+            <AnnouncementBanner />
+            <AnnouncementPopup />
+            <AnnouncementToast />
+            <InstallGate>
+              <Routes>
+                <Route path="/" element={<SureOdds />} />
+                <Route path="/payment" element={<Payment />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/tap" element={<TapToEarn />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/shorts" element={<Shorts />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/user/:userId" element={<UserProfile />} />
+                <Route path="/betting" element={<BettingPools />} />
+                <Route path="/vip" element={<VIPSubscription />} />
+                <Route path="/rooms" element={<Rooms />} />
+                <Route path="/rooms/:roomId" element={<RoomDetail />} />
+                <Route path="/ref/:code" element={<Invite />} />
+                <Route path="/r/:inviteCode" element={<RoomInvite />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route path="analytics" element={<AnalyticsSection />} />
+                  <Route path="security" element={<SecuritySection />} />
+                  <Route path="users" element={<UserManagementSection />} />
+                  <Route path="ads" element={<AdsSection />} />
+                  <Route path="sure-odds" element={<SureOddsSection />} />
+                  <Route path="payments" element={<PaymentsSection />} />
+                  <Route path="seo" element={<SEOSection />} />
+                  <Route path="verification" element={<VerificationSection />} />
+                  <Route path="notifications" element={<NotificationsSection />} />
+                  <Route path="settings" element={<SettingsSection />} />
+                  <Route path="betting-pools" element={<BettingPoolsSection />} />
+                  <Route path="jackpot-pools" element={<JackpotPoolsSection />} />
+                  <Route path="vip-subscriptions" element={<VIPSubscriptionsSection />} />
+                  <Route path="house-earnings" element={<HouseEarningsSection />} />
+                  <Route path="announcements" element={<AnnouncementsSection />} />
+                  <Route path="gamification" element={<GamificationSection />} />
+                  <Route path="limits-wallet" element={<LimitsWalletSection />} />
+                  <Route path="ui-theme" element={<UIThemeSection />} />
+                  <Route path="bonus-wheel" element={<BonusWheelSection />} />
+                  <Route path="leaderboard-prizes" element={<LeaderboardPrizesSection />} />
+                  <Route path="adverts" element={<AdminAdvertsSection />} />
+                </Route>
+                <Route path="/install" element={<Install />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </InstallGate>
+          </MaintenanceGate>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

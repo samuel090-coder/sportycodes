@@ -47,18 +47,20 @@ export function RoomMediaMessage({ mediaUrl, mediaType, caption }: RoomMediaMess
             onPause={() => setPlaying(false)}
             onEnded={() => setPlaying(false)}
             playsInline
-            preload="metadata"
+            preload="auto"
+            controls={playing}
+            controlsList="nodownload"
           />
-          <button
-            onClick={toggleVideo}
-            className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
-          >
-            {!playing && (
-              <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
-                <Play className="w-6 h-6 text-primary-foreground ml-0.5" />
+          {!playing && (
+            <button
+              onClick={toggleVideo}
+              className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
+            >
+              <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+                <Play className="w-7 h-7 text-primary-foreground ml-0.5" />
               </div>
-            )}
-          </button>
+            </button>
+          )}
         </div>
         {caption && <p className="text-sm">{caption}</p>}
       </div>
