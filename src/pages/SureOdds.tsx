@@ -715,6 +715,12 @@ const SureOdds = () => {
             </div>
           </div>
         )}
+
+            {/* Sponsored Adverts - Feed */}
+            <SiteAdverts placement="feed" />
+
+            {/* Sponsored Adverts - Footer */}
+            <SiteAdverts placement="footer" />
           </>
         )}
       </main>
