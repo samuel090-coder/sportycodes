@@ -46,6 +46,42 @@ export type Database = {
           },
         ]
       }
+      admin_adverts: {
+        Row: {
+          content: string | null
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string | null
+          is_active: boolean
+          link_url: string | null
+          placement: string
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          link_url?: string | null
+          placement?: string
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          link_url?: string | null
+          placement?: string
+          title?: string
+        }
+        Relationships: []
+      }
       announcement_dismissals: {
         Row: {
           announcement_id: string
@@ -623,6 +659,39 @@ export type Database = {
           prize_type?: string
           rank_position?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      live_videos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_order: number
+          embed_url: string
+          id: string
+          is_active: boolean
+          thumbnail_url: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          embed_url: string
+          id?: string
+          is_active?: boolean
+          thumbnail_url?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          embed_url?: string
+          id?: string
+          is_active?: boolean
+          thumbnail_url?: string | null
+          title?: string
         }
         Relationships: []
       }

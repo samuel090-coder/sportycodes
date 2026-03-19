@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { HilltopAdRenderer } from "@/components/HilltopAdRenderer";
+import { LiveVideoBillboard } from "@/components/LiveVideoBillboard";
+import { SiteAdverts } from "@/components/SiteAdverts";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
@@ -322,6 +324,9 @@ const SureOdds = () => {
 
   return (
     <div className="min-h-screen bg-bet-dark pb-24">
+      {/* Live Match Video Billboard */}
+      <LiveVideoBillboard />
+
       {/* HilltopAds Renderer - Header Placement */}
       <HilltopAdRenderer placement="header" />
       
@@ -370,6 +375,9 @@ const SureOdds = () => {
           </div>
         ) : (
           <>
+            {/* Sponsored Adverts - Header */}
+            <SiteAdverts placement="header" />
+
             {/* Not Started Games - At Top */}
             {notStartedOdds.length > 0 && (
               <div className="mb-8">

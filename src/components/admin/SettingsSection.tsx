@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Settings, Save, Building2, Zap, Gift, Flame, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { MaintenanceSection } from "./MaintenanceSection";
+import { LiveVideosSection } from "./LiveVideosSection";
 
 export const SettingsSection = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -264,6 +266,12 @@ export const SettingsSection = () => {
           </span>
         )}
       </Button>
+
+      {/* Maintenance Mode */}
+      <MaintenanceSection />
+
+      {/* Live Videos */}
+      <LiveVideosSection />
     </div>
   );
 };

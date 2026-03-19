@@ -1,4 +1,4 @@
-import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette, Disc, Award } from "lucide-react";
+import { Shield, DollarSign, FileText, Users, Settings, Bell, Lock, Search, BadgeCheck, Wallet, Trophy, Activity, Crown, Percent, Megaphone, Gamepad2, Palette, Disc, Award, Tv, ShieldAlert } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -33,6 +33,7 @@ const menuItems = [
     icon: DollarSign,
     items: [
       { title: "Ad Management", path: "/admin/ads", icon: DollarSign },
+      { title: "Advert Room", path: "/admin/adverts", icon: Megaphone },
       { title: "Deposits & Withdrawals", path: "/admin/payments", icon: Wallet },
       { title: "Betting Pools", path: "/admin/betting-pools", icon: Trophy },
       { title: "Jackpot Pools", path: "/admin/jackpot-pools", icon: Crown },
@@ -62,6 +63,8 @@ const menuItems = [
     category: "System",
     icon: Settings,
     items: [
+      { title: "Maintenance Mode", path: "/admin/settings", icon: ShieldAlert },
+      { title: "Live Videos", path: "/admin/settings", icon: Tv },
       { title: "Limits & Wallet", path: "/admin/limits-wallet", icon: Shield },
       { title: "UI & Theme", path: "/admin/ui-theme", icon: Palette },
       { title: "SEO Manager", path: "/admin/seo", icon: Search },
