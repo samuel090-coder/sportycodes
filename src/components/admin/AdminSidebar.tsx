@@ -63,6 +63,8 @@ const menuItems = [
     category: "System",
     icon: Settings,
     items: [
+      { title: "Maintenance Mode", path: "/admin/settings", icon: ShieldAlert },
+      { title: "Live Videos", path: "/admin/settings", icon: Tv },
       { title: "Limits & Wallet", path: "/admin/limits-wallet", icon: Shield },
       { title: "UI & Theme", path: "/admin/ui-theme", icon: Palette },
       { title: "SEO Manager", path: "/admin/seo", icon: Search },
