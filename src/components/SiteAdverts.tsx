@@ -25,6 +25,14 @@ export function SiteAdverts({ placement }: { placement: string }) {
       if (data) setAdverts(data);
     };
     load();
+
+    // Listen for changes
+    const channel = supabase
+      .channel(`adverts-${placement}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_adverts" }, () => load())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [placement]);
 
   if (adverts.length === 0) return null;
@@ -34,15 +42,15 @@ export function SiteAdverts({ placement }: { placement: string }) {
       {adverts.map(ad => (
         <div
           key={ad.id}
-          className="relative overflow-hidden rounded-xl border border-border bg-card cursor-pointer group"
+          className="relative overflow-hidden rounded-xl border border-border bg-card cursor-pointer group transition-transform active:scale-[0.98]"
           onClick={() => ad.link_url && window.open(ad.link_url, "_blank")}
         >
           {ad.image_url && (
-            <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover" />
+            <img src={ad.image_url} alt={ad.title} className="w-full h-36 object-cover" loading="lazy" />
           )}
           <div className="p-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold uppercase">Sponsored</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold uppercase tracking-wider">Sponsored</span>
               {ad.link_url && <ExternalLink className="w-3 h-3 text-muted-foreground" />}
             </div>
             <p className="text-sm font-bold text-foreground mt-1">{ad.title}</p>
