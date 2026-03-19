@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoadingScreen from "./components/LoadingScreen";
 import InstallGate from "./components/InstallGate";
+import { MaintenanceGate } from "./components/MaintenanceGate";
 import SureOdds from "./pages/SureOdds";
 import Payment from "./pages/Payment";
 import Auth from "./pages/Auth";
@@ -38,6 +39,7 @@ import { UIThemeSection } from "./components/admin/UIThemeSection";
 import { UserManagementSection } from "./components/admin/UserManagementSection";
 import { BonusWheelSection } from "./components/admin/BonusWheelSection";
 import { LeaderboardPrizesSection } from "./components/admin/LeaderboardPrizesSection";
+import { AdminAdvertsSection } from "./components/admin/AdminAdvertsSection";
 import VIPSubscription from "./pages/VIPSubscription";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
@@ -48,7 +50,6 @@ import RoomInvite from "./pages/RoomInvite";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
-
 const queryClient = new QueryClient();
 
 const App = () => {
