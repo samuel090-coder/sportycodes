@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Tv, Plus, Trash2, GripVertical } from "lucide-react";
+import { Tv, Plus, Trash2, GripVertical, Wand2 } from "lucide-react";
 
 interface LiveVideo {
   id: string;
@@ -15,10 +15,61 @@ interface LiveVideo {
   display_order: number;
 }
 
+/**
+ * Auto-converts any video URL to an embeddable format:
+ * - YouTube watch/short/live URLs → embed
+ * - Dailymotion → embed
+ * - Vimeo → embed
+ * - Facebook video → embed
+ * - Twitch → embed
+ * - Already an embed/iframe URL → pass through
+ */
+function convertToEmbedUrl(url: string): string {
+  const trimmed = url.trim();
+
+  // YouTube patterns
+  const ytWatchMatch = trimmed.match(/(?:youtube\.com\/watch\?.*v=|youtu\.be\/|youtube\.com\/live\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytWatchMatch) {
+    return `https://www.youtube.com/embed/${ytWatchMatch[1]}?autoplay=1&mute=1`;
+  }
+  // YouTube embed already
+  if (trimmed.includes("youtube.com/embed/")) {
+    return trimmed;
+  }
+
+  // Dailymotion
+  const dmMatch = trimmed.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) {
+    return `https://www.dailymotion.com/embed/video/${dmMatch[1]}`;
+  }
+
+  // Vimeo
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+
+  // Facebook video
+  if (trimmed.includes("facebook.com") && trimmed.includes("video")) {
+    return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(trimmed)}&show_text=false`;
+  }
+
+  // Twitch
+  const twitchMatch = trimmed.match(/twitch\.tv\/([a-zA-Z0-9_]+)/);
+  if (twitchMatch) {
+    return `https://player.twitch.tv/?channel=${twitchMatch[1]}&parent=${window.location.hostname}`;
+  }
+
+  // Return as-is (already embed or direct stream)
+  return trimmed;
+}
+
 export function LiveVideosSection() {
   const [videos, setVideos] = useState<LiveVideo[]>([]);
   const [title, setTitle] = useState("");
   const [embedUrl, setEmbedUrl] = useState("");
+  const [originalUrl, setOriginalUrl] = useState("");
+  const [converted, setConverted] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -30,6 +81,13 @@ export function LiveVideosSection() {
     if (data) setVideos(data as LiveVideo[]);
   };
 
+  const handleUrlChange = (value: string) => {
+    setOriginalUrl(value);
+    const embed = convertToEmbedUrl(value);
+    setEmbedUrl(embed);
+    setConverted(embed !== value.trim() && value.trim().length > 0);
+  };
+
   const addVideo = async () => {
     if (!title.trim() || !embedUrl.trim()) { toast.error("Title and URL required"); return; }
     const { error } = await supabase.from("live_videos").insert({
@@ -39,7 +97,7 @@ export function LiveVideosSection() {
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Video added");
-    setTitle(""); setEmbedUrl("");
+    setTitle(""); setEmbedUrl(""); setOriginalUrl(""); setConverted(false);
     load();
   };
 
@@ -63,7 +121,25 @@ export function LiveVideosSection() {
 
       <div className="space-y-3 mb-4">
         <Input placeholder="Video title" value={title} onChange={e => setTitle(e.target.value)} className="bg-cyber-dark border-cyber-neon-green/30 text-foreground font-mono" />
-        <Input placeholder="Embed URL (iframe src)" value={embedUrl} onChange={e => setEmbedUrl(e.target.value)} className="bg-cyber-dark border-cyber-neon-green/30 text-foreground font-mono" />
+        <div className="relative">
+          <Input
+            placeholder="Paste any video link (YouTube, Vimeo, etc.)"
+            value={originalUrl}
+            onChange={e => handleUrlChange(e.target.value)}
+            className="bg-cyber-dark border-cyber-neon-green/30 text-foreground font-mono pr-10"
+          />
+          {converted && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+              <Wand2 className="w-4 h-4 text-cyber-neon-green animate-pulse" />
+            </div>
+          )}
+        </div>
+        {converted && (
+          <div className="bg-cyber-neon-green/10 border border-cyber-neon-green/30 rounded-md px-3 py-2">
+            <p className="text-[10px] text-cyber-neon-green font-mono mb-1">✨ Auto-converted to embed URL:</p>
+            <p className="text-[11px] text-foreground font-mono truncate">{embedUrl}</p>
+          </div>
+        )}
         <Button onClick={addVideo} className="w-full gap-2 bg-cyber-neon-green text-cyber-dark font-mono font-bold">
           <Plus className="w-4 h-4" /> ADD VIDEO
         </Button>
