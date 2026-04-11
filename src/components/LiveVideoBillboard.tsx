@@ -112,6 +112,8 @@ export function LiveVideoBillboard() {
           ))}
         </div>
       )}
+      {/* Live Scores Ticker */}
+      <LiveScoresTicker />
     </div>
   );
 }
