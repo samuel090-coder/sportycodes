@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, Tv } from "lucide-react";
+import { LiveScoresTicker } from "@/components/LiveScoresTicker";
 
 interface LiveVideo {
   id: string;
@@ -111,6 +112,8 @@ export function LiveVideoBillboard() {
           ))}
         </div>
       )}
+      {/* Live Scores Ticker */}
+      <LiveScoresTicker />
     </div>
   );
 }
