@@ -8,27 +8,32 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const check = async () => {
       try {
-        const [{ data: setting }, { data: { user } }] = await Promise.all([
-          supabase.from("app_settings").select("setting_value").eq("setting_key", "site_maintenance").maybeSingle(),
-          supabase.auth.getUser(),
-        ]);
+        const { data: setting } = await supabase
+          .from("app_settings")
+          .select("setting_value")
+          .eq("setting_key", "site_maintenance")
+          .maybeSingle();
 
-        // Only enable maintenance if explicitly set to "true"
+        // ONLY block if value is exactly the string "true"
         const isMaintenance = setting?.setting_value === "true";
+        if (cancelled) return;
         setMaintenance(isMaintenance);
 
-        if (user && isMaintenance) {
-          const { data } = await supabase.rpc("is_admin_user", { _user_id: user.id });
-          setIsAdmin(!!data);
+        if (isMaintenance) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data } = await supabase.rpc("is_admin_user", { _user_id: user.id });
+            if (!cancelled) setIsAdmin(!!data);
+          }
         }
       } catch (err) {
         console.error("MaintenanceGate check failed:", err);
-        // On error, default to NOT blocking users
-        setMaintenance(false);
+        if (!cancelled) setMaintenance(false);
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
     check();
 
@@ -37,17 +42,12 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "app_settings", filter: "setting_key=eq.site_maintenance" },
         (payload) => {
           const record = payload.new as any;
-          if (record && record.setting_value) {
-            setMaintenance(record.setting_value === "true");
-          } else {
-            // Row deleted or empty = maintenance OFF
-            setMaintenance(false);
-          }
+          setMaintenance(record?.setting_value === "true");
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
   if (loading) return null;
