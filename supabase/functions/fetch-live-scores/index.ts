@@ -9,39 +9,28 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url)
-    const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0]
-
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return new Response(JSON.stringify({ error: 'Invalid date format. Use YYYY-MM-DD' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    // Use football-data.org free API (no subscription required, 10 req/min free)
+    const apiKey = Deno.env.get('FOOTBALL_DATA_API_KEY')
+    
+    // Fetch today's matches from football-data.org
+    const today = new Date().toISOString().split('T')[0]
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
     }
-
-    const apiKey = Deno.env.get('RAPIDAPI_KEY')
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'API key not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    
+    // If API key is available, use authenticated endpoint for more data
+    if (apiKey) {
+      headers['X-Auth-Token'] = apiKey
     }
 
     const response = await fetch(
-      `https://football-score-api.p.rapidapi.com/api/v1/scores/${date}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-rapidapi-host': 'football-score-api.p.rapidapi.com',
-          'x-rapidapi-key': apiKey,
-        },
-      }
+      `https://api.football-data.org/v4/matches?date=${today}`,
+      { headers }
     )
 
     if (!response.ok) {
       const text = await response.text()
-      console.error('RapidAPI error:', response.status, text)
+      console.error('Football-data.org error:', response.status, text)
       return new Response(JSON.stringify({ error: 'Failed to fetch scores', status: response.status }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -49,8 +38,20 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json()
+    
+    // Normalize the response to a consistent format
+    const matches = (data.matches || []).map((m: any) => ({
+      home: m.homeTeam?.shortName || m.homeTeam?.name || 'Home',
+      away: m.awayTeam?.shortName || m.awayTeam?.name || 'Away',
+      homeScore: m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? '-',
+      awayScore: m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? '-',
+      status: m.status || 'SCHEDULED',
+      minute: m.minute || null,
+      competition: m.competition?.name || '',
+      utcDate: m.utcDate || null,
+    }))
 
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({ matches }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

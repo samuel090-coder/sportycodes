@@ -9,7 +9,20 @@ interface MatchScore {
   awayScore: number | string;
   status: string;
   minute?: string;
+  competition?: string;
 }
+
+const statusMap: Record<string, string> = {
+  SCHEDULED: "Upcoming",
+  TIMED: "Upcoming",
+  IN_PLAY: "LIVE",
+  PAUSED: "HT",
+  FINISHED: "FT",
+  SUSPENDED: "Suspended",
+  POSTPONED: "Postponed",
+  CANCELLED: "Cancelled",
+  AWARDED: "Awarded",
+};
 
 export function LiveScoresTicker() {
   const [matches, setMatches] = useState<MatchScore[]>([]);
@@ -17,7 +30,6 @@ export function LiveScoresTicker() {
 
   const fetchScores = async () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase.functions.invoke("fetch-live-scores", {
         body: null,
         headers: { "Content-Type": "application/json" },
@@ -28,29 +40,17 @@ export function LiveScoresTicker() {
         return;
       }
 
-      // Parse response - adapt to API structure
       const parsed: MatchScore[] = [];
-      if (data?.response) {
-        const items = Array.isArray(data.response) ? data.response : [];
-        for (const m of items.slice(0, 20)) {
+      if (data?.matches && Array.isArray(data.matches)) {
+        for (const m of data.matches.slice(0, 30)) {
           parsed.push({
-            home: m.home?.name || m.homeTeam?.name || m.teams?.home?.name || "Home",
-            away: m.away?.name || m.awayTeam?.name || m.teams?.away?.name || "Away",
-            homeScore: m.home?.score ?? m.goals?.home ?? m.score?.home ?? "-",
-            awayScore: m.away?.score ?? m.goals?.away ?? m.score?.away ?? "-",
-            status: m.status?.long || m.fixture?.status?.long || m.status || "Scheduled",
-            minute: m.status?.elapsed || m.fixture?.status?.elapsed || m.minute || undefined,
-          });
-        }
-      } else if (Array.isArray(data)) {
-        for (const m of data.slice(0, 20)) {
-          parsed.push({
-            home: m.home?.name || m.homeTeam || "Home",
-            away: m.away?.name || m.awayTeam || "Away",
-            homeScore: m.home?.score ?? m.homeScore ?? "-",
-            awayScore: m.away?.score ?? m.awayScore ?? "-",
-            status: m.status || "Scheduled",
+            home: m.home || "Home",
+            away: m.away || "Away",
+            homeScore: m.homeScore ?? "-",
+            awayScore: m.awayScore ?? "-",
+            status: statusMap[m.status] || m.status || "Scheduled",
             minute: m.minute || undefined,
+            competition: m.competition || "",
           });
         }
       }
@@ -65,7 +65,7 @@ export function LiveScoresTicker() {
 
   useEffect(() => {
     fetchScores();
-    const interval = setInterval(fetchScores, 60000); // refresh every 60s
+    const interval = setInterval(fetchScores, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -90,29 +90,33 @@ export function LiveScoresTicker() {
       </div>
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex gap-2 px-4 pb-2 min-w-max">
-          {matches.map((m, i) => (
-            <div
-              key={i}
-              className="flex-shrink-0 bg-muted/50 rounded-lg px-3 py-2 min-w-[160px] border border-border"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-semibold text-foreground truncate max-w-[55px]">{m.home}</span>
-                <span className="text-xs font-black text-primary">
-                  {m.homeScore} - {m.awayScore}
-                </span>
-                <span className="text-[10px] font-semibold text-foreground truncate max-w-[55px] text-right">{m.away}</span>
+          {matches.map((m, i) => {
+            const isLive = m.status === "LIVE" || m.status === "HT";
+            return (
+              <div
+                key={i}
+                className="flex-shrink-0 bg-muted/50 rounded-lg px-3 py-2 min-w-[160px] border border-border"
+              >
+                {m.competition && (
+                  <p className="text-[8px] text-muted-foreground truncate text-center mb-0.5">{m.competition}</p>
+                )}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-semibold text-foreground truncate max-w-[55px]">{m.home}</span>
+                  <span className="text-xs font-black text-primary">
+                    {m.homeScore} - {m.awayScore}
+                  </span>
+                  <span className="text-[10px] font-semibold text-foreground truncate max-w-[55px] text-right">{m.away}</span>
+                </div>
+                <div className="text-center mt-0.5">
+                  <span className={`text-[9px] font-mono ${
+                    isLive ? "text-destructive font-bold" : "text-muted-foreground"
+                  }`}>
+                    {m.minute ? `${m.minute}'` : m.status}
+                  </span>
+                </div>
               </div>
-              <div className="text-center mt-0.5">
-                <span className={`text-[9px] font-mono ${
-                  m.status?.toLowerCase().includes("live") || m.minute
-                    ? "text-destructive font-bold"
-                    : "text-muted-foreground"
-                }`}>
-                  {m.minute ? `${m.minute}'` : m.status}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
