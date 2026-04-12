@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationSettings from "@/components/NotificationSettings";
-import FreeGamesSection from "@/components/FreeGamesSection";
+
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -673,10 +673,6 @@ const Profile = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Free Games Section */}
-      <div className="max-w-screen-xl mx-auto px-4 pb-24">
-        <FreeGamesSection />
-      </div>
 
       <BottomNav />
     </div>
