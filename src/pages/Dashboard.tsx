@@ -274,8 +274,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Free Games Section */}
-        <FreeGamesSection />
       </main>
 
       <BottomNav />
