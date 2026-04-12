@@ -17,6 +17,7 @@ import {
 import BottomNav from "@/components/BottomNav";
 import DailyBonusWheel from "@/components/DailyBonusWheel";
 import DailyTipsSubscribe from "@/components/DailyTipsSubscribe";
+import FreeGamesSection from "@/components/FreeGamesSection";
 
 const Dashboard = () => {
   const navigate = useNavigate();
