@@ -9,46 +9,47 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Use football-data.org free API (no subscription required, 10 req/min free)
-    const apiKey = Deno.env.get('FOOTBALL_DATA_API_KEY')
+    const apiKey = Deno.env.get('RAPIDAPI_KEY')
     
-    // Fetch today's matches from football-data.org
-    const today = new Date().toISOString().split('T')[0]
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-    
-    // If API key is available, use authenticated endpoint for more data
-    if (apiKey) {
-      headers['X-Auth-Token'] = apiKey
+    if (!apiKey) {
+      console.error('RAPIDAPI_KEY not found')
+      return new Response(JSON.stringify({ matches: [], error: 'API key missing' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const response = await fetch(
-      `https://api.football-data.org/v4/matches?date=${today}`,
-      { headers }
+      'https://free-api-live-football-data.p.rapidapi.com/football-current-live',
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
+          'x-rapidapi-key': apiKey,
+        },
+      }
     )
 
     if (!response.ok) {
       const text = await response.text()
-      console.error('Football-data.org error:', response.status, text)
-      return new Response(JSON.stringify({ error: 'Failed to fetch scores', status: response.status }), {
-        status: 502,
+      console.error('API error:', response.status, text)
+      return new Response(JSON.stringify({ matches: [], error: `API error: ${response.status}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
     const data = await response.json()
     
-    // Normalize the response to a consistent format
-    const matches = (data.matches || []).map((m: any) => ({
-      home: m.homeTeam?.shortName || m.homeTeam?.name || 'Home',
-      away: m.awayTeam?.shortName || m.awayTeam?.name || 'Away',
-      homeScore: m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? '-',
-      awayScore: m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? '-',
-      status: m.status || 'SCHEDULED',
-      minute: m.minute || null,
-      competition: m.competition?.name || '',
-      utcDate: m.utcDate || null,
+    const liveMatches = data?.response?.live || []
+    
+    const matches = liveMatches.map((m: any) => ({
+      home: m.home?.name || 'Home',
+      away: m.away?.name || 'Away',
+      homeScore: m.home?.score ?? '-',
+      awayScore: m.away?.score ?? '-',
+      status: m.status?.ongoing ? 'IN_PLAY' : m.status?.finished ? 'FINISHED' : m.status?.cancelled ? 'CANCELLED' : 'SCHEDULED',
+      minute: m.status?.liveTime?.short?.replace(/[^\d+']/g, '') || null,
+      competition: '',
     }))
 
     return new Response(JSON.stringify({ matches }), {
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
     })
   } catch (error) {
     console.error('Edge function error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ matches: [], error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
