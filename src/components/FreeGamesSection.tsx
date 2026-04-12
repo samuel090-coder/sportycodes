@@ -38,12 +38,6 @@ const FreeGamesSection = () => {
   const fetchGames = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-games", {
-        body: null,
-        headers: { "Content-Type": "application/json" },
-      });
-
-      // Build URL with query params manually since invoke doesn't support them well
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const params = new URLSearchParams({ platform: "all" });
       if (category) params.set("category", category);
