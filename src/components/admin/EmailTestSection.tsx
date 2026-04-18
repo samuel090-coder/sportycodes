@@ -44,7 +44,8 @@ export const EmailTestSection = () => {
   const [type, setType] = useState("payment_approved");
   const [sending, setSending] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [logs, setLogs] = useState<Array<{ time: string; type: string; to: string; status: "ok" | "fail"; msg?: string }>>([]);
+  type LogEntry = { time: string; type: string; to: string; status: "ok" | "fail"; msg?: string };
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const sendTest = async () => {
     if (!recipient || !recipient.includes("@")) {
@@ -59,15 +60,18 @@ export const EmailTestSection = () => {
       if (error) throw error;
       if (data?.success) {
         toast.success(`Sent! Message ID: ${data.id}`);
-        setLogs((l) => [{ time: new Date().toLocaleTimeString(), type, to: recipient, status: "ok", msg: data.id }, ...l].slice(0, 20));
+        const entry: LogEntry = { time: new Date().toLocaleTimeString(), type, to: recipient, status: "ok", msg: data.id };
+        setLogs((l) => [entry, ...l].slice(0, 20));
       } else {
         const errMsg = typeof data?.error === "string" ? data.error : data?.error?.message || "Unknown error";
         toast.error(errMsg);
-        setLogs((l) => [{ time: new Date().toLocaleTimeString(), type, to: recipient, status: "fail", msg: errMsg }, ...l].slice(0, 20));
+        const entry: LogEntry = { time: new Date().toLocaleTimeString(), type, to: recipient, status: "fail", msg: errMsg };
+        setLogs((l) => [entry, ...l].slice(0, 20));
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to send");
-      setLogs((l) => [{ time: new Date().toLocaleTimeString(), type, to: recipient, status: "fail", msg: e.message }, ...l].slice(0, 20));
+      const entry: LogEntry = { time: new Date().toLocaleTimeString(), type, to: recipient, status: "fail", msg: e.message };
+      setLogs((l) => [entry, ...l].slice(0, 20));
     } finally {
       setSending(false);
     }
@@ -83,8 +87,9 @@ export const EmailTestSection = () => {
         body: { type, userEmail: "preview@example.com", data: SAMPLE_DATA[type], previewOnly: true },
       });
       if (error) throw error;
-      if (data?.html) {
-        setPreviewHtml(data.html);
+      const html = (data as any)?.html;
+      if (html) {
+        setPreviewHtml(html);
       } else {
         toast.info("Preview returned no HTML. Send a real test instead.");
       }

@@ -24,6 +24,7 @@ import { AdsSection } from "./components/admin/AdsSection";
 import { SureOddsSection } from "./components/admin/SureOddsSection";
 import { PaymentsSection } from "./components/admin/PaymentsSection";
 import { NotificationsSection } from "./components/admin/NotificationsSection";
+import { EmailTestSection } from "./components/admin/EmailTestSection";
 import { SEOSection } from "./components/admin/SEOSection";
 import { VerificationSection } from "./components/admin/VerificationSection";
 import { SettingsSection } from "./components/admin/SettingsSection";
@@ -109,6 +110,7 @@ const App = () => {
                   <Route path="seo" element={<SEOSection />} />
                   <Route path="verification" element={<VerificationSection />} />
                   <Route path="notifications" element={<NotificationsSection />} />
+                  <Route path="email-test" element={<EmailTestSection />} />
                   <Route path="settings" element={<SettingsSection />} />
                   <Route path="betting-pools" element={<BettingPoolsSection />} />
                   <Route path="jackpot-pools" element={<JackpotPoolsSection />} />
