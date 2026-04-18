@@ -290,14 +290,23 @@ serve(async (req) => {
   try {
     if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
 
-    const { type, userId, userEmail, data } = await req.json() as {
+    const { type, userId, userEmail, data, previewOnly } = await req.json() as {
       type: EmailType;
       userId?: string;
       userEmail?: string;
       data: any;
+      previewOnly?: boolean;
     };
 
     if (!type) throw new Error("Missing 'type'");
+
+    // Preview mode — render template & return HTML without sending
+    if (previewOnly) {
+      const { subject, html } = buildEmail(type, data || {});
+      return new Response(JSON.stringify({ success: true, preview: true, subject, html }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Resolve recipient email
     let toEmail = userEmail;
