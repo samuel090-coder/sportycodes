@@ -108,6 +108,15 @@ export const PaymentsSection = () => {
         if (walletError) throw walletError;
       }
 
+      // Send branded email
+      supabase.functions.invoke('send-email', {
+        body: {
+          type: newStatus === 'approved' ? 'deposit_approved' : 'deposit_declined',
+          userId,
+          data: { amount, reason: adminNote || undefined }
+        }
+      }).catch(console.error);
+
       toast.success(`Deposit ${newStatus}!`);
       setAdminNote("");
       fetchDeposits();
@@ -158,6 +167,15 @@ export const PaymentsSection = () => {
 
         if (walletError) throw walletError;
       }
+
+      // Send branded email
+      supabase.functions.invoke('send-email', {
+        body: {
+          type: newStatus === 'approved' ? 'withdrawal_approved' : 'withdrawal_declined',
+          userId,
+          data: { amount, reason: adminNote || undefined }
+        }
+      }).catch(console.error);
 
       toast.success(`Withdrawal ${newStatus}!`);
       setAdminNote("");

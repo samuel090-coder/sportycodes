@@ -153,6 +153,15 @@ export function RoomGameCard({ message, userId, roomId }: RoomGameCardProps) {
       content: `🏆 ${winner?.display_name || "Player"} won ${game.title}! Payout: ₦${payout.toFixed(0)}${extraMsg ? ` (${extraMsg})` : ""}`,
       message_type: "system", metadata: {},
     });
+
+    // Branded congrats email to winner
+    supabase.functions.invoke("send-email", {
+      body: {
+        type: "win_game",
+        userId: winnerId,
+        data: { gameTitle: game.title, payoutAmount: payout }
+      }
+    }).catch(console.error);
   };
 
   const handleTrivia = async () => {
