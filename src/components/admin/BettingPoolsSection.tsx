@@ -208,7 +208,7 @@ export const BettingPoolsSection = () => {
             .update({ balance: (wallet?.balance || 0) + payoutPerWinner })
             .eq("user_id", winner.user_id);
 
-          // Send winner notification
+          // Send winner notification (push)
           await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-pool-winner`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -217,6 +217,15 @@ export const BettingPoolsSection = () => {
               poolTitle: selectedPool.title,
               amount: payoutPerWinner
             })
+          }).catch(console.error);
+
+          // Send branded congrats email
+          supabase.functions.invoke('send-email', {
+            body: {
+              type: 'win_pool',
+              userId: winner.user_id,
+              data: { poolTitle: selectedPool.title, payoutAmount: payoutPerWinner }
+            }
           }).catch(console.error);
         }
 
