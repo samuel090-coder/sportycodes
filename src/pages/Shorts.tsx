@@ -368,16 +368,33 @@ const Shorts = () => {
     if (!user || !selectedShortId || !newComment.trim()) return;
 
     try {
+      const commentText = newComment.trim();
       const { error } = await supabase
         .from("shorts_comments")
         .insert({ 
           short_id: selectedShortId, 
           user_id: user.id, 
-          content: newComment.trim(),
+          content: commentText,
           parent_id: replyingTo?.id || null
         });
 
       if (error) throw error;
+
+      // Email post owner (skip self-comments)
+      const targetShort = shorts.find(s => s.id === selectedShortId);
+      if (targetShort && targetShort.user_id !== user.id) {
+        const { data: commenter } = await supabase.from("profiles").select("display_name, username").eq("id", user.id).single();
+        supabase.functions.invoke("send-email", {
+          body: {
+            type: "post_commented",
+            userId: targetShort.user_id,
+            data: {
+              commenterName: commenter?.display_name || commenter?.username || "Someone",
+              commentPreview: commentText.length > 120 ? commentText.slice(0, 120) + "…" : commentText,
+            }
+          }
+        }).catch(console.error);
+      }
 
       setNewComment("");
       setReplyingTo(null);
