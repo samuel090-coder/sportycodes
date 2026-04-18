@@ -262,6 +262,16 @@ const Shorts = () => {
         await supabase.from("shorts_likes").delete().eq("short_id", shortId).eq("user_id", user.id);
       } else {
         await supabase.from("shorts_likes").insert({ short_id: shortId, user_id: user.id });
+        if (short.user_id !== user.id) {
+          const { data: liker } = await supabase.from("profiles").select("display_name, username").eq("id", user.id).single();
+          supabase.functions.invoke("send-email", {
+            body: {
+              type: "post_liked",
+              userId: short.user_id,
+              data: { likerName: liker?.display_name || liker?.username || "Someone" }
+            }
+          }).catch(console.error);
+        }
       }
     } catch (error) {
       setShorts(prev => prev.map(s => 
@@ -286,6 +296,14 @@ const Shorts = () => {
         await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", userId);
       } else {
         await supabase.from("follows").insert({ follower_id: user.id, following_id: userId });
+        const { data: follower } = await supabase.from("profiles").select("display_name, username").eq("id", user.id).single();
+        supabase.functions.invoke("send-email", {
+          body: {
+            type: "new_follower",
+            userId,
+            data: { followerName: follower?.display_name || follower?.username || "Someone" }
+          }
+        }).catch(console.error);
       }
     } catch (error) {
       setShorts(prev => prev.map(s => 

@@ -168,13 +168,12 @@ const Admin = () => {
       toast.success(`Payment ${status} successfully!`);
       fetchPayments();
 
-      // Send notification if payment was approved
-      if (status === 'approved' && payment && payment.item_id) {
+      // Send notification + email
+      if (payment && payment.item_id) {
         try {
-          // Get the sure odd details
           const { data: sureOdd } = await supabase
             .from('sure_odds')
-            .select('home_team, away_team, match_count')
+            .select('home_team, away_team, match_count, bet_code, prediction, odds')
             .eq('id', payment.item_id)
             .single();
 
@@ -184,17 +183,27 @@ const Admin = () => {
               ? `${sureOdd.home_team} vs ${sureOdd.away_team}`
               : 'Sure Odd';
 
-          await supabase.functions.invoke('notify-payment-approved', {
+          if (status === 'approved') {
+            await supabase.functions.invoke('notify-payment-approved', {
+              body: { userEmail: payment.user_email, oddName, sureOddId: payment.item_id }
+            }).catch(console.error);
+          }
+
+          await supabase.functions.invoke('send-email', {
             body: {
+              type: status === 'approved' ? 'payment_approved' : 'payment_declined',
               userEmail: payment.user_email,
-              oddName,
-              sureOddId: payment.item_id
+              data: {
+                oddName,
+                betCode: sureOdd?.bet_code,
+                prediction: sureOdd?.prediction,
+                odds: sureOdd?.odds,
+              }
             }
-          });
-          console.log('✓ Payment approval notification sent');
+          }).catch(console.error);
+          console.log(`✓ Email sent for ${status} payment`);
         } catch (notifError) {
           console.error('Failed to send notification:', notifError);
-          // Don't throw - notification failure shouldn't break the main flow
         }
       }
     } catch (error) {
