@@ -9,9 +9,11 @@ const corsHeaders = {
 const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY")!;
 const SITE_URL = "https://sportycodes.lovable.app";
 const SITE_NAME = "SPORTY CODES";
-const FROM_EMAIL = "sportycodes@gmail.com";
+// IMPORTANT: FROM_EMAIL must be a VERIFIED sender in your Brevo account.
+// Verified senders: https://app.brevo.com/senders/list
+const FROM_EMAIL = "pncbank364@gmail.com";
 const FROM_NAME = "SPORTY CODES";
-const REPLY_TO = "sportycodes@gmail.com";
+const REPLY_TO = "pncbank364@gmail.com";
 
 // ========= Branded HTML wrapper (cyber/dark/red theme matching site) =========
 function wrap(opts: { title: string; preheader: string; bodyHtml: string; ctaText?: string; ctaUrl?: string }) {
