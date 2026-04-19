@@ -111,15 +111,15 @@ export const EmailTestSection = () => {
         </p>
       </div>
 
-      <Card className="p-4 border-yellow-500/40 bg-yellow-500/5">
+      <Card className="p-4 border-green-500/40 bg-green-500/5">
         <div className="flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
           <div className="text-sm space-y-1">
-            <p className="font-bold text-yellow-500">Resend Test Mode Limitation</p>
+            <p className="font-bold text-green-500">Brevo Email Active — No Domain Needed</p>
             <p className="text-muted-foreground">
-              While using <code className="text-xs bg-muted px-1 rounded">onboarding@resend.dev</code> (no custom domain),
-              Resend will <strong>only deliver to your own verified email</strong> (the email used to sign up at resend.com).
-              Sending to other addresses returns a <strong>403</strong> error. To send to anyone, verify a domain on Resend.
+              Emails are now sent via <strong>Brevo</strong> (free tier: 300 emails/day).
+              Delivery works to <strong>any email address</strong> — no domain purchase required.
+              Sender: <code className="text-xs bg-muted px-1 rounded">sportycodes@gmail.com</code>.
             </p>
           </div>
         </div>
