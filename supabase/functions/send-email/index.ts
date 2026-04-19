@@ -6,10 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY")!;
 const SITE_URL = "https://sportycodes.lovable.app";
 const SITE_NAME = "SPORTY CODES";
-const FROM = "SPORTY CODES <onboarding@resend.dev>";
+const FROM_EMAIL = "sportycodes@gmail.com";
+const FROM_NAME = "SPORTY CODES";
 const REPLY_TO = "sportycodes@gmail.com";
 
 // ========= Branded HTML wrapper (cyber/dark/red theme matching site) =========
