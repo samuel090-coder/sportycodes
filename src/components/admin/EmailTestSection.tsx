@@ -111,15 +111,15 @@ export const EmailTestSection = () => {
         </p>
       </div>
 
-      <Card className="p-4 border-yellow-500/40 bg-yellow-500/5">
+      <Card className="p-4 border-green-500/40 bg-green-500/5">
         <div className="flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
           <div className="text-sm space-y-1">
-            <p className="font-bold text-yellow-500">Resend Test Mode Limitation</p>
+            <p className="font-bold text-green-500">Brevo Email Active — No Domain Needed</p>
             <p className="text-muted-foreground">
-              While using <code className="text-xs bg-muted px-1 rounded">onboarding@resend.dev</code> (no custom domain),
-              Resend will <strong>only deliver to your own verified email</strong> (the email used to sign up at resend.com).
-              Sending to other addresses returns a <strong>403</strong> error. To send to anyone, verify a domain on Resend.
+              Emails are now sent via <strong>Brevo</strong> (free tier: 300 emails/day).
+              Delivery works to <strong>any email address</strong> — no domain purchase required.
+              Sender: <code className="text-xs bg-muted px-1 rounded">sportycodes@gmail.com</code>.
             </p>
           </div>
         </div>
@@ -227,11 +227,11 @@ export const EmailTestSection = () => {
       <Card className="p-5 border-cyber-neon-green/20 bg-cyber-dark/40">
         <h3 className="font-bold font-mono text-cyber-neon-green mb-3">✅ How to verify it's working</h3>
         <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-          <li>Enter the email you used to sign up at <strong>resend.com</strong> (only that inbox can receive in test mode).</li>
+          <li>Enter <strong>any email address</strong> (yours, a friend's, a test account — Brevo delivers to all).</li>
           <li>Pick a template, click <strong>Send Test Email</strong>.</li>
-          <li>Check your inbox (and spam folder) within ~30 seconds.</li>
-          <li>Use <strong>Preview Design</strong> to see the rendered HTML without sending.</li>
-          <li>To send to <em>any</em> email address, verify a custom domain on resend.com.</li>
+          <li>Check the inbox (and spam folder) within ~30 seconds.</li>
+          <li>Use <strong>Preview Design</strong> to inspect the rendered HTML without sending.</li>
+          <li>Free tier limit: <strong>300 emails/day</strong>. Upgrade Brevo plan to send more.</li>
         </ol>
       </Card>
     </div>
