@@ -289,7 +289,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+    if (!BREVO_API_KEY) throw new Error("BREVO_API_KEY not configured");
 
     const { type, userId, userEmail, data, previewOnly } = await req.json() as {
       type: EmailType;
@@ -323,32 +323,34 @@ serve(async (req) => {
 
     const { subject, html } = buildEmail(type, data || {});
 
-    const res = await fetch("https://api.resend.com/emails", {
+    // ============= Send via Brevo (Sendinblue) Transactional Email API =============
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "api-key": BREVO_API_KEY,
         "Content-Type": "application/json",
+        "Accept": "application/json",
       },
       body: JSON.stringify({
-        from: FROM,
-        to: [toEmail],
-        reply_to: REPLY_TO,
+        sender: { name: FROM_NAME, email: FROM_EMAIL },
+        to: [{ email: toEmail }],
+        replyTo: { email: REPLY_TO, name: FROM_NAME },
         subject,
-        html,
+        htmlContent: html,
       }),
     });
 
     const result = await res.json();
     if (!res.ok) {
-      console.error("Resend error:", result);
+      console.error("Brevo error:", result);
       return new Response(JSON.stringify({ success: false, error: result }), {
         status: res.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`Email sent [${type}] to ${toEmail}: ${result.id}`);
-    return new Response(JSON.stringify({ success: true, id: result.id }), {
+    console.log(`Email sent [${type}] to ${toEmail}: ${result.messageId}`);
+    return new Response(JSON.stringify({ success: true, id: result.messageId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
