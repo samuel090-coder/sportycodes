@@ -227,11 +227,11 @@ export const EmailTestSection = () => {
       <Card className="p-5 border-cyber-neon-green/20 bg-cyber-dark/40">
         <h3 className="font-bold font-mono text-cyber-neon-green mb-3">✅ How to verify it's working</h3>
         <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-          <li>Enter the email you used to sign up at <strong>resend.com</strong> (only that inbox can receive in test mode).</li>
+          <li>Enter <strong>any email address</strong> (yours, a friend's, a test account — Brevo delivers to all).</li>
           <li>Pick a template, click <strong>Send Test Email</strong>.</li>
-          <li>Check your inbox (and spam folder) within ~30 seconds.</li>
-          <li>Use <strong>Preview Design</strong> to see the rendered HTML without sending.</li>
-          <li>To send to <em>any</em> email address, verify a custom domain on resend.com.</li>
+          <li>Check the inbox (and spam folder) within ~30 seconds.</li>
+          <li>Use <strong>Preview Design</strong> to inspect the rendered HTML without sending.</li>
+          <li>Free tier limit: <strong>300 emails/day</strong>. Upgrade Brevo plan to send more.</li>
         </ol>
       </Card>
     </div>
