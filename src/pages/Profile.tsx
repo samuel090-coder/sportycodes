@@ -296,6 +296,17 @@ const Profile = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                onClick={() => navigate("/admin")}
+                size="sm"
+                className="rounded-xl bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-500 hover:to-red-700 font-mono font-bold shadow-lg shadow-red-500/30"
+                title="Open Admin Panel"
+              >
+                <Shield className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">ADMIN</span>
+              </Button>
+            )}
             <Button
               onClick={handleSave}
               disabled={isSaving}
