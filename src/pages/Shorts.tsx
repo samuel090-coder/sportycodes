@@ -263,12 +263,11 @@ const Shorts = () => {
       } else {
         await supabase.from("shorts_likes").insert({ short_id: shortId, user_id: user.id });
         if (short.user_id !== user.id) {
-          const { data: liker } = await supabase.from("profiles").select("display_name, username").eq("id", user.id).single();
           supabase.functions.invoke("send-email", {
             body: {
               type: "post_liked",
               userId: short.user_id,
-              data: { likerName: liker?.display_name || liker?.username || "Someone" }
+              data: { likerId: user.id, shortId }
             }
           }).catch(console.error);
         }
@@ -296,12 +295,11 @@ const Shorts = () => {
         await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", userId);
       } else {
         await supabase.from("follows").insert({ follower_id: user.id, following_id: userId });
-        const { data: follower } = await supabase.from("profiles").select("display_name, username").eq("id", user.id).single();
         supabase.functions.invoke("send-email", {
           body: {
             type: "new_follower",
             userId,
-            data: { followerName: follower?.display_name || follower?.username || "Someone" }
+            data: { followerId: user.id }
           }
         }).catch(console.error);
       }
@@ -383,13 +381,13 @@ const Shorts = () => {
       // Email post owner (skip self-comments)
       const targetShort = shorts.find(s => s.id === selectedShortId);
       if (targetShort && targetShort.user_id !== user.id) {
-        const { data: commenter } = await supabase.from("profiles").select("display_name, username").eq("id", user.id).single();
         supabase.functions.invoke("send-email", {
           body: {
             type: "post_commented",
             userId: targetShort.user_id,
             data: {
-              commenterName: commenter?.display_name || commenter?.username || "Someone",
+              commenterId: user.id,
+              shortId: targetShort.id,
               commentPreview: commentText.length > 120 ? commentText.slice(0, 120) + "…" : commentText,
             }
           }

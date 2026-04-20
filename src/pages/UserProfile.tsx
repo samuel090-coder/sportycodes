@@ -109,12 +109,11 @@ const UserProfile = () => {
           ...prev, 
           followers_count: (prev.followers_count || 0) + 1 
         }));
-        const { data: follower } = await supabase.from("profiles").select("display_name, username").eq("id", currentUser.id).single();
         supabase.functions.invoke("send-email", {
           body: {
             type: "new_follower",
             userId,
-            data: { followerName: follower?.display_name || follower?.username || "Someone" }
+            data: { followerId: currentUser.id }
           }
         }).catch(console.error);
         toast.success("Following!");
