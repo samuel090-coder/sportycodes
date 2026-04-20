@@ -50,6 +50,34 @@ export const EmailTestSection = () => {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   type LogEntry = { time: string; type: string; to: string; status: "ok" | "fail"; msg?: string };
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [todayCount, setTodayCount] = useState(0);
+  const [monthCount, setMonthCount] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  const loadStats = async () => {
+    setLoadingStats(true);
+    try {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      const [{ count: today }, { count: month }] = await Promise.all([
+        supabase.from("email_send_log").select("id", { count: "exact", head: true })
+          .eq("status", "sent").gte("created_at", startOfDay),
+        supabase.from("email_send_log").select("id", { count: "exact", head: true })
+          .eq("status", "sent").gte("created_at", startOfMonth),
+      ]);
+
+      setTodayCount(today || 0);
+      setMonthCount(month || 0);
+    } catch (e) {
+      console.error("Failed to load email stats:", e);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => { loadStats(); }, []);
 
   const sendTest = async () => {
     if (!recipient || !recipient.includes("@")) {
