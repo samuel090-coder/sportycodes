@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Mail, Send, Loader2, AlertTriangle, CheckCircle2, Eye } from "lucide-react";
+import { Mail, Send, Loader2, AlertTriangle, CheckCircle2, Eye, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+// EmailJS free tier: 200/month. Adjust if you upgrade.
+const EMAILJS_MONTHLY_LIMIT = 200;
 
 const TEMPLATES = [
   { type: "payment_approved", label: "✅ Payment Approved (Code Purchase)" },
