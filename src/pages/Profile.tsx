@@ -31,7 +31,8 @@ import {
   Eye,
   LogOut,
   Heart,
-  MessageCircle
+  MessageCircle,
+  Shield
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -46,6 +47,7 @@ const Profile = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [referralCount, setReferralCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Form state
   const [displayName, setDisplayName] = useState("");
@@ -70,6 +72,13 @@ const Profile = () => {
       }
       setUser(session.user);
       await loadProfile(session.user.id);
+      // Check admin role
+      try {
+        const { data: adminCheck } = await supabase.rpc("is_admin_user", { _user_id: session.user.id });
+        setIsAdmin(!!adminCheck);
+      } catch (e) {
+        console.error("Admin check failed:", e);
+      }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -287,6 +296,17 @@ const Profile = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                onClick={() => navigate("/admin")}
+                size="sm"
+                className="rounded-xl bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-500 hover:to-red-700 font-mono font-bold shadow-lg shadow-red-500/30"
+                title="Open Admin Panel"
+              >
+                <Shield className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">ADMIN</span>
+              </Button>
+            )}
             <Button
               onClick={handleSave}
               disabled={isSaving}

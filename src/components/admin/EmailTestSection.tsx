@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Mail, Send, Loader2, AlertTriangle, CheckCircle2, Eye } from "lucide-react";
+import { Mail, Send, Loader2, AlertTriangle, CheckCircle2, Eye, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+// EmailJS free tier: 200/month. Adjust if you upgrade.
+const EMAILJS_MONTHLY_LIMIT = 200;
 
 const TEMPLATES = [
   { type: "payment_approved", label: "✅ Payment Approved (Code Purchase)" },
@@ -46,6 +50,34 @@ export const EmailTestSection = () => {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   type LogEntry = { time: string; type: string; to: string; status: "ok" | "fail"; msg?: string };
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [todayCount, setTodayCount] = useState(0);
+  const [monthCount, setMonthCount] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  const loadStats = async () => {
+    setLoadingStats(true);
+    try {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      const [{ count: today }, { count: month }] = await Promise.all([
+        supabase.from("email_send_log").select("id", { count: "exact", head: true })
+          .eq("status", "sent").gte("created_at", startOfDay),
+        supabase.from("email_send_log").select("id", { count: "exact", head: true })
+          .eq("status", "sent").gte("created_at", startOfMonth),
+      ]);
+
+      setTodayCount(today || 0);
+      setMonthCount(month || 0);
+    } catch (e) {
+      console.error("Failed to load email stats:", e);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => { loadStats(); }, []);
 
   const sendTest = async () => {
     if (!recipient || !recipient.includes("@")) {
@@ -59,9 +91,10 @@ export const EmailTestSection = () => {
       });
       if (error) throw error;
       if (data?.success) {
-        toast.success(`Sent! Message ID: ${data.id}`);
+        toast.success(`Sent! ID: ${data.id}`);
         const entry: LogEntry = { time: new Date().toLocaleTimeString(), type, to: recipient, status: "ok", msg: data.id };
         setLogs((l) => [entry, ...l].slice(0, 20));
+        loadStats();
       } else {
         const errMsg = typeof data?.error === "string" ? data.error : data?.error?.message || "Unknown error";
         toast.error(errMsg);
@@ -115,14 +148,52 @@ export const EmailTestSection = () => {
         <div className="flex gap-3">
           <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
           <div className="text-sm space-y-1">
-            <p className="font-bold text-green-500">Brevo Email Active — No Domain Needed</p>
+            <p className="font-bold text-green-500">EmailJS Active — Single Template, All Email Types</p>
             <p className="text-muted-foreground">
-              Emails are now sent via <strong>Brevo</strong> (free tier: 300 emails/day).
-              Delivery works to <strong>any email address</strong> — no domain purchase required.
-              Sender: <code className="text-xs bg-muted px-1 rounded">sportycodes@gmail.com</code>.
+              Emails are now sent via <strong>EmailJS</strong> using one dynamic template that handles all 12 email types.
+              Free tier: <strong>200 emails/month</strong>. Sender: configured in your EmailJS dashboard.
             </p>
           </div>
         </div>
+      </Card>
+
+      {/* Quota Counter */}
+      <Card className="p-5 border-cyber-neon-purple/30 bg-cyber-neon-purple/5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold font-mono text-cyber-neon-purple flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" /> EMAIL QUOTA TRACKER
+          </h3>
+          <Button size="sm" variant="ghost" onClick={loadStats} disabled={loadingStats} className="text-xs font-mono">
+            {loadingStats ? <Loader2 className="w-3 h-3 animate-spin" /> : "Refresh"}
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-3">
+          <div className="bg-cyber-dark/50 rounded-lg p-3 border border-border">
+            <p className="text-xs text-muted-foreground font-mono uppercase">Sent Today</p>
+            <p className="text-2xl font-black text-cyber-neon-green font-mono">{todayCount}</p>
+          </div>
+          <div className="bg-cyber-dark/50 rounded-lg p-3 border border-border">
+            <p className="text-xs text-muted-foreground font-mono uppercase">Sent This Month</p>
+            <p className="text-2xl font-black text-cyber-neon-cyan font-mono">{monthCount}</p>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs font-mono">
+            <span className="text-muted-foreground">Monthly limit ({EMAILJS_MONTHLY_LIMIT})</span>
+            <span className={monthCount >= EMAILJS_MONTHLY_LIMIT * 0.8 ? "text-red-500 font-bold" : "text-cyber-neon-green"}>
+              {Math.max(0, EMAILJS_MONTHLY_LIMIT - monthCount)} remaining
+            </span>
+          </div>
+          <Progress
+            value={Math.min(100, (monthCount / EMAILJS_MONTHLY_LIMIT) * 100)}
+            className="h-2"
+          />
+        </div>
+        {monthCount >= EMAILJS_MONTHLY_LIMIT * 0.8 && (
+          <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400 font-mono">
+            ⚠️ Approaching monthly limit. Consider upgrading EmailJS plan.
+          </div>
+        )}
       </Card>
 
       <Card className="p-5 space-y-4 border-cyber-neon-green/30">
@@ -131,7 +202,7 @@ export const EmailTestSection = () => {
             <Label className="text-cyber-neon-cyan font-mono">Recipient Email</Label>
             <Input
               type="email"
-              placeholder="your-resend-account@gmail.com"
+              placeholder="recipient@example.com"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               className="font-mono"
