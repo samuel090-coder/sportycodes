@@ -490,6 +490,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_send_log: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          provider: string
+          recipient: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          provider?: string
+          recipient: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          provider?: string
+          recipient?: string
+          status?: string
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string | null
