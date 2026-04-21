@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 const EMAILJS_MONTHLY_LIMIT = 200;
 
 const TEMPLATES = [
+  // Original 13
   { type: "payment_approved", label: "✅ Payment Approved (Code Purchase)" },
   { type: "code_purchased", label: "🎟️ Code Purchased" },
   { type: "payment_declined", label: "❌ Payment Declined" },
@@ -24,8 +25,31 @@ const TEMPLATES = [
   { type: "win_pool", label: "🏆 Won Betting Pool" },
   { type: "win_game", label: "🎮 Won Room Game" },
   { type: "new_follower", label: "👤 New Follower" },
+  { type: "profile_viewed", label: "👀 Profile Viewed" },
   { type: "post_liked", label: "❤️ Post Liked" },
   { type: "post_commented", label: "💬 Post Commented" },
+  // 10 Social/Engagement
+  { type: "post_shared", label: "🔁 Post Shared" },
+  { type: "comment_reply", label: "↩️ Comment Reply" },
+  { type: "comment_liked", label: "❤️ Comment Liked" },
+  { type: "mentioned_in_comment", label: "📣 Mentioned in Comment" },
+  { type: "milestone_followers", label: "🎉 Follower Milestone" },
+  { type: "room_invite", label: "🚪 Room Invite" },
+  { type: "room_tagged", label: "🏷️ Room Tagged Event" },
+  { type: "level_up", label: "⬆️ Level Up" },
+  { type: "challenge_completed", label: "🏅 Challenge Completed" },
+  { type: "streak_milestone", label: "🔥 Streak Milestone" },
+  // 10 Money/Activity
+  { type: "wallet_credit", label: "💵 Wallet Credit" },
+  { type: "wallet_debit", label: "💸 Wallet Debit" },
+  { type: "p2p_received", label: "💰 P2P Received" },
+  { type: "p2p_sent", label: "✅ P2P Sent" },
+  { type: "pool_lost", label: "😔 Pool Lost" },
+  { type: "pool_refunded", label: "↩️ Pool Refunded" },
+  { type: "weekly_summary", label: "📊 Weekly Summary" },
+  { type: "referral_bonus", label: "🎁 Referral Bonus" },
+  { type: "referral_milestone", label: "🎯 Referral Milestone" },
+  { type: "vip_expiring", label: "⏰ VIP Expiring" },
 ];
 
 const SAMPLE_DATA: Record<string, any> = {
@@ -39,8 +63,31 @@ const SAMPLE_DATA: Record<string, any> = {
   win_pool: { poolTitle: "Man City vs Arsenal — Who Wins?", payoutAmount: 12500 },
   win_game: { gameTitle: "Coin Flip Battle", payoutAmount: 850 },
   new_follower: { followerName: "JohnDoe23" },
+  profile_viewed: { viewerName: "BetKing99" },
   post_liked: { likerName: "BetKing99" },
   post_commented: { commenterName: "PunditPro", commentPreview: "This pick is 🔥! Following this one for sure." },
+  // Social
+  post_shared: { sharerName: "BetKing99" },
+  comment_reply: { replierName: "PunditPro", replyPreview: "Totally agree, this is the play!" },
+  comment_liked: { likerName: "TopTipster", commentPreview: "Easy money 💰" },
+  mentioned_in_comment: { mentionerName: "BetKing99", commentPreview: "@you check this out, what do you think?" },
+  milestone_followers: { count: 100 },
+  room_invite: { inviterName: "PunditPro", roomName: "Premier League Insiders", roomId: "" },
+  room_tagged: { taggerName: "BetKing99", roomName: "Weekend Warriors", roomId: "", eventType: "Sure Odd" },
+  level_up: { newLevel: 5, totalXp: 12500 },
+  challenge_completed: { challengeTitle: "Tap 100 Times", rewardCoins: 50, rewardXp: 100 },
+  streak_milestone: { streakDays: 7 },
+  // Money
+  wallet_credit: { amount: 1500, source: "Daily Bonus Wheel", newBalance: 8750 },
+  wallet_debit: { amount: 500, reason: "Pool Entry Fee", newBalance: 8250 },
+  p2p_received: { senderName: "PunditPro", amount: 2000, note: "Thanks for the tip!" },
+  p2p_sent: { receiverName: "BetKing99", amount: 1000, note: "Good luck with the bet" },
+  pool_lost: { poolTitle: "Man City vs Arsenal", stake: 500 },
+  pool_refunded: { poolTitle: "Cancelled Match Pool", amount: 500 },
+  weekly_summary: { earnings: 8500, taps: 450, poolsJoined: 12, gamesPlayed: 5 },
+  referral_bonus: { amount: 50 },
+  referral_milestone: { count: 3 },
+  vip_expiring: { daysLeft: 3, expiresAt: new Date(Date.now() + 3 * 86400000).toISOString() },
 };
 
 export const EmailTestSection = () => {
