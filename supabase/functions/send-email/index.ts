@@ -20,6 +20,19 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
+// ========= Image proxy (fixes broken images in Gmail/Outlook) =========
+// Routes all images through weserv.nl — a free CDN trusted by all major email clients.
+// This solves: (1) Supabase signed URLs being blocked, (2) CORS-protected URLs, (3) image stripping.
+function proxyImage(url: string | null | undefined, width = 200): string {
+  if (!url) return "";
+  // Strip protocol because weserv expects host+path only
+  let clean = url.trim();
+  if (clean.startsWith("http://")) clean = clean.slice(7);
+  else if (clean.startsWith("https://")) clean = clean.slice(8);
+  // Encode the URL properly for the proxy
+  return `https://images.weserv.nl/?url=${encodeURIComponent(clean)}&w=${width}&output=jpg&q=85&default=https://images.weserv.nl/?url=via.placeholder.com/${width}x${width}/dc2626/ffffff?text=SC`;
+}
+
 // ========= Branded HTML wrapper =========
 function wrap(opts: { title: string; preheader: string; bodyHtml: string; ctaText?: string; ctaUrl?: string }) {
   const { title, preheader, bodyHtml, ctaText, ctaUrl } = opts;
@@ -50,12 +63,13 @@ function wrap(opts: { title: string; preheader: string; bodyHtml: string; ctaTex
 </body></html>`;
 }
 
-// ========= Profile card builder (rich) =========
+// ========= Profile card builder (rich, with proxy images) =========
 function profileCard(p: any, label: string) {
   if (!p) return "";
+  const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
   const avatar = p.avatar_url
-    ? `<img src="${p.avatar_url}" alt="" width="64" height="64" style="border-radius:50%;border:2px solid #dc2626;display:block;" />`
-    : `<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#7f1d1d);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:24px;line-height:64px;text-align:center;">${(p.display_name || p.username || "?").charAt(0).toUpperCase()}</div>`;
+    ? `<img src="${proxyImage(p.avatar_url, 128)}" alt="" width="64" height="64" style="border-radius:50%;border:2px solid #dc2626;display:block;width:64px;height:64px;object-fit:cover;" />`
+    : `<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#7f1d1d);color:#fff;font-weight:900;font-size:24px;line-height:64px;text-align:center;">${initial}</div>`;
   const name = p.display_name || p.username || "User";
   const username = p.username ? `@${p.username}` : "";
   const profileUrl = `${SITE_URL}/user/${p.id}`;
@@ -80,14 +94,18 @@ function profileCard(p: any, label: string) {
     </div>`;
 }
 
-// ========= Short/post card (with media thumbnail) =========
+// ========= Short/post card (with media thumbnail via proxy) =========
 function shortCard(s: any, label: string) {
   if (!s) return "";
   const isVideo = s.media_type === "video";
+  const proxied = s.media_url ? proxyImage(s.media_url, 600) : "";
   const mediaPreview = s.media_url
     ? isVideo
-      ? `<div style="position:relative;background:#000;border-radius:8px;overflow:hidden;"><img src="${s.media_url}" alt="video" style="width:100%;display:block;max-height:280px;object-fit:cover;" /><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(220,38,38,0.9);width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;">▶</div></div>`
-      : `<img src="${s.media_url}" alt="" style="width:100%;display:block;max-height:280px;object-fit:cover;border-radius:8px;" />`
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#000;border-radius:8px;overflow:hidden;"><tr><td style="position:relative;text-align:center;">
+          <img src="${proxied}" alt="video thumbnail" width="540" style="width:100%;max-width:540px;display:block;max-height:280px;object-fit:cover;" />
+          <div style="margin-top:-160px;margin-bottom:130px;display:inline-block;background:rgba(220,38,38,0.95);width:48px;height:48px;line-height:48px;border-radius:50%;color:#fff;font-size:20px;text-align:center;">▶</div>
+         </td></tr></table>`
+      : `<img src="${proxied}" alt="post image" width="540" style="width:100%;max-width:540px;display:block;max-height:280px;object-fit:cover;border-radius:8px;" />`
     : "";
   return `
     <div style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin:16px 0;">
@@ -98,11 +116,28 @@ function shortCard(s: any, label: string) {
     </div>`;
 }
 
+// ========= Stat box helper =========
+function statBox(label: string, value: string, color = "#fbbf24") {
+  return `<div style="background:linear-gradient(135deg,#1f2937,#111827);border:1px solid #1f2937;border-radius:12px;padding:18px;margin:16px 0;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:11px;letter-spacing:2px;text-transform:uppercase;">${label}</p>
+    <p style="margin:6px 0 0;color:${color};font-size:28px;font-weight:900;">${value}</p>
+  </div>`;
+}
+
 // ========= Templates =========
 type EmailType =
+  // Original 13
   | "payment_approved" | "payment_declined" | "deposit_approved" | "deposit_declined"
   | "withdrawal_approved" | "withdrawal_declined" | "code_purchased"
-  | "win_pool" | "win_game" | "new_follower" | "post_liked" | "post_commented" | "profile_viewed";
+  | "win_pool" | "win_game" | "new_follower" | "post_liked" | "post_commented" | "profile_viewed"
+  // 10 Social/Engagement
+  | "post_shared" | "comment_reply" | "comment_liked" | "mentioned_in_comment"
+  | "milestone_followers" | "room_invite" | "room_tagged"
+  | "level_up" | "challenge_completed" | "streak_milestone"
+  // 10 Money/Activity
+  | "wallet_credit" | "wallet_debit" | "p2p_received" | "p2p_sent"
+  | "pool_lost" | "pool_refunded" | "weekly_summary"
+  | "referral_bonus" | "referral_milestone" | "vip_expiring";
 
 async function fetchProfile(id: string) {
   if (!id) return null;
@@ -168,10 +203,7 @@ async function buildEmail(type: EmailType, data: any): Promise<{ subject: string
         html: wrap({
           title: "💰 Deposit Approved!", preheader: `${fmt(amount)} has been added to your wallet.`,
           bodyHtml: `<p>Your deposit has been approved and credited to your wallet.</p>
-            <div style="background:linear-gradient(135deg,#064e3b,#022c22);border:1px solid #10b981;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
-              <p style="margin:0;color:#6ee7b7;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Amount Credited</p>
-              <p style="margin:6px 0 0;color:#34d399;font-size:32px;font-weight:900;">${fmt(amount)}</p>
-            </div>
+            ${statBox("Amount Credited", fmt(amount), "#34d399")}
             <p>You can now buy codes, join betting pools, and start earning. Let's go! 🚀</p>`,
           ctaText: "Open Wallet", ctaUrl: `${SITE_URL}/wallet`,
         }),
@@ -196,10 +228,7 @@ async function buildEmail(type: EmailType, data: any): Promise<{ subject: string
         html: wrap({
           title: "✅ Withdrawal Approved!", preheader: `Your withdrawal of ${fmt(amount)} has been processed.`,
           bodyHtml: `<p>Good news! Your withdrawal request has been approved.</p>
-            <div style="background:linear-gradient(135deg,#064e3b,#022c22);border:1px solid #10b981;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
-              <p style="margin:0;color:#6ee7b7;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Amount Sent</p>
-              <p style="margin:6px 0 0;color:#34d399;font-size:32px;font-weight:900;">${fmt(amount)}</p>
-            </div>`,
+            ${statBox("Amount Sent", fmt(amount), "#34d399")}`,
           ctaText: "View Wallet", ctaUrl: `${SITE_URL}/wallet`,
         }),
       };
@@ -223,10 +252,7 @@ async function buildEmail(type: EmailType, data: any): Promise<{ subject: string
         html: wrap({
           title: "🏆 Congratulations, Champion!", preheader: `You won ${fmt(payoutAmount)} from ${poolTitle}!`,
           bodyHtml: `<p>You absolutely crushed it! 🔥 Your prediction in <strong style="color:#fff;">"${poolTitle}"</strong> was correct.</p>
-            <div style="background:linear-gradient(135deg,#78350f,#451a03);border:2px solid #fbbf24;border-radius:12px;padding:24px;margin:20px 0;text-align:center;">
-              <p style="margin:0;color:#fde68a;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Winnings Credited</p>
-              <p style="margin:8px 0 0;color:#fbbf24;font-size:36px;font-weight:900;">${fmt(payoutAmount)}</p>
-            </div>`,
+            ${statBox("Winnings Credited", fmt(payoutAmount))}`,
           ctaText: "View My Wallet", ctaUrl: `${SITE_URL}/wallet`,
         }),
       };
@@ -238,16 +264,12 @@ async function buildEmail(type: EmailType, data: any): Promise<{ subject: string
         html: wrap({
           title: "🎮 Game Won!", preheader: `You won ${fmt(payoutAmount)} from ${gameTitle}!`,
           bodyHtml: `<p>Victory! 🎉 You won <strong style="color:#fff;">"${gameTitle}"</strong>.</p>
-            <div style="background:linear-gradient(135deg,#78350f,#451a03);border:2px solid #fbbf24;border-radius:12px;padding:24px;margin:20px 0;text-align:center;">
-              <p style="margin:0;color:#fde68a;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Prize Credited</p>
-              <p style="margin:8px 0 0;color:#fbbf24;font-size:36px;font-weight:900;">${fmt(payoutAmount)}</p>
-            </div>`,
+            ${statBox("Prize Credited", fmt(payoutAmount))}`,
           ctaText: "Back to Rooms", ctaUrl: `${SITE_URL}/rooms`,
         }),
       };
     }
     case "new_follower": {
-      // Try to fetch full follower profile
       const follower = data.followerId ? await fetchProfile(data.followerId) : null;
       const name = follower?.display_name || follower?.username || data.followerName || "Someone";
       return {
@@ -304,6 +326,301 @@ async function buildEmail(type: EmailType, data: any): Promise<{ subject: string
             ${profileCard(commenter, "Commented By")}
             ${shortCard(short, "Your Post")}`,
           ctaText: "Reply to Comment", ctaUrl: `${SITE_URL}/shorts`,
+        }),
+      };
+    }
+
+    // ============ NEW: 10 SOCIAL/ENGAGEMENT ============
+    case "post_shared": {
+      const sharer = data.sharerId ? await fetchProfile(data.sharerId) : null;
+      const short = data.shortId ? await fetchShort(data.shortId) : null;
+      const name = sharer?.display_name || sharer?.username || "Someone";
+      return {
+        subject: `🔁 ${name} shared your post`,
+        html: wrap({
+          title: "🔁 Your content is going viral!", preheader: `${name} just shared your post.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> shared one of your posts. Your reach is growing! 📈</p>
+            ${profileCard(sharer, "Shared By")}
+            ${shortCard(short, "Your Post")}`,
+          ctaText: "View Your Post", ctaUrl: `${SITE_URL}/shorts`,
+        }),
+      };
+    }
+    case "comment_reply": {
+      const replier = data.replierId ? await fetchProfile(data.replierId) : null;
+      const short = data.shortId ? await fetchShort(data.shortId) : null;
+      const name = replier?.display_name || replier?.username || "Someone";
+      return {
+        subject: `↩️ ${name} replied to your comment`,
+        html: wrap({
+          title: "↩️ New reply to your comment", preheader: `${name} replied to your comment.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> replied to your comment:</p>
+            ${data.replyPreview ? `<div style="background:#1f1f2e;border-left:3px solid #dc2626;padding:12px 16px;margin:16px 0;border-radius:6px;"><p style="margin:0;color:#e5e7eb;font-size:14px;font-style:italic;">"${data.replyPreview}"</p></div>` : ""}
+            ${profileCard(replier, "Replied By")}
+            ${shortCard(short, "On This Post")}`,
+          ctaText: "View Conversation", ctaUrl: `${SITE_URL}/shorts`,
+        }),
+      };
+    }
+    case "comment_liked": {
+      const liker = data.likerId ? await fetchProfile(data.likerId) : null;
+      const name = liker?.display_name || liker?.username || "Someone";
+      return {
+        subject: `❤️ ${name} liked your comment`,
+        html: wrap({
+          title: "❤️ Your comment got love!", preheader: `${name} liked your comment.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> liked your comment:</p>
+            ${data.commentPreview ? `<div style="background:#1f1f2e;border-left:3px solid #fbbf24;padding:12px 16px;margin:16px 0;border-radius:6px;"><p style="margin:0;color:#e5e7eb;font-size:14px;font-style:italic;">"${data.commentPreview}"</p></div>` : ""}
+            ${profileCard(liker, "Liked By")}`,
+          ctaText: "Open Shorts", ctaUrl: `${SITE_URL}/shorts`,
+        }),
+      };
+    }
+    case "mentioned_in_comment": {
+      const mentioner = data.mentionerId ? await fetchProfile(data.mentionerId) : null;
+      const short = data.shortId ? await fetchShort(data.shortId) : null;
+      const name = mentioner?.display_name || mentioner?.username || "Someone";
+      return {
+        subject: `📣 ${name} mentioned you`,
+        html: wrap({
+          title: "📣 You've been mentioned!", preheader: `${name} mentioned you in a comment.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> tagged you in a comment:</p>
+            ${data.commentPreview ? `<div style="background:#1f1f2e;border-left:3px solid #dc2626;padding:12px 16px;margin:16px 0;border-radius:6px;"><p style="margin:0;color:#e5e7eb;font-size:14px;font-style:italic;">"${data.commentPreview}"</p></div>` : ""}
+            ${profileCard(mentioner, "Mentioned By")}
+            ${shortCard(short, "On This Post")}`,
+          ctaText: "View Mention", ctaUrl: `${SITE_URL}/shorts`,
+        }),
+      };
+    }
+    case "milestone_followers": {
+      const { count } = data;
+      return {
+        subject: `🎉 You hit ${count} followers!`,
+        html: wrap({
+          title: `🎉 ${count} Followers Strong!`, preheader: `Massive milestone — ${count} people now follow you.`,
+          bodyHtml: `<p>Huge congratulations! You've officially reached <strong style="color:#fbbf24;">${count} followers</strong> on ${SITE_NAME}. 🚀</p>
+            ${statBox("Total Followers", String(count), "#fbbf24")}
+            <p style="color:#9ca3af;font-size:13px;">Keep posting great content and watch your community grow even bigger!</p>`,
+          ctaText: "View Your Profile", ctaUrl: `${SITE_URL}/profile`,
+        }),
+      };
+    }
+    case "room_invite": {
+      const inviter = data.inviterId ? await fetchProfile(data.inviterId) : null;
+      const { roomName, roomId } = data;
+      const name = inviter?.display_name || inviter?.username || "Someone";
+      return {
+        subject: `🚪 ${name} invited you to "${roomName}"`,
+        html: wrap({
+          title: "🚪 You're invited to a room!", preheader: `${name} wants you to join ${roomName}.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> invited you to join the room <strong style="color:#fbbf24;">"${roomName}"</strong>.</p>
+            ${profileCard(inviter, "Invited By")}
+            <p style="color:#9ca3af;font-size:13px;">Rooms are private communities for chat, betting pools, P2P transfers, and games.</p>`,
+          ctaText: "Join Room", ctaUrl: roomId ? `${SITE_URL}/rooms/${roomId}` : `${SITE_URL}/rooms`,
+        }),
+      };
+    }
+    case "room_tagged": {
+      const tagger = data.taggerId ? await fetchProfile(data.taggerId) : null;
+      const { roomName, roomId, eventType } = data;
+      const name = tagger?.display_name || tagger?.username || "Someone";
+      return {
+        subject: `🏷️ ${name} tagged ${eventType || "an event"} in "${roomName}"`,
+        html: wrap({
+          title: "🏷️ New room activity!", preheader: `${name} posted in ${roomName}.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> just posted ${eventType ? `a <strong>${eventType}</strong>` : "an event"} in the room <strong style="color:#fbbf24;">"${roomName}"</strong>.</p>
+            ${profileCard(tagger, "Posted By")}`,
+          ctaText: "Open Room", ctaUrl: roomId ? `${SITE_URL}/rooms/${roomId}` : `${SITE_URL}/rooms`,
+        }),
+      };
+    }
+    case "level_up": {
+      const { newLevel, totalXp } = data;
+      return {
+        subject: `⬆️ Level Up! You're now Level ${newLevel}`,
+        html: wrap({
+          title: `⬆️ Welcome to Level ${newLevel}!`, preheader: `You leveled up on ${SITE_NAME}.`,
+          bodyHtml: `<p>You're climbing the ranks! 🚀 You just hit <strong style="color:#fbbf24;">Level ${newLevel}</strong>.</p>
+            ${statBox("Current Level", `LVL ${newLevel}`, "#fbbf24")}
+            ${totalXp ? `<p style="color:#9ca3af;font-size:13px;text-align:center;">Total XP: <strong style="color:#34d399;">${totalXp.toLocaleString()}</strong></p>` : ""}
+            <p>Keep playing, betting, and engaging to unlock more rewards!</p>`,
+          ctaText: "View Achievements", ctaUrl: `${SITE_URL}/profile`,
+        }),
+      };
+    }
+    case "challenge_completed": {
+      const { challengeTitle, rewardCoins, rewardXp } = data;
+      return {
+        subject: `🏅 Challenge Complete: ${challengeTitle}`,
+        html: wrap({
+          title: "🏅 Challenge Conquered!", preheader: `You completed: ${challengeTitle}`,
+          bodyHtml: `<p>You completed the daily challenge <strong style="color:#fff;">"${challengeTitle}"</strong>! 💪</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;"><tr>
+              ${rewardCoins ? `<td style="padding:4px;">${statBox("Coins Earned", fmt(rewardCoins), "#34d399")}</td>` : ""}
+              ${rewardXp ? `<td style="padding:4px;">${statBox("XP Earned", `+${rewardXp}`, "#fbbf24")}</td>` : ""}
+            </tr></table>`,
+          ctaText: "More Challenges", ctaUrl: `${SITE_URL}/dashboard`,
+        }),
+      };
+    }
+    case "streak_milestone": {
+      const { streakDays } = data;
+      return {
+        subject: `🔥 ${streakDays}-Day Streak!`,
+        html: wrap({
+          title: `🔥 ${streakDays} Days in a Row!`, preheader: `You hit a ${streakDays}-day streak.`,
+          bodyHtml: `<p>You're on FIRE! 🔥 You've maintained a <strong style="color:#fbbf24;">${streakDays}-day streak</strong> on ${SITE_NAME}.</p>
+            ${statBox("Current Streak", `${streakDays} 🔥`, "#dc2626")}
+            <p style="color:#9ca3af;font-size:13px;">Keep tapping daily to grow your multiplier and unlock bigger rewards!</p>`,
+          ctaText: "Open Tap to Earn", ctaUrl: `${SITE_URL}/tap-to-earn`,
+        }),
+      };
+    }
+
+    // ============ NEW: 10 MONEY/ACTIVITY ============
+    case "wallet_credit": {
+      const { amount, source, newBalance } = data;
+      return {
+        subject: `💵 ${fmt(amount)} credited to your wallet`,
+        html: wrap({
+          title: "💵 Wallet Credited", preheader: `${fmt(amount)} added from ${source || "activity"}.`,
+          bodyHtml: `<p>Your wallet just received <strong style="color:#34d399;">${fmt(amount)}</strong>${source ? ` from <strong>${source}</strong>` : ""}.</p>
+            ${statBox("Amount Credited", fmt(amount), "#34d399")}
+            ${newBalance != null ? `<p style="text-align:center;color:#9ca3af;font-size:13px;">New balance: <strong style="color:#fff;">${fmt(newBalance)}</strong></p>` : ""}`,
+          ctaText: "Open Wallet", ctaUrl: `${SITE_URL}/wallet`,
+        }),
+      };
+    }
+    case "wallet_debit": {
+      const { amount, reason, newBalance } = data;
+      return {
+        subject: `💸 ${fmt(amount)} debited from your wallet`,
+        html: wrap({
+          title: "💸 Wallet Debit", preheader: `${fmt(amount)} debited${reason ? ` for ${reason}` : ""}.`,
+          bodyHtml: `<p><strong style="color:#fff;">${fmt(amount)}</strong> was debited from your wallet${reason ? ` for <strong>${reason}</strong>` : ""}.</p>
+            ${statBox("Amount Debited", fmt(amount), "#fca5a5")}
+            ${newBalance != null ? `<p style="text-align:center;color:#9ca3af;font-size:13px;">New balance: <strong style="color:#fff;">${fmt(newBalance)}</strong></p>` : ""}
+            <p style="color:#9ca3af;font-size:13px;">If you don't recognize this transaction, contact support immediately.</p>`,
+          ctaText: "View Transactions", ctaUrl: `${SITE_URL}/wallet`,
+        }),
+      };
+    }
+    case "p2p_received": {
+      const sender = data.senderId ? await fetchProfile(data.senderId) : null;
+      const { amount, note } = data;
+      const name = sender?.display_name || sender?.username || "A friend";
+      return {
+        subject: `💰 ${name} sent you ${fmt(amount)}`,
+        html: wrap({
+          title: "💰 You received money!", preheader: `${name} sent you ${fmt(amount)}.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> just sent you <strong style="color:#34d399;">${fmt(amount)}</strong> via P2P transfer.</p>
+            ${statBox("Amount Received", fmt(amount), "#34d399")}
+            ${note ? `<div style="background:#1f1f2e;border-left:3px solid #34d399;padding:12px 16px;margin:16px 0;border-radius:6px;"><p style="margin:0;color:#e5e7eb;font-size:13px;"><strong>Note:</strong> "${note}"</p></div>` : ""}
+            ${profileCard(sender, "Sent By")}`,
+          ctaText: "Open Wallet", ctaUrl: `${SITE_URL}/wallet`,
+        }),
+      };
+    }
+    case "p2p_sent": {
+      const receiver = data.receiverId ? await fetchProfile(data.receiverId) : null;
+      const { amount, note } = data;
+      const name = receiver?.display_name || receiver?.username || "Recipient";
+      return {
+        subject: `✅ You sent ${fmt(amount)} to ${name}`,
+        html: wrap({
+          title: "✅ Transfer Sent", preheader: `Your ${fmt(amount)} transfer to ${name} succeeded.`,
+          bodyHtml: `<p>Your transfer of <strong style="color:#fff;">${fmt(amount)}</strong> to <strong>${name}</strong> was successful.</p>
+            ${statBox("Amount Sent", fmt(amount), "#fbbf24")}
+            ${note ? `<div style="background:#1f1f2e;border-left:3px solid #fbbf24;padding:12px 16px;margin:16px 0;border-radius:6px;"><p style="margin:0;color:#e5e7eb;font-size:13px;"><strong>Note:</strong> "${note}"</p></div>` : ""}
+            ${profileCard(receiver, "Sent To")}`,
+          ctaText: "View Receipt", ctaUrl: `${SITE_URL}/wallet`,
+        }),
+      };
+    }
+    case "pool_lost": {
+      const { poolTitle, stake } = data;
+      return {
+        subject: `😔 Better luck next time on "${poolTitle}"`,
+        html: wrap({
+          title: "😔 Pool Settled", preheader: `Your prediction in ${poolTitle} didn't win this time.`,
+          bodyHtml: `<p>Your prediction on <strong style="color:#fff;">"${poolTitle}"</strong> didn't win this round.</p>
+            ${stake ? statBox("Stake", fmt(stake), "#fca5a5") : ""}
+            <p style="color:#9ca3af;font-size:13px;">Don't give up — sharper predictions are coming. Check out the latest pools and bounce back stronger! 💪</p>`,
+          ctaText: "See Open Pools", ctaUrl: `${SITE_URL}/betting-pools`,
+        }),
+      };
+    }
+    case "pool_refunded": {
+      const { poolTitle, amount } = data;
+      return {
+        subject: `↩️ Refund: ${fmt(amount)} from "${poolTitle}"`,
+        html: wrap({
+          title: "↩️ Pool Refunded", preheader: `Your stake in ${poolTitle} has been refunded.`,
+          bodyHtml: `<p>The pool <strong style="color:#fff;">"${poolTitle}"</strong> was cancelled or refunded by the admin.</p>
+            ${statBox("Refunded to Wallet", fmt(amount), "#34d399")}
+            <p style="color:#9ca3af;font-size:13px;">Your full stake has been returned to your wallet.</p>`,
+          ctaText: "Open Wallet", ctaUrl: `${SITE_URL}/wallet`,
+        }),
+      };
+    }
+    case "weekly_summary": {
+      const { earnings, taps, poolsJoined, gamesPlayed } = data;
+      return {
+        subject: `📊 Your Week on ${SITE_NAME}`,
+        html: wrap({
+          title: "📊 Weekly Recap", preheader: `Your activity summary for the past 7 days.`,
+          bodyHtml: `<p>Here's how you crushed it this week on ${SITE_NAME} 👇</p>
+            ${statBox("Total Earned", fmt(earnings || 0), "#34d399")}
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:8px 0;"><tr>
+              <td style="padding:4px;">${statBox("Taps", String(taps || 0), "#fbbf24")}</td>
+              <td style="padding:4px;">${statBox("Pools", String(poolsJoined || 0), "#dc2626")}</td>
+              <td style="padding:4px;">${statBox("Games", String(gamesPlayed || 0), "#a78bfa")}</td>
+            </tr></table>
+            <p style="color:#9ca3af;font-size:13px;">Keep the momentum going next week — bigger pools, bigger wins! 🚀</p>`,
+          ctaText: "View Dashboard", ctaUrl: `${SITE_URL}/dashboard`,
+        }),
+      };
+    }
+    case "referral_bonus": {
+      const referred = data.referredId ? await fetchProfile(data.referredId) : null;
+      const { amount } = data;
+      const name = referred?.display_name || referred?.username || "Your referral";
+      return {
+        subject: `🎁 ${fmt(amount)} referral bonus earned!`,
+        html: wrap({
+          title: "🎁 Referral Bonus Earned!", preheader: `${name} signed up — you earned ${fmt(amount)}.`,
+          bodyHtml: `<p><strong style="color:#fff;">${name}</strong> just signed up and made their first deposit using your referral code. You earned a bonus!</p>
+            ${statBox("Bonus Credited", fmt(amount), "#34d399")}
+            ${profileCard(referred, "Your Referral")}
+            <p style="color:#9ca3af;font-size:13px;">Keep sharing your referral code to earn more bonuses!</p>`,
+          ctaText: "Share Your Code", ctaUrl: `${SITE_URL}/profile`,
+        }),
+      };
+    }
+    case "referral_milestone": {
+      const { count } = data;
+      const unlocked = count >= 3;
+      return {
+        subject: `🎯 ${count} successful referrals!`,
+        html: wrap({
+          title: `🎯 ${count} Referrals!`, preheader: `You've now referred ${count} people${unlocked ? " — withdrawals unlocked!" : ""}.`,
+          bodyHtml: `<p>You've successfully referred <strong style="color:#fbbf24;">${count} people</strong> to ${SITE_NAME}.</p>
+            ${statBox("Total Referrals", String(count), "#fbbf24")}
+            ${unlocked ? `<div style="background:linear-gradient(135deg,#064e3b,#022c22);border:1px solid #10b981;padding:14px 18px;border-radius:10px;margin:16px 0;"><p style="margin:0;color:#34d399;font-weight:700;">✅ Withdrawals UNLOCKED!</p><p style="margin:6px 0 0;color:#a7f3d0;font-size:13px;">You can now request withdrawals from your wallet.</p></div>` : `<p style="color:#9ca3af;font-size:13px;">Refer ${3 - count} more people to unlock withdrawal access.</p>`}`,
+          ctaText: unlocked ? "Open Wallet" : "Share Your Code", ctaUrl: unlocked ? `${SITE_URL}/wallet` : `${SITE_URL}/profile`,
+        }),
+      };
+    }
+    case "vip_expiring": {
+      const { daysLeft, expiresAt } = data;
+      return {
+        subject: `⏰ Your VIP expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`,
+        html: wrap({
+          title: "⏰ VIP Expiring Soon", preheader: `Your VIP subscription expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
+          bodyHtml: `<p>Heads up! Your VIP subscription expires in <strong style="color:#fbbf24;">${daysLeft} day${daysLeft === 1 ? "" : "s"}</strong>${expiresAt ? ` (${new Date(expiresAt).toLocaleDateString()})` : ""}.</p>
+            ${statBox("Days Remaining", String(daysLeft), daysLeft <= 1 ? "#dc2626" : "#fbbf24")}
+            <p>Renew now to keep enjoying unlimited access to all SURE ODDS, premium tips, and exclusive perks.</p>`,
+          ctaText: "Renew VIP", ctaUrl: `${SITE_URL}/vip`,
         }),
       };
     }
