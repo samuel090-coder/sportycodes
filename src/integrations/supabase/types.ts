@@ -82,6 +82,48 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_table: string | null
+          target_user_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_table?: string | null
+          target_user_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_table?: string | null
+          target_user_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       announcement_dismissals: {
         Row: {
           announcement_id: string
@@ -460,6 +502,7 @@ export type Database = {
           payment_method: string
           processed_at: string | null
           processed_by: string | null
+          screenshot_path: string | null
           screenshot_url: string | null
           status: string | null
           user_id: string
@@ -472,6 +515,7 @@ export type Database = {
           payment_method: string
           processed_at?: string | null
           processed_by?: string | null
+          screenshot_path?: string | null
           screenshot_url?: string | null
           status?: string | null
           user_id: string
@@ -484,6 +528,7 @@ export type Database = {
           payment_method?: string
           processed_at?: string | null
           processed_by?: string | null
+          screenshot_path?: string | null
           screenshot_url?: string | null
           status?: string | null
           user_id?: string
@@ -1880,6 +1925,7 @@ export type Database = {
           expires_at: string | null
           id: string
           payment_reference: string | null
+          payment_screenshot_path: string | null
           payment_screenshot_url: string | null
           price: number
           starts_at: string | null
@@ -1892,6 +1938,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           payment_reference?: string | null
+          payment_screenshot_path?: string | null
           payment_screenshot_url?: string | null
           price?: number
           starts_at?: string | null
@@ -1904,6 +1951,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           payment_reference?: string | null
+          payment_screenshot_path?: string | null
           payment_screenshot_url?: string | null
           price?: number
           starts_at?: string | null
@@ -2068,6 +2116,16 @@ export type Database = {
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          _action: string
+          _details?: Json
+          _target_id?: string
+          _target_table?: string
+          _target_user_id?: string
+        }
+        Returns: string
       }
       update_user_streak: { Args: { _user_id: string }; Returns: Json }
     }
