@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, PlusCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAudit, getScreenshotSignedUrl } from "@/lib/audit";
 
 export const PaymentsSection = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
@@ -117,6 +118,7 @@ export const PaymentsSection = () => {
         }
       }).catch(console.error);
 
+      logAudit(`deposit_${newStatus}`, { targetTable: "deposit_requests", targetId: depositId, targetUserId: userId, details: { amount, note: adminNote || null } });
       toast.success(`Deposit ${newStatus}!`);
       setAdminNote("");
       fetchDeposits();
@@ -177,6 +179,7 @@ export const PaymentsSection = () => {
         }
       }).catch(console.error);
 
+      logAudit(`withdrawal_${newStatus}`, { targetTable: "withdrawal_requests", targetId: withdrawalId, targetUserId: userId, details: { amount, note: adminNote || null } });
       toast.success(`Withdrawal ${newStatus}!`);
       setAdminNote("");
       fetchWithdrawals();
@@ -433,7 +436,12 @@ export const PaymentsSection = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setSelectedScreenshot(deposit.screenshot_url)}
+                              onClick={async () => {
+                                const url = await getScreenshotSignedUrl(deposit.screenshot_path || deposit.screenshot_url);
+                                if (!url) { toast.error("Could not load screenshot"); return; }
+                                logAudit("payment_screenshot_viewed", { targetTable: "deposit_requests", targetId: deposit.id, targetUserId: deposit.user_id });
+                                setSelectedScreenshot(url);
+                              }}
                               className="text-primary hover:text-primary/80"
                             >
                               <Eye className="w-4 h-4" />
