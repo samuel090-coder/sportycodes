@@ -8,13 +8,17 @@ import { toast } from "sonner";
 import { Terminal, Loader2, Shield, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const ADMIN_EMAIL = "samuelsunday09066423764@gmail.com";
-
 export const AdminLayout = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const verifyAdmin = async (userId: string) => {
+    const { data, error } = await supabase.rpc("is_admin_user", { _user_id: userId });
+    if (error) { console.error(error); return false; }
+    return !!data;
+  };
 
   useEffect(() => {
     checkAuth();
@@ -23,15 +27,16 @@ export const AdminLayout = () => {
       if (event === "SIGNED_OUT") {
         setIsAuthenticated(false);
         setUserEmail(null);
+        sessionStorage.removeItem("isAdminAuthenticated");
       } else if (session?.user) {
-        const email = session.user.email;
-        setUserEmail(email || null);
-        if (email === ADMIN_EMAIL) {
-          setIsAuthenticated(true);
-          sessionStorage.setItem("isAdminAuthenticated", "true");
-        } else {
-          setIsAuthenticated(false);
-        }
+        setUserEmail(session.user.email || null);
+        // defer to avoid deadlock per supabase auth docs
+        setTimeout(async () => {
+          const ok = await verifyAdmin(session.user.id);
+          setIsAuthenticated(ok);
+          if (ok) sessionStorage.setItem("isAdminAuthenticated", "true");
+          else sessionStorage.removeItem("isAdminAuthenticated");
+        }, 0);
       }
     });
 
@@ -41,23 +46,13 @@ export const AdminLayout = () => {
   const checkAuth = async () => {
     setIsAuthenticating(true);
     try {
-      // Check session storage first
-      const cachedAuth = sessionStorage.getItem("isAdminAuthenticated") === "true";
-      
-      // Verify with actual session
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (session?.user) {
-        const email = session.user.email;
-        setUserEmail(email || null);
-        
-        if (email === ADMIN_EMAIL) {
-          setIsAuthenticated(true);
-          sessionStorage.setItem("isAdminAuthenticated", "true");
-        } else {
-          setIsAuthenticated(false);
-          sessionStorage.removeItem("isAdminAuthenticated");
-        }
+        setUserEmail(session.user.email || null);
+        const ok = await verifyAdmin(session.user.id);
+        setIsAuthenticated(ok);
+        if (ok) sessionStorage.setItem("isAdminAuthenticated", "true");
+        else sessionStorage.removeItem("isAdminAuthenticated");
       } else {
         setIsAuthenticated(false);
         sessionStorage.removeItem("isAdminAuthenticated");

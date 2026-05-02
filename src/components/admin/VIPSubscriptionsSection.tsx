@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Crown, CheckCircle, XCircle, Clock, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAudit } from "@/lib/audit";
 
 interface VIPSubscription {
   id: string;
@@ -114,6 +115,7 @@ export const VIPSubscriptionsSection = () => {
         })
         .eq("id", sub.id);
 
+      logAudit("vip_approved", { targetTable: "vip_subscriptions", targetId: sub.id, targetUserId: sub.user_id, details: { price: sub.price } });
       toast.success("VIP subscription approved!");
       loadSubscriptions();
     } catch (error) {
@@ -128,6 +130,7 @@ export const VIPSubscriptionsSection = () => {
         .update({ status: "cancelled" })
         .eq("id", sub.id);
 
+      logAudit("vip_rejected", { targetTable: "vip_subscriptions", targetId: sub.id, targetUserId: sub.user_id });
       toast.success("Subscription rejected");
       loadSubscriptions();
     } catch (error) {

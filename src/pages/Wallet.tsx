@@ -120,14 +120,14 @@ const Wallet = () => {
     setIsSubmitting(true);
     try {
       const fileExt = screenshot.name.split('.').pop();
-      const fileName = `deposit-${user.id}-${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/deposit-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from("payment-screenshots").upload(fileName, screenshot);
       if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from("payment-screenshots").getPublicUrl(fileName);
 
       const { error: insertError } = await supabase.from("deposit_requests").insert({
-        user_id: user.id, amount, payment_method: "bank_transfer", screenshot_url: publicUrl, status: "pending"
-      });
+        user_id: user.id, amount, payment_method: "bank_transfer",
+        screenshot_url: fileName, screenshot_path: fileName, status: "pending"
+      } as any);
       if (insertError) throw insertError;
 
       toast.success("Deposit submitted! Admin will review and credit your wallet.");
