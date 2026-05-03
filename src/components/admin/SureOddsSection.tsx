@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Pencil, Trash2, Upload, Loader2, Sparkles } from "lucide-react";
 import { useBettingData, SureOdd } from "@/hooks/useBettingData";
 import { supabase } from "@/integrations/supabase/client";
+import { BetslipImporter } from "./BetslipImporter";
 
 export const SureOddsSection = () => {
   const { sureOdds, addSureOdd, updateSureOdd, deleteSureOdd } = useBettingData();
@@ -136,6 +137,9 @@ export const SureOddsSection = () => {
 
   return (
     <div className="space-y-6">
+      {/* AI Betslip Importer */}
+      <BetslipImporter />
+
       {/* Add/Edit Form */}
       <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6">
         <h3 className="text-2xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
