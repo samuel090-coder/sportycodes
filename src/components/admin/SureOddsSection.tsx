@@ -137,6 +137,9 @@ export const SureOddsSection = () => {
 
   return (
     <div className="space-y-6">
+      {/* AI Betslip Importer */}
+      <BetslipImporter />
+
       {/* Add/Edit Form */}
       <Card className="bg-gradient-cyber border-2 border-cyber-neon-green/50 shadow-neon-green p-6">
         <h3 className="text-2xl font-black text-cyber-neon-green mb-6 font-mono flex items-center gap-2">
