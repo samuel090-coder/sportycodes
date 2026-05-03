@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Pencil, Trash2, Upload, Loader2, Sparkles } from "lucide-react";
 import { useBettingData, SureOdd } from "@/hooks/useBettingData";
 import { supabase } from "@/integrations/supabase/client";
+import { BetslipImporter } from "./BetslipImporter";
 
 export const SureOddsSection = () => {
   const { sureOdds, addSureOdd, updateSureOdd, deleteSureOdd } = useBettingData();
