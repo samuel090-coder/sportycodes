@@ -1690,17 +1690,20 @@ export type Database = {
           away_team: string
           away_team_logo: string | null
           bet_code: string
+          bonus: number
           confidence: string
           created_at: string | null
           home_team: string
           home_team_logo: string | null
           id: string
+          is_postcard: boolean
           match_count: number
           odds: number
           payout: number | null
           prediction: string
           price: number
           scheduled_time: string | null
+          selections: Json
           stake: number | null
           status: string
           updated_at: string | null
@@ -1711,17 +1714,20 @@ export type Database = {
           away_team: string
           away_team_logo?: string | null
           bet_code: string
+          bonus?: number
           confidence: string
           created_at?: string | null
           home_team: string
           home_team_logo?: string | null
           id?: string
+          is_postcard?: boolean
           match_count?: number
           odds: number
           payout?: number | null
           prediction: string
           price?: number
           scheduled_time?: string | null
+          selections?: Json
           stake?: number | null
           status: string
           updated_at?: string | null
@@ -1732,17 +1738,20 @@ export type Database = {
           away_team?: string
           away_team_logo?: string | null
           bet_code?: string
+          bonus?: number
           confidence?: string
           created_at?: string | null
           home_team?: string
           home_team_logo?: string | null
           id?: string
+          is_postcard?: boolean
           match_count?: number
           odds?: number
           payout?: number | null
           prediction?: string
           price?: number
           scheduled_time?: string | null
+          selections?: Json
           stake?: number | null
           status?: string
           updated_at?: string | null
