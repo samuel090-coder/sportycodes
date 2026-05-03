@@ -33,6 +33,9 @@ export interface SureOdd {
   payout?: number;
   adZoneId?: string | null; // MonetAg ad zone for this specific odd
   adEnabled?: boolean; // Toggle to enable/disable watch ad option for this odd
+  isPostcard?: boolean;
+  bonus?: number;
+  selections?: Array<{ home_team: string; away_team: string; market: string; pick: string; odds: number }>;
 }
 
 // Empty defaults - admin will add data
