@@ -18,6 +18,7 @@ import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { HilltopAdRenderer } from "@/components/HilltopAdRenderer";
 import { LiveVideoBillboard } from "@/components/LiveVideoBillboard";
 import { SiteAdverts } from "@/components/SiteAdverts";
+import { BetslipPostcard } from "@/components/BetslipPostcard";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
