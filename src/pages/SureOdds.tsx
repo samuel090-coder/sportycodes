@@ -391,7 +391,33 @@ const SureOdds = () => {
               {notStartedOdds.map((odd) => {
                 const userHasAccess = hasAccess(odd.id);
                 const isMultipleMatches = odd.matchCount > 1;
-                
+
+                if (odd.isPostcard) {
+                  return (
+                    <div key={odd.id} className="space-y-2 animate-fade-in">
+                      <BetslipPostcard
+                        unlocked={userHasAccess}
+                        data={{
+                          booking_code: odd.betCode,
+                          total_odds: odd.odds,
+                          stake: odd.stake,
+                          bonus: odd.bonus,
+                          payout: odd.payout,
+                          selections: odd.selections || [],
+                        }}
+                      />
+                      {!userHasAccess && (
+                        <Button
+                          onClick={() => handleViewCode(odd)}
+                          className="w-full bg-cyber-neon-red text-white hover:bg-red-600 font-mono font-black"
+                        >
+                          <Eye className="w-4 h-4 mr-2" /> PAY ₦{odd.price} TO UNLOCK
+                        </Button>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <Card
                     key={odd.id}
