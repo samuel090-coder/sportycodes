@@ -124,6 +124,9 @@ export const useBettingData = () => {
         payout: item.payout || 0,
         adZoneId: item.ad_zone_id || undefined,
         adEnabled: item.ad_enabled !== false, // Default to true if not set
+        isPostcard: (item as any).is_postcard || false,
+        bonus: (item as any).bonus || 0,
+        selections: (item as any).selections || [],
       }));
       setSureOdds(formattedData);
       localStorage.removeItem('sure_odds'); // Clear old localStorage data
