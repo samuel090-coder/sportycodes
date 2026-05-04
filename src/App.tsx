@@ -103,9 +103,12 @@ const App = () => {
                 <Route path="/rooms/:roomId" element={<RoomDetail />} />
                 <Route path="/ref/:code" element={<Invite />} />
                 <Route path="/r/:inviteCode" element={<RoomInvite />} />
+                <Route path="/scores" element={<Scores />} />
+                <Route path="/wins" element={<WinningReviews />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route path="analytics" element={<AnalyticsSection />} />
                   <Route path="security" element={<SecuritySection />} />
+                  <Route path="win-reviews" element={<WinReviewsSection />} />
                   <Route path="users" element={<UserManagementSection />} />
                   <Route path="ads" element={<AdsSection />} />
                   <Route path="sure-odds" element={<SureOddsSection />} />
