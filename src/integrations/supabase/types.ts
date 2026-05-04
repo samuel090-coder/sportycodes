@@ -2039,6 +2039,69 @@ export type Database = {
         }
         Relationships: []
       }
+      winning_reviews: {
+        Row: {
+          bet_type: string | null
+          bookmaker: string | null
+          caption: string | null
+          created_at: string
+          created_by_admin: boolean
+          display_name: string | null
+          id: string
+          screenshot_url: string | null
+          selections: Json | null
+          status: string
+          ticket_id: string | null
+          total_bonus: number | null
+          total_odds: number | null
+          total_return: number | null
+          total_stake: number | null
+          updated_at: string
+          user_id: string | null
+          verify_code: string | null
+        }
+        Insert: {
+          bet_type?: string | null
+          bookmaker?: string | null
+          caption?: string | null
+          created_at?: string
+          created_by_admin?: boolean
+          display_name?: string | null
+          id?: string
+          screenshot_url?: string | null
+          selections?: Json | null
+          status?: string
+          ticket_id?: string | null
+          total_bonus?: number | null
+          total_odds?: number | null
+          total_return?: number | null
+          total_stake?: number | null
+          updated_at?: string
+          user_id?: string | null
+          verify_code?: string | null
+        }
+        Update: {
+          bet_type?: string | null
+          bookmaker?: string | null
+          caption?: string | null
+          created_at?: string
+          created_by_admin?: boolean
+          display_name?: string | null
+          id?: string
+          screenshot_url?: string | null
+          selections?: Json | null
+          status?: string
+          ticket_id?: string | null
+          total_bonus?: number | null
+          total_odds?: number | null
+          total_return?: number | null
+          total_stake?: number | null
+          updated_at?: string
+          user_id?: string | null
+          verify_code?: string | null
+        }
+        Relationships: []
+      }
       withdrawal_requests: {
         Row: {
           account_details: string
