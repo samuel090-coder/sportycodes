@@ -53,12 +53,12 @@ const BottomNav = () => {
         </NavLink>
 
         <NavLink
-          to="/leaderboard"
+          to="/scores"
           className="flex-1 flex flex-col items-center gap-0.5 py-2 text-muted-foreground transition-all duration-300 hover:text-primary group"
           activeClassName="text-primary"
         >
-          <Trophy className="w-5 h-5 transition-transform group-hover:scale-110" />
-          <span className="text-[9px] font-bold tracking-wide">RANKS</span>
+          <Activity className="w-5 h-5 transition-transform group-hover:scale-110" />
+          <span className="text-[9px] font-bold tracking-wide">SCORES</span>
         </NavLink>
 
         <NavLink
