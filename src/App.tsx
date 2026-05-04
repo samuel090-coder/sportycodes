@@ -48,6 +48,9 @@ import Rooms from "./pages/Rooms";
 import RoomDetail from "./pages/RoomDetail";
 import Invite from "./pages/Invite";
 import RoomInvite from "./pages/RoomInvite";
+import Scores from "./pages/Scores";
+import WinningReviews from "./pages/WinningReviews";
+import { WinReviewsSection } from "./components/admin/WinReviewsSection";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
@@ -100,9 +103,12 @@ const App = () => {
                 <Route path="/rooms/:roomId" element={<RoomDetail />} />
                 <Route path="/ref/:code" element={<Invite />} />
                 <Route path="/r/:inviteCode" element={<RoomInvite />} />
+                <Route path="/scores" element={<Scores />} />
+                <Route path="/wins" element={<WinningReviews />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route path="analytics" element={<AnalyticsSection />} />
                   <Route path="security" element={<SecuritySection />} />
+                  <Route path="win-reviews" element={<WinReviewsSection />} />
                   <Route path="users" element={<UserManagementSection />} />
                   <Route path="ads" element={<AdsSection />} />
                   <Route path="sure-odds" element={<SureOddsSection />} />
