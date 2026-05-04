@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Target, Coins, Wallet, User, Trophy, Video, Gamepad2, MessageSquare } from "lucide-react";
+import { Target, Coins, Wallet, User, Activity, Video, Gamepad2, MessageSquare } from "lucide-react";
 
 const BottomNav = () => {
   return (
