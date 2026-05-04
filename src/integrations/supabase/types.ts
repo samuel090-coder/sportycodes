@@ -2106,6 +2106,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      current_user_email: { Args: never; Returns: string }
       generate_referral_short_code: { Args: never; Returns: string }
       generate_room_invite_code: { Args: never; Returns: string }
       get_user_phone: { Args: { _user_id: string }; Returns: string }
