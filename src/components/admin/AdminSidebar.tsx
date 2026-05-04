@@ -46,7 +46,7 @@ const menuItems = [
     icon: FileText,
     items: [
       { title: "Sure Odds", path: "/admin/sure-odds", icon: FileText },
-    ],
+      { title: "Win Reviews", path: "/admin/win-reviews", icon: Award },
   },
   {
     category: "Engagement",
