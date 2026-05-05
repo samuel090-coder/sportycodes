@@ -31,6 +31,7 @@ export const PaymentsSection = () => {
   const [isCrediting, setIsCrediting] = useState(false);
   const [foundUser, setFoundUser] = useState<any>(null);
   const [searchingUser, setSearchingUser] = useState(false);
+  const [msgTarget, setMsgTarget] = useState<any>(null);
 
   useEffect(() => {
     fetchDeposits();
