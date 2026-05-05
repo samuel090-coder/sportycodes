@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, PlusCircle, Search } from "lucide-react";
+import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, PlusCircle, Search, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit, getScreenshotSignedUrl } from "@/lib/audit";
+import { DepositMessageDialog } from "./DepositMessageDialog";
 
 export const PaymentsSection = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
@@ -30,6 +31,7 @@ export const PaymentsSection = () => {
   const [isCrediting, setIsCrediting] = useState(false);
   const [foundUser, setFoundUser] = useState<any>(null);
   const [searchingUser, setSearchingUser] = useState(false);
+  const [msgTarget, setMsgTarget] = useState<any>(null);
 
   useEffect(() => {
     fetchDeposits();
@@ -449,27 +451,38 @@ export const PaymentsSection = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {deposit.status === "pending" && (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "approved")}
-                                disabled={processingId === deposit.id}
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "rejected")}
-                                disabled={processingId === deposit.id}
-                                variant="outline"
-                                className="border-red-500 text-red-500 hover:bg-red-500/10"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex gap-2 flex-wrap">
+                            {deposit.status === "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "approved")}
+                                  disabled={processingId === deposit.id}
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "rejected")}
+                                  disabled={processingId === deposit.id}
+                                  variant="outline"
+                                  className="border-red-500 text-red-500 hover:bg-red-500/10"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setMsgTarget(deposit)}
+                              className="border-primary/50 text-primary hover:bg-primary/10"
+                              title="Message user"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -618,6 +631,14 @@ export const PaymentsSection = () => {
         </DialogContent>
       </Dialog>
 
+      <DepositMessageDialog
+        open={!!msgTarget}
+        onOpenChange={(o) => !o && setMsgTarget(null)}
+        userId={msgTarget?.user_id}
+        userEmail={msgTarget?.user_email || null}
+        userName={msgTarget?.display_name || null}
+        amount={msgTarget?.amount}
+      />
       {/* Direct Credit Modal */}
       <Dialog open={directCreditOpen} onOpenChange={setDirectCreditOpen}>
         <DialogContent className="bg-card border-border max-w-md">

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Activity } from "lucide-react";
+import { ArrowLeft, RefreshCw, Activity, AlertTriangle, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import { WinningPostcard, WinningReviewData } from "@/components/WinningPostcard";
 
 type Match = {
   home: string; away: string;
@@ -17,20 +18,34 @@ const Scores = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "live" | "finished">("all");
+  const [source, setSource] = useState<"live" | "admin" | null>(null);
+  const [wins, setWins] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
     try {
       const { data } = await supabase.functions.invoke("fetch-live-scores");
       setMatches(data?.matches || []);
+      setSource(data?.source || null);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
   };
 
+  const loadWins = async () => {
+    const { data } = await supabase
+      .from("winning_reviews" as any)
+      .select("*")
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    setWins((data as any[]) || []);
+  };
+
   useEffect(() => {
     load();
+    loadWins();
     const t = setInterval(load, 60000);
     return () => clearInterval(t);
   }, []);
@@ -80,6 +95,36 @@ const Scores = () => {
             </Button>
           ))}
         </div>
+
+        {source === "admin" && (
+          <Card className="mb-4 bg-yellow-500/10 border-yellow-500/40 p-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
+            <p className="text-xs font-mono text-yellow-200">
+              Live API unavailable — showing admin-posted matches.
+            </p>
+          </Card>
+        )}
+
+        {wins.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-cyber-neon-red font-black font-mono text-sm mb-2 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-400" /> RECENT WINS
+            </h2>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 snap-x snap-mandatory">
+              {wins.map((w) => (
+                <div key={w.id} className="snap-start shrink-0 w-[85%] max-w-sm">
+                  <WinningPostcard data={w as WinningReviewData} />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate("/wins")}
+              className="text-cyber-neon-cyan font-mono text-xs underline mt-1"
+            >
+              See all wins →
+            </button>
+          </div>
+        )}
 
         {loading && matches.length === 0 ? (
           <div className="space-y-3">
