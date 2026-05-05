@@ -117,8 +117,37 @@ const Wallet = () => {
     const amount = parseFloat(depositAmount);
     if (amount < 100) { toast.error("Minimum deposit is ₦100"); return; }
 
+    // Anti-fraud: file type whitelist
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+    if (!ALLOWED.includes(screenshot.type)) {
+      toast.error("Only JPG, PNG, WEBP allowed");
+      return;
+    }
+    // Anti-fraud: size limit 5MB
+    if (screenshot.size > 5 * 1024 * 1024) {
+      toast.error("File too large (max 5MB)");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Anti-fraud: SHA-256 hash for duplicate detection
+      const buf = await screenshot.arrayBuffer();
+      const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+      const hash = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      const { data: dup } = await supabase
+        .from("deposit_requests")
+        .select("id")
+        .eq("screenshot_hash", hash)
+        .limit(1)
+        .maybeSingle();
+      if (dup) {
+        toast.error("This screenshot was already submitted. Upload a fresh proof.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const fileExt = screenshot.name.split('.').pop();
       const fileName = `${user.id}/deposit-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from("payment-screenshots").upload(fileName, screenshot);
@@ -126,7 +155,8 @@ const Wallet = () => {
 
       const { error: insertError } = await supabase.from("deposit_requests").insert({
         user_id: user.id, amount, payment_method: "bank_transfer",
-        screenshot_url: fileName, screenshot_path: fileName, status: "pending"
+        screenshot_url: fileName, screenshot_path: fileName, status: "pending",
+        screenshot_hash: hash,
       } as any);
       if (insertError) throw insertError;
 
