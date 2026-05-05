@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const text = await response.text()
       console.error('API error:', response.status, text)
-      return new Response(JSON.stringify({ matches: [], error: `API error: ${response.status}` }), {
+      const fallback = await loadAdminMatches()
+      return new Response(JSON.stringify({ matches: fallback, error: `API error: ${response.status}`, source: 'admin' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
