@@ -96,6 +96,36 @@ const Scores = () => {
           ))}
         </div>
 
+        {source === "admin" && (
+          <Card className="mb-4 bg-yellow-500/10 border-yellow-500/40 p-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
+            <p className="text-xs font-mono text-yellow-200">
+              Live API unavailable — showing admin-posted matches.
+            </p>
+          </Card>
+        )}
+
+        {wins.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-cyber-neon-red font-black font-mono text-sm mb-2 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-400" /> RECENT WINS
+            </h2>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 snap-x snap-mandatory">
+              {wins.map((w) => (
+                <div key={w.id} className="snap-start shrink-0 w-[85%] max-w-sm">
+                  <WinningPostcard data={w as WinningReviewData} />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate("/wins")}
+              className="text-cyber-neon-cyan font-mono text-xs underline mt-1"
+            >
+              See all wins →
+            </button>
+          </div>
+        )}
+
         {loading && matches.length === 0 ? (
           <div className="space-y-3">
             {[...Array(6)].map((_, i) => (
