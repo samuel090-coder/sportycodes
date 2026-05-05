@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, PlusCircle, Search } from "lucide-react";
+import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, PlusCircle, Search, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit, getScreenshotSignedUrl } from "@/lib/audit";
+import { DepositMessageDialog } from "./DepositMessageDialog";
 
 export const PaymentsSection = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
