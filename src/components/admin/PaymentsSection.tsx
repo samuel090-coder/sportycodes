@@ -631,6 +631,14 @@ export const PaymentsSection = () => {
         </DialogContent>
       </Dialog>
 
+      <DepositMessageDialog
+        open={!!msgTarget}
+        onOpenChange={(o) => !o && setMsgTarget(null)}
+        userId={msgTarget?.user_id}
+        userEmail={msgTarget?.user_email || null}
+        userName={msgTarget?.display_name || null}
+        amount={msgTarget?.amount}
+      />
       {/* Direct Credit Modal */}
       <Dialog open={directCreditOpen} onOpenChange={setDirectCreditOpen}>
         <DialogContent className="bg-card border-border max-w-md">
