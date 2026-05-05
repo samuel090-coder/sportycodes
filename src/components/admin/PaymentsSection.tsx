@@ -451,27 +451,38 @@ export const PaymentsSection = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {deposit.status === "pending" && (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "approved")}
-                                disabled={processingId === deposit.id}
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "rejected")}
-                                disabled={processingId === deposit.id}
-                                variant="outline"
-                                className="border-red-500 text-red-500 hover:bg-red-500/10"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex gap-2 flex-wrap">
+                            {deposit.status === "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "approved")}
+                                  disabled={processingId === deposit.id}
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDepositStatus(deposit.id, deposit.user_id, deposit.amount, "rejected")}
+                                  disabled={processingId === deposit.id}
+                                  variant="outline"
+                                  className="border-red-500 text-red-500 hover:bg-red-500/10"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setMsgTarget(deposit)}
+                              className="border-primary/50 text-primary hover:bg-primary/10"
+                              title="Message user"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
