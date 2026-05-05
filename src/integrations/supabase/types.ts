@@ -502,6 +502,7 @@ export type Database = {
           payment_method: string
           processed_at: string | null
           processed_by: string | null
+          screenshot_hash: string | null
           screenshot_path: string | null
           screenshot_url: string | null
           status: string | null
@@ -515,6 +516,7 @@ export type Database = {
           payment_method: string
           processed_at?: string | null
           processed_by?: string | null
+          screenshot_hash?: string | null
           screenshot_path?: string | null
           screenshot_url?: string | null
           status?: string | null
@@ -528,6 +530,7 @@ export type Database = {
           payment_method?: string
           processed_at?: string | null
           processed_by?: string | null
+          screenshot_hash?: string | null
           screenshot_path?: string | null
           screenshot_url?: string | null
           status?: string | null
