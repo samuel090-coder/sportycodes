@@ -53,14 +53,41 @@ Deno.serve(async (req) => {
       competition: '',
     }))
 
-    return new Response(JSON.stringify({ matches }), {
+    const finalMatches = matches.length > 0 ? matches : await loadAdminMatches()
+
+    return new Response(JSON.stringify({ matches: finalMatches, source: matches.length > 0 ? 'live' : 'admin' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
     console.error('Edge function error:', error)
-    return new Response(JSON.stringify({ matches: [], error: 'Internal server error' }), {
-      status: 500,
+    const fallback = await loadAdminMatches().catch(() => [])
+    return new Response(JSON.stringify({ matches: fallback, error: 'Internal server error', source: 'admin' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })
+
+async function loadAdminMatches() {
+  try {
+    const url = Deno.env.get('SUPABASE_URL')!
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const r = await fetch(`${url}/rest/v1/matches?select=home_team,away_team,status,match_time&order=created_at.desc&limit=50`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    })
+    if (!r.ok) return []
+    const rows = await r.json()
+    return (rows || []).map((m: any) => ({
+      home: m.home_team,
+      away: m.away_team,
+      homeScore: '-',
+      awayScore: '-',
+      status: (m.status || '').toUpperCase().includes('LIVE') ? 'IN_PLAY' : (m.status || '').toUpperCase().includes('FIN') ? 'FINISHED' : 'SCHEDULED',
+      minute: null,
+      competition: m.match_time || '',
+    }))
+  } catch (e) {
+    console.error('admin fallback error', e)
+    return []
+  }
+}
+
