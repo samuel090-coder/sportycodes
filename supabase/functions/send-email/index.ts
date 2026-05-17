@@ -653,9 +653,29 @@ serve(async (req) => {
 
     if (!type) throw new Error("Missing 'type'");
 
+    // Build subject/html: support ad-hoc AI messages via type "ai_custom"
+    const buildOrCustom = async (): Promise<{ subject: string; html: string }> => {
+      if (type === "ai_custom") {
+        const subj = (data?.subject as string) || `${SITE_NAME}`;
+        const bodyText = (data?.body as string) || "";
+        const bodyHtml = bodyText
+          .split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("");
+        return {
+          subject: subj,
+          html: wrap({
+            title: (data?.title as string) || subj,
+            preheader: subj,
+            bodyHtml,
+            ctaText: data?.ctaText, ctaUrl: data?.ctaUrl,
+          }),
+        };
+      }
+      return buildEmail(type, data || {});
+    };
+
     // Preview mode
     if (previewOnly) {
-      const { subject, html } = await buildEmail(type, data || {});
+      const { subject, html } = await buildOrCustom();
       return new Response(JSON.stringify({ success: true, preview: true, subject, html }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -674,7 +694,7 @@ serve(async (req) => {
     }
     if (!toEmail) throw new Error("Could not resolve recipient email");
 
-    const { subject, html } = await buildEmail(type, data || {});
+    const { subject, html } = await buildOrCustom();
 
     // ============= Send via EmailJS REST API =============
     const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {

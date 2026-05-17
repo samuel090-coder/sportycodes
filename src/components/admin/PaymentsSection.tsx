@@ -111,14 +111,35 @@ export const PaymentsSection = () => {
         if (walletError) throw walletError;
       }
 
-      // Send branded email
-      supabase.functions.invoke('send-email', {
-        body: {
-          type: newStatus === 'approved' ? 'deposit_approved' : 'deposit_declined',
-          userId,
-          data: { amount, reason: adminNote || undefined }
+      // AI-customized email auto-sent via EmailJS
+      (async () => {
+        try {
+          const tpl = newStatus === 'approved' ? 'approved' : 'failed';
+          const { data: ai } = await supabase.functions.invoke('generate-deposit-message', {
+            body: { template: tpl, amount, reason: adminNote || undefined },
+          });
+          if (ai?.subject && ai?.body) {
+            await supabase.functions.invoke('send-email', {
+              body: {
+                type: 'ai_custom',
+                userId,
+                data: { subject: ai.subject, body: ai.body, title: ai.subject, ctaText: 'Open Wallet', ctaUrl: 'https://sportycodes.lovable.app/wallet' },
+              },
+            });
+            return;
+          }
+          throw new Error('AI draft empty');
+        } catch (err) {
+          console.error('AI email failed, falling back to template', err);
+          await supabase.functions.invoke('send-email', {
+            body: {
+              type: newStatus === 'approved' ? 'deposit_approved' : 'deposit_declined',
+              userId,
+              data: { amount, reason: adminNote || undefined },
+            },
+          });
         }
-      }).catch(console.error);
+      })();
 
       logAudit(`deposit_${newStatus}`, { targetTable: "deposit_requests", targetId: depositId, targetUserId: userId, details: { amount, note: adminNote || null } });
       toast.success(`Deposit ${newStatus}!`);
