@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,15 +27,23 @@ export function DepositMessageDialog({ open, onOpenChange, userId, userEmail: pr
   const [body, setBody] = useState("");
   const [generating, setGenerating] = useState(false);
   const [email, setEmail] = useState(providedEmail || "");
+  const [resolvingEmail, setResolvingEmail] = useState(false);
 
-  // Resolve email from auth.users via edge or db if not provided
-  const resolveEmail = async (): Promise<string | null> => {
-    if (email) return email;
-    if (!userId) return null;
-    const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
-    // No direct email access; ask admin to fill
-    return null;
-  };
+  // Auto-fetch email from auth when dialog opens if not already provided
+  useEffect(() => {
+    if (!open) return;
+    if (providedEmail) { setEmail(providedEmail); return; }
+    if (!userId) return;
+    setResolvingEmail(true);
+    supabase.functions.invoke("get-user-email", { body: { user_id: userId } })
+      .then(({ data, error }) => {
+        if (!error && data?.email) setEmail(data.email);
+        else if (error) console.error("email fetch", error);
+      })
+      .finally(() => setResolvingEmail(false));
+  }, [open, userId, providedEmail]);
+
+  const resolveEmail = async (): Promise<string | null> => email || null;
 
   const generate = async () => {
     setGenerating(true);
@@ -82,8 +90,8 @@ export function DepositMessageDialog({ open, onOpenChange, userId, userEmail: pr
 
         <div className="space-y-3">
           <div>
-            <Label>Recipient email</Label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+            <Label>Recipient email {resolvingEmail && <span className="text-xs text-muted-foreground">(fetching...)</span>}</Label>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={resolvingEmail ? "Fetching user email..." : "user@example.com"} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
