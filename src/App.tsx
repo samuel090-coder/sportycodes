@@ -134,6 +134,7 @@ const App = () => {
                   <Route path="bonus-wheel" element={<BonusWheelSection />} />
                   <Route path="leaderboard-prizes" element={<LeaderboardPrizesSection />} />
                   <Route path="adverts" element={<AdminAdvertsSection />} />
+                  <Route path="support" element={<SupportInboxSection />} />
                 </Route>
                 <Route path="/install" element={<Install />} />
                 <Route path="*" element={<NotFound />} />
