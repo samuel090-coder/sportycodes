@@ -54,6 +54,9 @@ import { WinReviewsSection } from "./components/admin/WinReviewsSection";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
+import SupportChatWidget from "./components/SupportChatWidget";
+import ResetPassword from "./pages/ResetPassword";
+import { SupportInboxSection } from "./components/admin/SupportInboxSection";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -85,9 +88,11 @@ const App = () => {
             <AnnouncementBanner />
             <AnnouncementPopup />
             <AnnouncementToast />
+            <SupportChatWidget />
             <InstallGate>
               <Routes>
                 <Route path="/" element={<SureOdds />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/payment" element={<Payment />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/dashboard" element={<Dashboard />} />
