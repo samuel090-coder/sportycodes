@@ -98,6 +98,43 @@ const Wallet = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Live deposit status: listen for admin approval/decline + wallet credit
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`wallet-live-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "deposit_requests", filter: `user_id=eq.${user.id}` },
+        (payload: any) => {
+          const row = payload.new;
+          setDeposits((prev) => prev.map((d) => (d.id === row.id ? { ...d, ...row } : d)));
+          if (lastDepositId && row.id === lastDepositId) {
+            setLiveStatus(row.status);
+            if (row.status === "approved") {
+              toast.success(`Deposit approved! ₦${row.amount} credited.`);
+              localStorage.removeItem(`vdeposit:${user.id}`);
+              setLastDepositId(null);
+              loadData(user.id);
+            } else if (row.status === "declined") {
+              toast.error("Deposit was declined. Please contact support.");
+              localStorage.removeItem(`vdeposit:${user.id}`);
+              setLastDepositId(null);
+            }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "wallets", filter: `user_id=eq.${user.id}` },
+        (payload: any) => setWallet(payload.new)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, lastDepositId]);
+
   const loadData = async (userId: string) => {
     setIsLoading(true);
     try {
