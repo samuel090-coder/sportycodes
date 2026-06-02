@@ -61,6 +61,11 @@ const Wallet = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [bankDetails, setBankDetails] = useState({ bank_name: "", account_number: "", account_name: "" });
+  const [userName, setUserName] = useState<string>("");
+
+  // Virtual account reveal flow: amount → generating → revealed → upload
+  const [depositStage, setDepositStage] = useState<"amount" | "generating" | "revealed" | "upload">("amount");
+  const [revealStep, setRevealStep] = useState(0); // 0..4 (which lines visible)
 
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
