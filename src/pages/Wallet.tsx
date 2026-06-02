@@ -63,10 +63,20 @@ const Wallet = () => {
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [bankDetails, setBankDetails] = useState({ bank_name: "", account_number: "", account_name: "" });
   const [userName, setUserName] = useState<string>("");
+  const [branding, setBranding] = useState({
+    deposit_title: "Secure Deposit",
+    deposit_generate_cta: "Tap to Generate Virtual Secure Account",
+    deposit_generating_text: "Generating your one-time secure account...",
+    deposit_revealed_text: "Transfer the exact amount, then tap I have paid.",
+    deposit_security_note: "🔒 A unique, encrypted account number is generated for this transaction only.",
+    deposit_brand_tag: "Virtual Secure Account",
+  });
 
   // Virtual account reveal flow: amount → generating → revealed → upload
   const [depositStage, setDepositStage] = useState<"amount" | "generating" | "revealed" | "upload">("amount");
   const [revealStep, setRevealStep] = useState(0); // 0..4 (which lines visible)
+  const [lastDepositId, setLastDepositId] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<string | null>(null);
 
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
