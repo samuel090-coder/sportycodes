@@ -27,7 +27,12 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  ChevronLeft
+  ChevronLeft,
+  Shield,
+  Sparkles,
+  Copy,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
