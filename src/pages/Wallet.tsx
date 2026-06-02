@@ -237,15 +237,24 @@ const Wallet = () => {
       const { error: uploadError } = await supabase.storage.from("payment-screenshots").upload(fileName, screenshot);
       if (uploadError) throw uploadError;
 
-      const { error: insertError } = await supabase.from("deposit_requests").insert({
+      const { data: inserted, error: insertError } = await supabase.from("deposit_requests").insert({
         user_id: user.id, amount, payment_method: "bank_transfer",
         screenshot_url: fileName, screenshot_path: fileName, status: "pending",
         screenshot_hash: hash,
-      } as any);
+      } as any).select("id").single();
       if (insertError) throw insertError;
 
-      toast.success("Deposit submitted! Admin will review and credit your wallet.");
+      setLastDepositId(inserted?.id || null);
+      setLiveStatus("pending");
+      try {
+        localStorage.setItem(`vdeposit:${user.id}`, JSON.stringify({
+          amount: depositAmount, depositId: inserted?.id, createdAt: Date.now(),
+        }));
+      } catch {}
+
+      toast.success("Deposit submitted! Watching for confirmation...");
       setDepositOpen(false); setDepositAmount(""); setScreenshot(null);
+      setDepositStage("amount"); setRevealStep(0);
       loadData(user.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit deposit");
