@@ -29,6 +29,15 @@ export const SettingsSection = () => {
 
   const [whatsappNumber, setWhatsappNumber] = useState("");
 
+  const [depositBranding, setDepositBranding] = useState({
+    deposit_title: "Secure Deposit",
+    deposit_generate_cta: "Tap to Generate Virtual Secure Account",
+    deposit_generating_text: "Generating your one-time secure account...",
+    deposit_revealed_text: "Transfer the exact amount, then tap I have paid.",
+    deposit_security_note: "🔒 A unique, encrypted account number is generated for this transaction only.",
+    deposit_brand_tag: "Virtual Secure Account",
+  });
+
   useEffect(() => {
     loadSettings();
   }, []);
