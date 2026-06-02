@@ -35,6 +35,7 @@ import {
   Loader2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { RevealLine } from "@/components/RevealLine";
 
 const nigerianBanks = [
   "Access Bank", "Citibank Nigeria", "Ecobank Nigeria", "Fidelity Bank",
