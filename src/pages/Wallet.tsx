@@ -98,6 +98,9 @@ const Wallet = () => {
       bankData?.forEach(d => { details[d.setting_key] = d.setting_value; });
       setBankDetails(details);
 
+      const { data: profileData } = await supabase.from("profiles").select("display_name, username").eq("id", userId).maybeSingle();
+      setUserName(profileData?.display_name || profileData?.username || "Account Holder");
+
       const { data: depositData } = await supabase.from("deposit_requests").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10);
       setDeposits(depositData || []);
 
