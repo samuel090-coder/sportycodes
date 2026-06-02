@@ -54,7 +54,8 @@ export const SettingsSection = () => {
       if (data) {
         const bank: any = { ...bankSettings };
         const tap: any = { ...tapSettings };
-        
+        const branding: any = { ...depositBranding };
+
         data.forEach(item => {
           if (["bank_name", "account_name", "account_number"].includes(item.setting_key)) {
             bank[item.setting_key] = item.setting_value;
@@ -62,11 +63,14 @@ export const SettingsSection = () => {
             tap[item.setting_key] = item.setting_value;
           } else if (item.setting_key === "whatsapp_number") {
             setWhatsappNumber(item.setting_value);
+          } else if (item.setting_key in branding) {
+            branding[item.setting_key] = item.setting_value;
           }
         });
-        
+
         setBankSettings(bank);
         setTapSettings(tap);
+        setDepositBranding(branding);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
