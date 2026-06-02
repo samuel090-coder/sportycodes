@@ -495,30 +495,35 @@ const Wallet = () => {
           }
         }}
       >
-        <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4 overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" /> Secure Deposit
+        <DialogContent className="bg-card border-border/50 rounded-2xl w-[calc(100vw-1.5rem)] max-w-[420px] sm:max-w-md p-4 sm:p-6 max-h-[92dvh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /> {branding.deposit_title}
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
               {depositStage === "amount" && "Enter amount, then generate a secure virtual account."}
-              {depositStage === "generating" && "Generating your one-time secure account..."}
-              {depositStage === "revealed" && "Transfer the exact amount, then tap I have paid."}
+              {depositStage === "generating" && branding.deposit_generating_text}
+              {depositStage === "revealed" && branding.deposit_revealed_text}
               {depositStage === "upload" && "Upload proof of your transfer below."}
             </DialogDescription>
           </DialogHeader>
 
           {/* STAGE 1: amount */}
           {depositStage === "amount" && (
-            <div className="space-y-5 mt-4 animate-fade-in">
-              <div className="space-y-2">
-                <Label className="text-foreground">Amount (₦)</Label>
+            <div className="space-y-3 mt-3 animate-fade-in">
+              <div className="space-y-1.5">
+                <Label className="text-foreground text-sm">Amount (₦)</Label>
                 <Input
                   type="number"
                   placeholder="Enter amount (min ₦100)"
                   value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="h-14 bg-secondary/50 border-border/50 rounded-xl text-lg font-bold"
+                  onChange={(e) => {
+                    setDepositAmount(e.target.value);
+                    if (user?.id) {
+                      try { localStorage.setItem(`vdeposit:${user.id}`, JSON.stringify({ amount: e.target.value, createdAt: Date.now() })); } catch {}
+                    }
+                  }}
+                  className="h-11 sm:h-12 bg-secondary/50 border-border/50 rounded-xl text-base font-bold"
                 />
               </div>
               <Button
@@ -526,7 +531,6 @@ const Wallet = () => {
                 onClick={() => {
                   setDepositStage("generating");
                   setRevealStep(0);
-                  // Staged reveal: 4 lines at 650ms intervals
                   [1, 2, 3, 4].forEach((step, i) => {
                     setTimeout(() => {
                       setRevealStep(step);
@@ -534,69 +538,41 @@ const Wallet = () => {
                     }, (i + 1) * 700);
                   });
                 }}
-                className="w-full h-14 bg-gradient-to-r from-primary via-primary to-primary/80 hover:opacity-90 text-primary-foreground rounded-xl font-bold text-base shadow-[0_0_30px_hsl(var(--primary)/0.4)] transition-all hover:scale-[1.02] active:scale-95"
+                className="w-full h-11 sm:h-12 bg-gradient-to-r from-primary via-primary to-primary/80 hover:opacity-90 text-primary-foreground rounded-xl font-bold text-xs sm:text-sm shadow-[0_0_30px_hsl(var(--primary)/0.4)] transition-all active:scale-95 whitespace-normal text-center leading-tight px-3"
               >
-                <Sparkles className="w-5 h-5" />
-                Tap to Generate Virtual Secure Account
+                <Sparkles className="w-4 h-4 flex-shrink-0" />
+                <span>{branding.deposit_generate_cta}</span>
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground">
-                🔒 A unique, encrypted account number is generated for this transaction only.
+              <p className="text-[10px] sm:text-[11px] text-center text-muted-foreground leading-snug">
+                {branding.deposit_security_note}
               </p>
             </div>
           )}
 
-          {/* STAGE 2 & 3: generating + revealed (same panel, animated) */}
+          {/* STAGE 2 & 3: generating + revealed */}
           {(depositStage === "generating" || depositStage === "revealed") && (
-            <div className="mt-4 space-y-4 animate-fade-in">
-              <div className="relative bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/30 rounded-2xl p-5 overflow-hidden">
-                {/* scanning beam during generation */}
+            <div className="mt-3 space-y-3 animate-fade-in">
+              <div className="relative bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/30 rounded-2xl p-4 overflow-hidden">
                 {depositStage === "generating" && (
                   <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-in-right_1.2s_ease-in-out_infinite]" />
                 )}
 
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Virtual Secure Account</p>
-                  <span className="flex items-center gap-1 text-[10px] text-cyber-neon-green">
+                <div className="flex items-center justify-between mb-3 gap-2">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold truncate">{branding.deposit_brand_tag}</p>
+                  <span className="flex items-center gap-1 text-[9px] sm:text-[10px] text-cyber-neon-green flex-shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyber-neon-green animate-pulse" /> ENCRYPTED
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  {/* 1. Account name (user) */}
-                  <RevealLine
-                    visible={revealStep >= 1}
-                    loading={depositStage === "generating" && revealStep < 1}
-                    label="Account Name"
-                    value={userName}
-                  />
-                  {/* 2. Amount */}
-                  <RevealLine
-                    visible={revealStep >= 2}
-                    loading={depositStage === "generating" && revealStep < 2 && revealStep >= 1}
-                    label="Amount to Pay"
-                    value={`₦${parseFloat(depositAmount || "0").toLocaleString()}`}
-                    highlight
-                  />
-                  {/* 3. Bank name */}
-                  <RevealLine
-                    visible={revealStep >= 3}
-                    loading={depositStage === "generating" && revealStep < 3 && revealStep >= 2}
-                    label="Bank Name"
-                    value={bankDetails.bank_name || "—"}
-                  />
-                  {/* 4. Account number + name on account */}
-                  <RevealLine
-                    visible={revealStep >= 4}
-                    loading={depositStage === "generating" && revealStep < 4 && revealStep >= 3}
-                    label="Account Number"
-                    value={bankDetails.account_number || "—"}
-                    mono
-                    copyable
-                  />
+                <div className="space-y-3">
+                  <RevealLine visible={revealStep >= 1} loading={depositStage === "generating" && revealStep < 1} label="Account Name" value={userName} />
+                  <RevealLine visible={revealStep >= 2} loading={depositStage === "generating" && revealStep < 2 && revealStep >= 1} label="Amount to Pay" value={`₦${parseFloat(depositAmount || "0").toLocaleString()}`} highlight />
+                  <RevealLine visible={revealStep >= 3} loading={depositStage === "generating" && revealStep < 3 && revealStep >= 2} label="Bank Name" value={bankDetails.bank_name || "—"} />
+                  <RevealLine visible={revealStep >= 4} loading={depositStage === "generating" && revealStep < 4 && revealStep >= 3} label="Account Number" value={bankDetails.account_number || "—"} mono copyable />
                   {revealStep >= 4 && (
                     <div className="animate-fade-in pt-1 border-t border-border/40">
                       <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Name on Account</p>
-                      <p className="text-foreground font-semibold">{bankDetails.account_name || "—"}</p>
+                      <p className="text-foreground font-semibold text-sm break-words">{bankDetails.account_name || "—"}</p>
                     </div>
                   )}
                 </div>
@@ -606,20 +582,18 @@ const Wallet = () => {
                 <div className="space-y-2 animate-fade-in">
                   <Button
                     onClick={() => setDepositStage("upload")}
-                    className="w-full h-14 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl font-bold text-base shadow-[0_0_25px_hsl(var(--bet-success)/0.35)] transition-all hover:scale-[1.02] active:scale-95"
+                    className="w-full h-11 sm:h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl font-bold text-sm shadow-[0_0_25px_hsl(var(--bet-success)/0.35)] transition-all active:scale-95"
                   >
-                    <CheckCircle2 className="w-5 h-5" /> I Have Paid
+                    <CheckCircle2 className="w-4 h-4" /> I Have Paid
                   </Button>
-                  <button
-                    onClick={() => { setDepositStage("amount"); setRevealStep(0); }}
-                    className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <button onClick={() => { setDepositStage("amount"); setRevealStep(0); }} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
                     ← Change amount
                   </button>
                 </div>
               )}
             </div>
           )}
+
 
           {/* STAGE 4: upload screenshot */}
           {depositStage === "upload" && (
