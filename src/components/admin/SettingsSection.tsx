@@ -29,6 +29,15 @@ export const SettingsSection = () => {
 
   const [whatsappNumber, setWhatsappNumber] = useState("");
 
+  const [depositBranding, setDepositBranding] = useState({
+    deposit_title: "Secure Deposit",
+    deposit_generate_cta: "Tap to Generate Virtual Secure Account",
+    deposit_generating_text: "Generating your one-time secure account...",
+    deposit_revealed_text: "Transfer the exact amount, then tap I have paid.",
+    deposit_security_note: "🔒 A unique, encrypted account number is generated for this transaction only.",
+    deposit_brand_tag: "Virtual Secure Account",
+  });
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -45,7 +54,8 @@ export const SettingsSection = () => {
       if (data) {
         const bank: any = { ...bankSettings };
         const tap: any = { ...tapSettings };
-        
+        const branding: any = { ...depositBranding };
+
         data.forEach(item => {
           if (["bank_name", "account_name", "account_number"].includes(item.setting_key)) {
             bank[item.setting_key] = item.setting_value;
@@ -53,11 +63,14 @@ export const SettingsSection = () => {
             tap[item.setting_key] = item.setting_value;
           } else if (item.setting_key === "whatsapp_number") {
             setWhatsappNumber(item.setting_value);
+          } else if (item.setting_key in branding) {
+            branding[item.setting_key] = item.setting_value;
           }
         });
-        
+
         setBankSettings(bank);
         setTapSettings(tap);
+        setDepositBranding(branding);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -71,7 +84,7 @@ export const SettingsSection = () => {
     setIsSaving(true);
     try {
       // Combine all settings
-      const allSettings = { ...bankSettings, ...tapSettings, whatsapp_number: whatsappNumber };
+      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, whatsapp_number: whatsappNumber };
       
       // Upsert each setting
       for (const [key, value] of Object.entries(allSettings)) {
@@ -246,6 +259,39 @@ export const SettingsSection = () => {
           </div>
         </div>
       </Card>
+
+      {/* Deposit Page Branding */}
+      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
+        <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-primary" />
+          Deposit Page Branding & Copy
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Text shown across the deposit/payment flow. Updates reflect instantly for all users.
+        </p>
+
+        <div className="space-y-4">
+          {[
+            { key: "deposit_title", label: "Modal Title", placeholder: "Secure Deposit" },
+            { key: "deposit_brand_tag", label: "Account Card Tag", placeholder: "Virtual Secure Account" },
+            { key: "deposit_generate_cta", label: "Generate Button Text", placeholder: "Tap to Generate Virtual Secure Account" },
+            { key: "deposit_generating_text", label: "Generating Message", placeholder: "Generating your one-time secure account..." },
+            { key: "deposit_revealed_text", label: "Revealed Message", placeholder: "Transfer the exact amount, then tap I have paid." },
+            { key: "deposit_security_note", label: "Security Footnote", placeholder: "🔒 A unique, encrypted account..." },
+          ].map((f) => (
+            <div key={f.key} className="space-y-2">
+              <Label className="text-foreground">{f.label}</Label>
+              <Input
+                value={(depositBranding as any)[f.key]}
+                onChange={(e) => setDepositBranding(prev => ({ ...prev, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="bg-background border-border"
+              />
+            </div>
+          ))}
+        </div>
+      </Card>
+
 
       {/* Save Button */}
       <Button
