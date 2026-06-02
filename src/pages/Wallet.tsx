@@ -487,11 +487,10 @@ const Wallet = () => {
         open={depositOpen}
         onOpenChange={(o) => {
           setDepositOpen(o);
+          // Persist session: only clear screenshot + bail out of mid-animation stage
           if (!o) {
-            setDepositStage("amount");
-            setRevealStep(0);
             setScreenshot(null);
-            setDepositAmount("");
+            if (depositStage === "generating") setDepositStage("amount");
           }
         }}
       >
