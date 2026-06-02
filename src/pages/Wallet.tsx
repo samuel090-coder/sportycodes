@@ -351,6 +351,42 @@ const Wallet = () => {
           </div>
         </div>
 
+        {/* Live Deposit Status Tracker */}
+        {lastDepositId && liveStatus && liveStatus !== "approved" && (
+          <div className={`mb-6 rounded-xl border p-4 animate-fade-in ${
+            liveStatus === "declined"
+              ? "bg-destructive/10 border-destructive/40"
+              : "bg-bet-warning/10 border-bet-warning/40"
+          }`}>
+            <div className="flex items-center gap-3">
+              {liveStatus === "declined" ? (
+                <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+              ) : (
+                <div className="relative flex-shrink-0">
+                  <Loader2 className="w-5 h-5 text-bet-warning animate-spin" />
+                  <span className="absolute inset-0 rounded-full bg-bet-warning/40 animate-ping" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground capitalize">
+                  Deposit {liveStatus === "pending" ? "awaiting confirmation" : liveStatus}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {liveStatus === "declined"
+                    ? "Your deposit was declined. Contact support."
+                    : "Live tracking — we'll credit your wallet automatically once verified."}
+                </p>
+              </div>
+              {liveStatus === "declined" && (
+                <button
+                  onClick={() => { setLastDepositId(null); setLiveStatus(null); localStorage.removeItem(`vdeposit:${user.id}`); }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >Dismiss</button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Invitation Progress */}
         <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
           <div className="flex items-center justify-between mb-2">
