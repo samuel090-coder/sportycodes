@@ -84,7 +84,7 @@ export const SettingsSection = () => {
     setIsSaving(true);
     try {
       // Combine all settings
-      const allSettings = { ...bankSettings, ...tapSettings, whatsapp_number: whatsappNumber };
+      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, whatsapp_number: whatsappNumber };
       
       // Upsert each setting
       for (const [key, value] of Object.entries(allSettings)) {
