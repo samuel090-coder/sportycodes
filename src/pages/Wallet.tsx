@@ -104,10 +104,33 @@ const Wallet = () => {
       const { data: walletData } = await supabase.from("wallets").select("*").eq("user_id", userId).single();
       setWallet(walletData);
 
-      const { data: bankData } = await supabase.from("app_settings").select("setting_key, setting_value").in("setting_key", ["bank_name", "account_number", "account_name"]);
+      const brandingKeys = [
+        "bank_name", "account_number", "account_name",
+        "deposit_title", "deposit_generate_cta", "deposit_generating_text",
+        "deposit_revealed_text", "deposit_security_note", "deposit_brand_tag",
+      ];
+      const { data: bankData } = await supabase.from("app_settings").select("setting_key, setting_value").in("setting_key", brandingKeys);
       const details: any = {};
-      bankData?.forEach(d => { details[d.setting_key] = d.setting_value; });
+      const brand: any = { ...branding };
+      bankData?.forEach(d => {
+        if (["bank_name", "account_number", "account_name"].includes(d.setting_key)) {
+          details[d.setting_key] = d.setting_value;
+        } else if (d.setting_key in brand) {
+          brand[d.setting_key] = d.setting_value;
+        }
+      });
       setBankDetails(details);
+      setBranding(brand);
+
+      // Restore in-flight virtual account session
+      try {
+        const saved = localStorage.getItem(`vdeposit:${userId}`);
+        if (saved) {
+          const s = JSON.parse(saved);
+          if (s?.amount) setDepositAmount(s.amount);
+          if (s?.depositId) setLastDepositId(s.depositId);
+        }
+      } catch {}
 
       const { data: profileData } = await supabase.from("profiles").select("display_name, username").eq("id", userId).maybeSingle();
       setUserName(profileData?.display_name || profileData?.username || "Account Holder");
