@@ -596,14 +596,14 @@ const Wallet = () => {
 
           {/* STAGE 4: upload screenshot */}
           {depositStage === "upload" && (
-            <div className="mt-4 space-y-5 animate-fade-in">
+            <div className="mt-3 space-y-3 animate-fade-in">
               <div className="bg-secondary/30 rounded-xl p-3 border border-border/30 text-center">
-                <p className="text-xs text-muted-foreground">Confirming payment of</p>
-                <p className="text-2xl font-black text-bet-success">₦{parseFloat(depositAmount || "0").toLocaleString()}</p>
+                <p className="text-[11px] text-muted-foreground">Confirming payment of</p>
+                <p className="text-xl font-black text-bet-success">₦{parseFloat(depositAmount || "0").toLocaleString()}</p>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-foreground">Upload Payment Screenshot</Label>
+              <div className="space-y-1.5">
+                <Label className="text-foreground text-sm">Upload Payment Screenshot</Label>
                 <input
                   type="file"
                   accept="image/*"
@@ -613,22 +613,20 @@ const Wallet = () => {
                 />
                 <label
                   htmlFor="deposit-screenshot"
-                  className={`flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:scale-[1.01] ${
-                    screenshot
-                      ? "border-bet-success/60 bg-bet-success/5"
-                      : "border-border hover:border-primary/50 hover:bg-primary/5"
+                  className={`flex flex-col items-center justify-center gap-1.5 w-full py-5 border-2 border-dashed rounded-xl cursor-pointer transition-all active:scale-[0.99] ${
+                    screenshot ? "border-bet-success/60 bg-bet-success/5" : "border-border hover:border-primary/50 hover:bg-primary/5"
                   }`}
                 >
                   {screenshot ? (
                     <>
-                      <CheckCircle2 className="w-8 h-8 text-bet-success" />
-                      <span className="text-sm text-foreground font-medium truncate max-w-[80%]">{screenshot.name}</span>
+                      <CheckCircle2 className="w-6 h-6 text-bet-success" />
+                      <span className="text-xs text-foreground font-medium truncate max-w-[85%]">{screenshot.name}</span>
                       <span className="text-[10px] text-muted-foreground">Tap to change</span>
                     </>
                   ) : (
                     <>
-                      <Upload className="w-8 h-8 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Tap to upload proof</span>
+                      <Upload className="w-6 h-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Tap to upload proof</span>
                     </>
                   )}
                 </label>
@@ -637,18 +635,13 @@ const Wallet = () => {
               <Button
                 onClick={handleDeposit}
                 disabled={isSubmitting || !screenshot}
-                className="w-full h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:opacity-90 text-white rounded-xl font-bold"
+                className="w-full h-11 sm:h-12 bg-gradient-to-r from-bet-success to-bet-success/80 hover:opacity-90 text-white rounded-xl font-bold text-sm"
               >
                 {isSubmitting ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Submitting...</>
-                ) : (
-                  <>Submit Deposit</>
-                )}
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
+                ) : (<>Submit Deposit</>)}
               </Button>
-              <button
-                onClick={() => setDepositStage("revealed")}
-                className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <button onClick={() => setDepositStage("revealed")} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
                 ← Back to account details
               </button>
             </div>
