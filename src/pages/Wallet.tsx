@@ -522,13 +522,21 @@ const Wallet = () => {
               >
                 <ChevronLeft className="w-5 h-5 text-foreground" />
               </button>
-              <h2 className="text-lg font-black text-foreground tracking-tight">Deposit Funds</h2>
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cyber-neon-purple flex items-center justify-center shadow-[0_0_18px_hsl(var(--primary)/0.5)]">
+                <WalletIcon className="w-5 h-5 text-primary-foreground" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyber-neon-green border-2 border-background animate-pulse" />
+              </div>
+              <div className="leading-tight">
+                <h2 className="text-base font-black text-foreground tracking-tight">Deposit Funds</h2>
+                <p className="text-[10px] text-muted-foreground font-semibold">SPORTY CODES • Wallet</p>
+              </div>
             </div>
             <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
               <HelpCircle className="w-4 h-4" />
               <span className="hidden xs:inline">How it works</span>
             </button>
           </div>
+
 
           {/* Scrollable Body */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-4">
@@ -597,7 +605,46 @@ const Wallet = () => {
                     );
                   })}
                 </div>
+
+                {/* Accepted Banks Strip */}
+                {paymentMethod === "bank_transfer" && (
+                  <div className="mt-3 rounded-xl border border-border/40 bg-secondary/30 px-3 py-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      Accepted Banks
+                    </p>
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1">
+                      {[
+                        { name: "GTB", color: "from-orange-500 to-orange-700" },
+                        { name: "Access", color: "from-orange-400 to-red-600" },
+                        { name: "UBA", color: "from-red-600 to-red-800" },
+                        { name: "Zenith", color: "from-red-500 to-rose-700" },
+                        { name: "First", color: "from-blue-700 to-blue-900" },
+                        { name: "Opay", color: "from-emerald-400 to-emerald-600" },
+                        { name: "Kuda", color: "from-purple-600 to-fuchsia-700" },
+                        { name: "PalmPay", color: "from-violet-500 to-purple-700" },
+                        { name: "Moniepoint", color: "from-blue-500 to-indigo-700" },
+                        { name: "Fidelity", color: "from-amber-500 to-orange-700" },
+                      ].map((b) => (
+                        <div
+                          key={b.name}
+                          className="flex flex-col items-center gap-1 min-w-[42px]"
+                          title={b.name}
+                        >
+                          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${b.color} flex items-center justify-center shadow-md ring-1 ring-white/10`}>
+                            <span className="text-[10px] font-black text-white tracking-tight">
+                              {b.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="text-[8px] font-semibold text-muted-foreground truncate w-full text-center">
+                            {b.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
 
               {/* STEP 2: Enter Amount */}
               <div>
