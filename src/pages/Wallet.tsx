@@ -33,6 +33,15 @@ import {
   Copy,
   Upload,
   Loader2,
+  Building2,
+  CreditCard,
+  Smartphone,
+  MoreHorizontal,
+  ShieldCheck,
+  HelpCircle,
+  X,
+  Lock,
+  ArrowRight,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { RevealLine } from "@/components/RevealLine";
