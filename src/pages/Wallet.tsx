@@ -522,13 +522,21 @@ const Wallet = () => {
               >
                 <ChevronLeft className="w-5 h-5 text-foreground" />
               </button>
-              <h2 className="text-lg font-black text-foreground tracking-tight">Deposit Funds</h2>
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cyber-neon-purple flex items-center justify-center shadow-[0_0_18px_hsl(var(--primary)/0.5)]">
+                <WalletIcon className="w-5 h-5 text-primary-foreground" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyber-neon-green border-2 border-background animate-pulse" />
+              </div>
+              <div className="leading-tight">
+                <h2 className="text-base font-black text-foreground tracking-tight">Deposit Funds</h2>
+                <p className="text-[10px] text-muted-foreground font-semibold">SPORTY CODES • Wallet</p>
+              </div>
             </div>
             <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
               <HelpCircle className="w-4 h-4" />
               <span className="hidden xs:inline">How it works</span>
             </button>
           </div>
+
 
           {/* Scrollable Body */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-4">
