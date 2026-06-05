@@ -87,6 +87,8 @@ const Wallet = () => {
   const [lastDepositId, setLastDepositId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
 
+  const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer");
+
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawBank, setWithdrawBank] = useState("");
