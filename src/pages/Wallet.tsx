@@ -605,7 +605,46 @@ const Wallet = () => {
                     );
                   })}
                 </div>
+
+                {/* Accepted Banks Strip */}
+                {paymentMethod === "bank_transfer" && (
+                  <div className="mt-3 rounded-xl border border-border/40 bg-secondary/30 px-3 py-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      Accepted Banks
+                    </p>
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1">
+                      {[
+                        { name: "GTB", color: "from-orange-500 to-orange-700" },
+                        { name: "Access", color: "from-orange-400 to-red-600" },
+                        { name: "UBA", color: "from-red-600 to-red-800" },
+                        { name: "Zenith", color: "from-red-500 to-rose-700" },
+                        { name: "First", color: "from-blue-700 to-blue-900" },
+                        { name: "Opay", color: "from-emerald-400 to-emerald-600" },
+                        { name: "Kuda", color: "from-purple-600 to-fuchsia-700" },
+                        { name: "PalmPay", color: "from-violet-500 to-purple-700" },
+                        { name: "Moniepoint", color: "from-blue-500 to-indigo-700" },
+                        { name: "Fidelity", color: "from-amber-500 to-orange-700" },
+                      ].map((b) => (
+                        <div
+                          key={b.name}
+                          className="flex flex-col items-center gap-1 min-w-[42px]"
+                          title={b.name}
+                        >
+                          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${b.color} flex items-center justify-center shadow-md ring-1 ring-white/10`}>
+                            <span className="text-[10px] font-black text-white tracking-tight">
+                              {b.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="text-[8px] font-semibold text-muted-foreground truncate w-full text-center">
+                            {b.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
 
               {/* STEP 2: Enter Amount */}
               <div>
