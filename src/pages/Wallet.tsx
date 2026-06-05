@@ -493,128 +493,231 @@ const Wallet = () => {
         </div>
       </main>
 
-      {/* Deposit Modal — Virtual Account Reveal */}
+      {/* Deposit Modal — Full-screen Sectioned Layout */}
       <Dialog
         open={depositOpen}
         onOpenChange={(o) => {
           setDepositOpen(o);
-          // Persist session: only clear screenshot + bail out of mid-animation stage
           if (!o) {
             setScreenshot(null);
             if (depositStage === "generating") setDepositStage("amount");
           }
         }}
       >
-        <DialogContent className="bg-card border-border/50 rounded-2xl w-[calc(100vw-1.5rem)] max-w-[420px] sm:max-w-md p-4 sm:p-6 max-h-[92dvh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader className="space-y-1">
-            <DialogTitle className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /> {branding.deposit_title}
-            </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
-              {depositStage === "amount" && "Enter amount, then generate a secure virtual account."}
-              {depositStage === "generating" && branding.deposit_generating_text}
-              {depositStage === "revealed" && branding.deposit_revealed_text}
-              {depositStage === "upload" && "Upload proof of your transfer below."}
-            </DialogDescription>
+        <DialogContent
+          className="bg-background border-0 sm:border sm:border-border/50 sm:rounded-2xl p-0 w-screen h-[100dvh] sm:h-auto sm:max-h-[92dvh] sm:w-[calc(100vw-1.5rem)] sm:max-w-[480px] overflow-hidden flex flex-col [&>button]:hidden"
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>{branding.deposit_title}</DialogTitle>
+            <DialogDescription>Deposit funds via virtual secure account</DialogDescription>
           </DialogHeader>
 
-          {/* STAGE 1: amount */}
-          {depositStage === "amount" && (
-            <div className="space-y-3 mt-3 animate-fade-in">
-              <div className="space-y-1.5">
-                <Label className="text-foreground text-sm">Amount (₦)</Label>
-                <Input
-                  type="number"
-                  placeholder="Enter amount (min ₦100)"
-                  value={depositAmount}
-                  onChange={(e) => {
-                    setDepositAmount(e.target.value);
-                    if (user?.id) {
-                      try { localStorage.setItem(`vdeposit:${user.id}`, JSON.stringify({ amount: e.target.value, createdAt: Date.now() })); } catch {}
-                    }
-                  }}
-                  className="h-11 sm:h-12 bg-secondary/50 border-border/50 rounded-xl text-base font-bold"
-                />
-              </div>
-              <Button
-                disabled={!depositAmount || parseFloat(depositAmount) < 100}
-                onClick={() => {
-                  setDepositStage("generating");
-                  setRevealStep(0);
-                  [1, 2, 3, 4].forEach((step, i) => {
-                    setTimeout(() => {
-                      setRevealStep(step);
-                      if (step === 4) setTimeout(() => setDepositStage("revealed"), 600);
-                    }, (i + 1) * 700);
-                  });
-                }}
-                className="w-full h-11 sm:h-12 bg-gradient-to-r from-primary via-primary to-primary/80 hover:opacity-90 text-primary-foreground rounded-xl font-bold text-xs sm:text-sm shadow-[0_0_30px_hsl(var(--primary)/0.4)] transition-all active:scale-95 whitespace-normal text-center leading-tight px-3"
+          {/* Sticky Header */}
+          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border/40 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setDepositOpen(false)}
+                className="w-9 h-9 rounded-full hover:bg-secondary/60 flex items-center justify-center transition-colors"
+                aria-label="Close"
               >
-                <Sparkles className="w-4 h-4 flex-shrink-0" />
-                <span>{branding.deposit_generate_cta}</span>
-              </Button>
-              <p className="text-[10px] sm:text-[11px] text-center text-muted-foreground leading-snug">
-                {branding.deposit_security_note}
-              </p>
+                <ChevronLeft className="w-5 h-5 text-foreground" />
+              </button>
+              <h2 className="text-lg font-black text-foreground tracking-tight">Deposit Funds</h2>
             </div>
-          )}
+            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden xs:inline">How it works</span>
+            </button>
+          </div>
 
-          {/* STAGE 2 & 3: generating + revealed */}
-          {(depositStage === "generating" || depositStage === "revealed") && (
-            <div className="mt-3 space-y-3 animate-fade-in">
-              <div className="relative bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/30 rounded-2xl p-4 overflow-hidden">
-                {depositStage === "generating" && (
-                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-in-right_1.2s_ease-in-out_infinite]" />
-                )}
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-4">
+            {/* Current Balance Card */}
+            <div className="relative rounded-2xl p-5 bg-gradient-to-br from-primary/25 via-primary/10 to-cyber-neon-purple/15 border border-primary/30 overflow-hidden">
+              <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-primary/20 blur-3xl" />
+              <div className="absolute -right-4 -bottom-8 w-28 h-28 rounded-full bg-cyber-neon-purple/20 blur-3xl" />
+              <div className="relative">
+                <p className="text-xs text-muted-foreground mb-1">Current Balance</p>
+                <p className="text-3xl font-black text-foreground tracking-tight">
+                  ₦{wallet?.balance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0.00"}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-2">All deposits are in Nigerian Naira (NGN)</p>
+              </div>
+            </div>
 
-                <div className="flex items-center justify-between mb-3 gap-2">
-                  <p className="text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold truncate">{branding.deposit_brand_tag}</p>
-                  <span className="flex items-center gap-1 text-[9px] sm:text-[10px] text-cyber-neon-green flex-shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyber-neon-green animate-pulse" /> ENCRYPTED
-                  </span>
+            {/* New Deposit Card */}
+            <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-xl p-4 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black text-foreground">New Deposit</h3>
+                <span className="flex items-center gap-1 text-[10px] font-bold text-cyber-neon-green">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Secure & Encrypted
+                </span>
+              </div>
+
+              {/* STEP 1: Payment Method */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[11px] font-black flex items-center justify-center">1</span>
+                    <p className="text-sm font-bold text-foreground">Select Payment Method</p>
+                  </div>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-cyber-neon-green/15 text-cyber-neon-green font-bold uppercase tracking-wider">Recommended</span>
                 </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "bank_transfer", label: "Bank Transfer", Icon: Building2, enabled: true },
+                    { id: "ussd", label: "USSD", Icon: Smartphone, enabled: false },
+                    { id: "card", label: "Card", Icon: CreditCard, enabled: false },
+                    { id: "fintech", label: "Opay/PalmPay", Icon: Smartphone, enabled: false },
+                    { id: "other", label: "Other", Icon: MoreHorizontal, enabled: false },
+                  ].map(({ id, label, Icon, enabled }) => {
+                    const active = paymentMethod === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        disabled={!enabled}
+                        onClick={() => enabled && setPaymentMethod(id)}
+                        className={`relative aspect-square rounded-xl border p-2 flex flex-col items-center justify-center gap-1 transition-all ${
+                          active
+                            ? "border-primary bg-primary/10 shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
+                            : "border-border/60 bg-secondary/30 hover:border-border"
+                        } ${!enabled ? "opacity-50 cursor-not-allowed" : "active:scale-95"}`}
+                      >
+                        {active && (
+                          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                            <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
+                          </span>
+                        )}
+                        <Icon className={`w-5 h-5 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                        <span className={`text-[9px] font-semibold leading-tight text-center ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                          {label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                <div className="space-y-3">
-                  <RevealLine visible={revealStep >= 1} loading={depositStage === "generating" && revealStep < 1} label="Account Name" value={userName} />
-                  <RevealLine visible={revealStep >= 2} loading={depositStage === "generating" && revealStep < 2 && revealStep >= 1} label="Amount to Pay" value={`₦${parseFloat(depositAmount || "0").toLocaleString()}`} highlight />
-                  <RevealLine visible={revealStep >= 3} loading={depositStage === "generating" && revealStep < 3 && revealStep >= 2} label="Bank Name" value={bankDetails.bank_name || "—"} />
-                  <RevealLine visible={revealStep >= 4} loading={depositStage === "generating" && revealStep < 4 && revealStep >= 3} label="Account Number" value={bankDetails.account_number || "—"} mono copyable />
-                  {revealStep >= 4 && (
-                    <div className="animate-fade-in pt-1 border-t border-border/40">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Name on Account</p>
-                      <p className="text-foreground font-semibold text-sm break-words">{bankDetails.account_name || "—"}</p>
+              {/* STEP 2: Enter Amount */}
+              <div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[11px] font-black flex items-center justify-center">2</span>
+                  <p className="text-sm font-bold text-foreground">Enter Amount</p>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center border-r border-border/50 bg-secondary/40 rounded-l-xl">
+                    <span className="text-base font-bold text-muted-foreground">₦</span>
+                  </div>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={depositAmount}
+                    onChange={(e) => {
+                      setDepositAmount(e.target.value);
+                      if (user?.id) {
+                        try { localStorage.setItem(`vdeposit:${user.id}`, JSON.stringify({ amount: e.target.value, createdAt: Date.now() })); } catch {}
+                      }
+                    }}
+                    className="h-12 pl-14 pr-10 bg-secondary/30 border-border/50 rounded-xl text-lg font-black"
+                  />
+                  {depositAmount && (
+                    <button
+                      onClick={() => setDepositAmount("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center"
+                      aria-label="Clear"
+                    >
+                      <X className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 mt-2.5">
+                  {[1000, 5000, 10000, 50000, 100000].map((amt) => {
+                    const active = depositAmount === String(amt);
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setDepositAmount(String(amt))}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all active:scale-95 ${
+                          active
+                            ? "border-primary bg-primary/15 text-primary"
+                            : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-border"
+                        }`}
+                      >
+                        ₦{amt >= 1000 ? `${amt / 1000}K` : amt}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2">Min: ₦100 &nbsp;|&nbsp; Max: ₦10,000,000</p>
+              </div>
+
+              {/* INLINE: Virtual Account Generation (after amount entered) */}
+              {depositAmount && parseFloat(depositAmount) >= 100 && (
+                <div className="animate-fade-in">
+                  {depositStage === "amount" && (
+                    <Button
+                      onClick={() => {
+                        setDepositStage("generating");
+                        setRevealStep(0);
+                        [1, 2, 3, 4].forEach((step, i) => {
+                          setTimeout(() => {
+                            setRevealStep(step);
+                            if (step === 4) setTimeout(() => setDepositStage("revealed"), 600);
+                          }, (i + 1) * 700);
+                        });
+                      }}
+                      className="w-full h-11 bg-gradient-to-r from-primary via-primary to-primary/80 hover:opacity-90 text-primary-foreground rounded-xl font-bold text-xs shadow-[0_0_25px_hsl(var(--primary)/0.4)] active:scale-[0.98] whitespace-normal leading-tight px-3"
+                    >
+                      <Sparkles className="w-4 h-4 flex-shrink-0" />
+                      <span>{branding.deposit_generate_cta}</span>
+                    </Button>
+                  )}
+
+                  {(depositStage === "generating" || depositStage === "revealed" || depositStage === "upload") && (
+                    <div className="relative bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/30 rounded-2xl p-4 overflow-hidden">
+                      {depositStage === "generating" && (
+                        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-in-right_1.2s_ease-in-out_infinite]" />
+                      )}
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold truncate">{branding.deposit_brand_tag}</p>
+                        <span className="flex items-center gap-1 text-[9px] text-cyber-neon-green flex-shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyber-neon-green animate-pulse" /> ENCRYPTED
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        <RevealLine visible={revealStep >= 1} loading={depositStage === "generating" && revealStep < 1} label="Account Name" value={userName} />
+                        <RevealLine visible={revealStep >= 2} loading={depositStage === "generating" && revealStep < 2 && revealStep >= 1} label="Amount to Pay" value={`₦${parseFloat(depositAmount || "0").toLocaleString()}`} highlight />
+                        <RevealLine visible={revealStep >= 3} loading={depositStage === "generating" && revealStep < 3 && revealStep >= 2} label="Bank Name" value={bankDetails.bank_name || "—"} />
+                        <RevealLine visible={revealStep >= 4} loading={depositStage === "generating" && revealStep < 4 && revealStep >= 3} label="Account Number" value={bankDetails.account_number || "—"} mono copyable />
+                        {revealStep >= 4 && (
+                          <div className="animate-fade-in pt-1 border-t border-border/40">
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Name on Account</p>
+                            <p className="text-foreground font-semibold text-sm break-words">{bankDetails.account_name || "—"}</p>
+                          </div>
+                        )}
+                      </div>
+                      {depositStage === "revealed" && (
+                        <button
+                          onClick={() => setDepositStage("upload")}
+                          className="mt-4 w-full h-10 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> I Have Paid
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-
-              {depositStage === "revealed" && (
-                <div className="space-y-2 animate-fade-in">
-                  <Button
-                    onClick={() => setDepositStage("upload")}
-                    className="w-full h-11 sm:h-12 bg-bet-success hover:bg-bet-success/90 text-white rounded-xl font-bold text-sm shadow-[0_0_25px_hsl(var(--bet-success)/0.35)] transition-all active:scale-95"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> I Have Paid
-                  </Button>
-                  <button onClick={() => { setDepositStage("amount"); setRevealStep(0); }} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    ← Change amount
-                  </button>
-                </div>
               )}
-            </div>
-          )}
 
-
-          {/* STAGE 4: upload screenshot */}
-          {depositStage === "upload" && (
-            <div className="mt-3 space-y-3 animate-fade-in">
-              <div className="bg-secondary/30 rounded-xl p-3 border border-border/30 text-center">
-                <p className="text-[11px] text-muted-foreground">Confirming payment of</p>
-                <p className="text-xl font-black text-bet-success">₦{parseFloat(depositAmount || "0").toLocaleString()}</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-foreground text-sm">Upload Payment Screenshot</Label>
+              {/* STEP 3: Upload Payment Screenshot */}
+              <div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className={`w-6 h-6 rounded-full text-[11px] font-black flex items-center justify-center ${depositStage === "upload" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>3</span>
+                  <p className="text-sm font-bold text-foreground">Upload Payment Screenshot</p>
+                </div>
                 <input
                   type="file"
                   accept="image/*"
@@ -624,41 +727,67 @@ const Wallet = () => {
                 />
                 <label
                   htmlFor="deposit-screenshot"
-                  className={`flex flex-col items-center justify-center gap-1.5 w-full py-5 border-2 border-dashed rounded-xl cursor-pointer transition-all active:scale-[0.99] ${
-                    screenshot ? "border-bet-success/60 bg-bet-success/5" : "border-border hover:border-primary/50 hover:bg-primary/5"
+                  className={`flex flex-col items-center justify-center gap-2 w-full py-7 border-2 border-dashed rounded-xl cursor-pointer transition-all active:scale-[0.99] ${
+                    screenshot
+                      ? "border-bet-success/60 bg-bet-success/5"
+                      : "border-primary/40 hover:border-primary bg-primary/[0.03]"
                   }`}
                 >
                   {screenshot ? (
                     <>
-                      <CheckCircle2 className="w-6 h-6 text-bet-success" />
-                      <span className="text-xs text-foreground font-medium truncate max-w-[85%]">{screenshot.name}</span>
+                      <CheckCircle2 className="w-7 h-7 text-bet-success" />
+                      <span className="text-xs text-foreground font-semibold truncate max-w-[85%]">{screenshot.name}</span>
                       <span className="text-[10px] text-muted-foreground">Tap to change</span>
                     </>
                   ) : (
                     <>
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Tap to upload proof</span>
+                      <div className="w-11 h-11 rounded-full border-2 border-primary/40 flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-primary" />
+                      </div>
+                      <span className="text-sm text-foreground font-semibold">Drag & drop or tap to upload</span>
+                      <span className="text-[10px] text-muted-foreground">PNG, JPG or JPEG (Max 5MB)</span>
                     </>
                   )}
                 </label>
               </div>
 
+              {/* Important Note */}
+              <div className="flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-primary mb-0.5">Important</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Please ensure the screenshot shows the transaction reference and amount clearly.
+                  </p>
+                </div>
+              </div>
+
+              {/* Submit */}
               <Button
                 onClick={handleDeposit}
-                disabled={isSubmitting || !screenshot}
-                className="w-full h-11 sm:h-12 bg-gradient-to-r from-bet-success to-bet-success/80 hover:opacity-90 text-white rounded-xl font-bold text-sm"
+                disabled={isSubmitting || !screenshot || !depositAmount || parseFloat(depositAmount) < 100}
+                className="w-full h-12 bg-gradient-to-r from-primary via-primary to-primary/80 hover:opacity-90 text-primary-foreground rounded-xl font-bold text-sm shadow-[0_0_30px_hsl(var(--primary)/0.35)] active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
               >
                 {isSubmitting ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
-                ) : (<>Submit Deposit</>)}
+                ) : (
+                  <>Submit Deposit Request <ArrowRight className="w-4 h-4" /></>
+                )}
               </Button>
-              <button onClick={() => setDepositStage("revealed")} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
-                ← Back to account details
-              </button>
+
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-[10px] text-muted-foreground text-center leading-tight">
+                  Your deposits are safe with us. We never store your banking details.
+                </p>
+              </div>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
+
 
 
       {/* Withdraw Modal */}
