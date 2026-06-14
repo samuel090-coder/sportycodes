@@ -42,6 +42,9 @@ import {
   X,
   Lock,
   ArrowRight,
+  Landmark,
+  Hash,
+  QrCode,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { RevealLine } from "@/components/RevealLine";
