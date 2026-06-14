@@ -55,6 +55,7 @@ import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { AnnouncementPopup } from "./components/AnnouncementPopup";
 import { AnnouncementToast } from "./components/AnnouncementToast";
 import SupportChatWidget from "./components/SupportChatWidget";
+import ApkDownloadBanner from "./components/ApkDownloadBanner";
 import ResetPassword from "./pages/ResetPassword";
 import { SupportInboxSection } from "./components/admin/SupportInboxSection";
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ const App = () => {
             <AnnouncementPopup />
             <AnnouncementToast />
             <SupportChatWidget />
+            <ApkDownloadBanner />
             <InstallGate>
               <Routes>
                 <Route path="/" element={<SureOdds />} />
