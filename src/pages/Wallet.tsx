@@ -42,6 +42,9 @@ import {
   X,
   Lock,
   ArrowRight,
+  Landmark,
+  Hash,
+  QrCode,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { RevealLine } from "@/components/RevealLine";
@@ -573,12 +576,13 @@ const Wallet = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: "bank_transfer", label: "Bank Transfer", Icon: Building2, enabled: true },
-                    { id: "ussd", label: "USSD", Icon: Smartphone, enabled: false },
-                    { id: "card", label: "Card", Icon: CreditCard, enabled: false },
-                    { id: "fintech", label: "Opay/PalmPay", Icon: Smartphone, enabled: false },
-                    { id: "other", label: "Other", Icon: MoreHorizontal, enabled: false },
-                  ].map(({ id, label, Icon, enabled }) => {
+                    { id: "bank_transfer", label: "Bank Transfer", Icon: Landmark, enabled: true, tint: "from-emerald-500/20 to-emerald-600/5", iconColor: "text-emerald-400" },
+                    { id: "ussd", label: "USSD", Icon: Hash, enabled: false, tint: "from-sky-500/20 to-sky-600/5", iconColor: "text-sky-400" },
+                    { id: "card", label: "Card", Icon: CreditCard, enabled: false, tint: "from-violet-500/20 to-violet-600/5", iconColor: "text-violet-400" },
+                    { id: "fintech", label: "Opay/PalmPay", Icon: WalletIcon, enabled: false, tint: "from-amber-500/20 to-amber-600/5", iconColor: "text-amber-400" },
+                    { id: "qr", label: "QR Pay", Icon: QrCode, enabled: false, tint: "from-pink-500/20 to-pink-600/5", iconColor: "text-pink-400" },
+                    { id: "other", label: "Other", Icon: MoreHorizontal, enabled: false, tint: "from-slate-500/20 to-slate-600/5", iconColor: "text-slate-300" },
+                  ].map(({ id, label, Icon, enabled, tint, iconColor }) => {
                     const active = paymentMethod === id;
                     return (
                       <button
@@ -586,7 +590,7 @@ const Wallet = () => {
                         type="button"
                         disabled={!enabled}
                         onClick={() => enabled && setPaymentMethod(id)}
-                        className={`relative aspect-square rounded-xl border p-2 flex flex-col items-center justify-center gap-1 transition-all ${
+                        className={`relative aspect-square rounded-xl border p-2 flex flex-col items-center justify-center gap-1.5 transition-all ${
                           active
                             ? "border-primary bg-primary/10 shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
                             : "border-border/60 bg-secondary/30 hover:border-border"
@@ -597,7 +601,9 @@ const Wallet = () => {
                             <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
                           </span>
                         )}
-                        <Icon className={`w-5 h-5 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                        <span className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tint} flex items-center justify-center ring-1 ring-white/5`}>
+                          <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={2.2} />
+                        </span>
                         <span className={`text-[9px] font-semibold leading-tight text-center ${active ? "text-foreground" : "text-muted-foreground"}`}>
                           {label}
                         </span>
@@ -605,44 +611,6 @@ const Wallet = () => {
                     );
                   })}
                 </div>
-
-                {/* Accepted Banks Strip */}
-                {paymentMethod === "bank_transfer" && (
-                  <div className="mt-3 rounded-xl border border-border/40 bg-secondary/30 px-3 py-2.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                      Accepted Banks
-                    </p>
-                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1">
-                      {[
-                        { name: "GTB", color: "from-orange-500 to-orange-700" },
-                        { name: "Access", color: "from-orange-400 to-red-600" },
-                        { name: "UBA", color: "from-red-600 to-red-800" },
-                        { name: "Zenith", color: "from-red-500 to-rose-700" },
-                        { name: "First", color: "from-blue-700 to-blue-900" },
-                        { name: "Opay", color: "from-emerald-400 to-emerald-600" },
-                        { name: "Kuda", color: "from-purple-600 to-fuchsia-700" },
-                        { name: "PalmPay", color: "from-violet-500 to-purple-700" },
-                        { name: "Moniepoint", color: "from-blue-500 to-indigo-700" },
-                        { name: "Fidelity", color: "from-amber-500 to-orange-700" },
-                      ].map((b) => (
-                        <div
-                          key={b.name}
-                          className="flex flex-col items-center gap-1 min-w-[42px]"
-                          title={b.name}
-                        >
-                          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${b.color} flex items-center justify-center shadow-md ring-1 ring-white/10`}>
-                            <span className="text-[10px] font-black text-white tracking-tight">
-                              {b.name.slice(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                          <span className="text-[8px] font-semibold text-muted-foreground truncate w-full text-center">
-                            {b.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
 
