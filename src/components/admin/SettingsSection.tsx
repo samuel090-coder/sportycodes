@@ -40,6 +40,14 @@ export const SettingsSection = () => {
     deposit_brand_tag: "Virtual Secure Account",
   });
 
+  const [apkSettings, setApkSettings] = useState({
+    apk_banner_enabled: "true",
+    apk_download_url: "",
+    apk_banner_title: "Get the SPORTY CODES App",
+    apk_banner_text: "Download the official Android APK for the fastest, smoothest experience.",
+    apk_version: "1.0.0",
+  });
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -57,6 +65,7 @@ export const SettingsSection = () => {
         const bank: any = { ...bankSettings };
         const tap: any = { ...tapSettings };
         const branding: any = { ...depositBranding };
+        const apk: any = { ...apkSettings };
 
         data.forEach(item => {
           if (["bank_name", "account_name", "account_number"].includes(item.setting_key)) {
@@ -65,6 +74,8 @@ export const SettingsSection = () => {
             tap[item.setting_key] = item.setting_value;
           } else if (item.setting_key === "whatsapp_number") {
             setWhatsappNumber(item.setting_value);
+          } else if (item.setting_key in apk) {
+            apk[item.setting_key] = item.setting_value;
           } else if (item.setting_key in branding) {
             branding[item.setting_key] = item.setting_value;
           }
@@ -73,6 +84,7 @@ export const SettingsSection = () => {
         setBankSettings(bank);
         setTapSettings(tap);
         setDepositBranding(branding);
+        setApkSettings(apk);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -86,7 +98,7 @@ export const SettingsSection = () => {
     setIsSaving(true);
     try {
       // Combine all settings
-      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, whatsapp_number: whatsappNumber };
+      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, ...apkSettings, whatsapp_number: whatsappNumber };
       
       // Upsert each setting
       for (const [key, value] of Object.entries(allSettings)) {
@@ -291,6 +303,75 @@ export const SettingsSection = () => {
               />
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* APK Download Banner */}
+      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
+        <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+          <Smartphone className="w-5 h-5 text-primary" />
+          APK Download Banner
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          A center-screen banner inviting users to download the Android APK. Users can choose "Do not show again".
+        </p>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-3">
+            <div>
+              <Label className="text-foreground">Enable Banner</Label>
+              <p className="text-xs text-muted-foreground">Show the APK download popup to all users.</p>
+            </div>
+            <Switch
+              checked={apkSettings.apk_banner_enabled === "true"}
+              onCheckedChange={(v) =>
+                setApkSettings(prev => ({ ...prev, apk_banner_enabled: v ? "true" : "false" }))
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground">APK Download URL</Label>
+            <Input
+              value={apkSettings.apk_download_url}
+              onChange={(e) => setApkSettings(prev => ({ ...prev, apk_download_url: e.target.value }))}
+              placeholder="https://example.com/sporty-codes.apk"
+              className="bg-background border-border"
+            />
+            <p className="text-xs text-muted-foreground">
+              Direct link to the .apk file. Leave empty to hide the banner.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-foreground">Banner Title</Label>
+              <Input
+                value={apkSettings.apk_banner_title}
+                onChange={(e) => setApkSettings(prev => ({ ...prev, apk_banner_title: e.target.value }))}
+                className="bg-background border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">App Version</Label>
+              <Input
+                value={apkSettings.apk_version}
+                onChange={(e) => setApkSettings(prev => ({ ...prev, apk_version: e.target.value }))}
+                placeholder="1.0.0"
+                className="bg-background border-border"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground">Banner Message</Label>
+            <Textarea
+              value={apkSettings.apk_banner_text}
+              onChange={(e) => setApkSettings(prev => ({ ...prev, apk_banner_text: e.target.value }))}
+              rows={3}
+              className="bg-background border-border"
+            />
+          </div>
         </div>
       </Card>
 
