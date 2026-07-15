@@ -208,6 +208,7 @@ const RoomDetail = () => {
       user_id: userId,
       content: msg,
       message_type: "text",
+      metadata: { frame: chatFrame },
     });
     supabase.functions.invoke("notify-room-message", {
       body: { room_id: roomId, sender_id: userId, message_preview: msg.substring(0, 80) },
