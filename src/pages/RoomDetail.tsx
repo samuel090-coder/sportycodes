@@ -422,22 +422,31 @@ const RoomDetail = () => {
                       {msg.profiles?.display_name || msg.profiles?.username || "User"}
                     </p>
                   )}
-                  <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-secondary text-foreground rounded-bl-md"
-                  }`}>
-                    {isMedia && meta.media_url && (
-                      <RoomMediaMessage
-                        mediaUrl={meta.media_url}
-                        mediaType={meta.media_type || "image"}
-                        caption={msg.content !== meta.file_name ? msg.content || undefined : undefined}
-                      />
-                    )}
-                    {isVoice && meta.audio_url && (
-                      <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
-                    )}
-                    {!isMedia && !isVoice && msg.content}
-                  </div>
+                  {isMedia || isVoice ? (
+                    <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
+                      ? "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-secondary text-foreground rounded-bl-md"
+                    }`}>
+                      {isMedia && meta.media_url && (
+                        <RoomMediaMessage
+                          mediaUrl={meta.media_url}
+                          mediaType={meta.media_type || "image"}
+                          caption={msg.content !== meta.file_name ? msg.content || undefined : undefined}
+                        />
+                      )}
+                      {isVoice && meta.audio_url && (
+                        <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
+                      )}
+                    </div>
+                  ) : (
+                    <FramedBubble
+                      frameId={meta.frame}
+                      align={isMe ? "right" : "left"}
+                      onDoubleClick={isMe ? () => setFramePickerOpen(true) : undefined}
+                    >
+                      {msg.content}
+                    </FramedBubble>
+                  )}
                   <RoomMessageReactions messageId={msg.id} userId={userId} />
                   <p className={`text-[9px] text-muted-foreground mt-0.5 ${isMe ? "text-right mr-1" : "ml-1"}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
