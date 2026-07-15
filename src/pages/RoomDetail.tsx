@@ -20,6 +20,8 @@ import { RoomVoiceNote } from "@/components/rooms/RoomVoiceNote";
 import { RoomVoicePlayer } from "@/components/rooms/RoomVoicePlayer";
 import { RoomMessageReactions } from "@/components/rooms/RoomMessageReactions";
 import { Badge } from "@/components/ui/badge";
+import { FramedBubble } from "@/components/rooms/MessageFrames";
+import { FramePickerSheet } from "@/components/rooms/FramePickerSheet";
 
 interface Message {
   id: string;
