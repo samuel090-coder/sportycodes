@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown } from "lucide-react";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown, Phone } from "lucide-react";
+import { RoomVoiceCall } from "@/components/rooms/RoomVoiceCall";
 import { useToast } from "@/hooks/use-toast";
 import { RoomSettings } from "@/components/rooms/RoomSettings";
 import { RoomEventSheet } from "@/components/rooms/RoomEventSheet";
@@ -71,6 +72,8 @@ const RoomDetail = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [chatFrame, setChatFrame] = useState<string>("default");
   const [framePickerOpen, setFramePickerOpen] = useState(false);
+  const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
 
 
 
@@ -79,8 +82,9 @@ const RoomDetail = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
       setUserId(user.id);
-      const { data: prof } = await supabase.from("profiles").select("chat_frame").eq("id", user.id).maybeSingle();
+      const { data: prof } = await supabase.from("profiles").select("chat_frame, display_name, avatar_url").eq("id", user.id).maybeSingle();
       if (prof?.chat_frame) setChatFrame(prof.chat_frame);
+      if (prof) setMyProfile({ display_name: prof.display_name, avatar_url: prof.avatar_url });
       await fetchRoom();
       await checkMembership(user.id);
       setLoading(false);
@@ -307,6 +311,9 @@ const RoomDetail = () => {
         <div className="flex items-center gap-0.5">
           {isMember && (
             <>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={() => setVoiceCallOpen(true)} title="Voice Call">
+                <Phone className="w-3.5 h-3.5" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
                 <Tag className="w-3.5 h-3.5" />
               </Button>
@@ -526,6 +533,16 @@ const RoomDetail = () => {
         currentFrame={chatFrame}
         onSelect={updateChatFrame}
       />
+      {userId && (
+        <RoomVoiceCall
+          open={voiceCallOpen}
+          onClose={() => setVoiceCallOpen(false)}
+          roomId={roomId!}
+          userId={userId}
+          displayName={myProfile?.display_name || "User"}
+          avatarUrl={myProfile?.avatar_url}
+        />
+      )}
     </div>
   );
 };
