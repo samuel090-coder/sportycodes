@@ -473,6 +473,24 @@ const RoomDetail = () => {
             <Paperclip className="w-4 h-4" />
           </Button>
           <RoomVoiceNote onSend={handleVoiceSend} />
+          <button
+            type="button"
+            onClick={() => setFramePickerOpen(true)}
+            title="Pick message frame"
+            className="h-8 px-2 shrink-0 rounded-md bg-secondary hover:bg-secondary/70 text-sm flex items-center gap-1 border border-border"
+          >
+            <span className="text-base leading-none">
+              {(() => {
+                // small live preview of chosen frame's emoji
+                const map: Record<string, string> = {
+                  default: "💬", "neon-cat": "🐱", "puppy-love": "🐶", "dragon-fire": "🐉",
+                  "star-burst": "⭐", arcade: "👾", "bubble-tea": "🧋", galaxy: "🌌",
+                  matrix: "🖥️", royal: "👑", "love-note": "💌", holo: "🦄", frost: "❄️", "cyber-skull": "💀",
+                };
+                return map[chatFrame] || "💬";
+              })()}
+            </span>
+          </button>
           <Input
             placeholder="Type a message..."
             value={newMessage}
