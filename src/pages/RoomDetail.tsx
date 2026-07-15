@@ -20,6 +20,8 @@ import { RoomVoiceNote } from "@/components/rooms/RoomVoiceNote";
 import { RoomVoicePlayer } from "@/components/rooms/RoomVoicePlayer";
 import { RoomMessageReactions } from "@/components/rooms/RoomMessageReactions";
 import { Badge } from "@/components/ui/badge";
+import { FramedBubble } from "@/components/rooms/MessageFrames";
+import { FramePickerSheet } from "@/components/rooms/FramePickerSheet";
 
 interface Message {
   id: string;
@@ -67,18 +69,25 @@ const RoomDetail = () => {
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatFrame, setChatFrame] = useState<string>("default");
+  const [framePickerOpen, setFramePickerOpen] = useState(false);
+
+
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
       setUserId(user.id);
+      const { data: prof } = await supabase.from("profiles").select("chat_frame").eq("id", user.id).maybeSingle();
+      if (prof?.chat_frame) setChatFrame(prof.chat_frame);
       await fetchRoom();
       await checkMembership(user.id);
       setLoading(false);
     };
     init();
   }, [roomId]);
+
 
   useEffect(() => {
     if (!isMember || !roomId) return;
@@ -199,6 +208,7 @@ const RoomDetail = () => {
       user_id: userId,
       content: msg,
       message_type: "text",
+      metadata: { frame: chatFrame },
     });
     supabase.functions.invoke("notify-room-message", {
       body: { room_id: roomId, sender_id: userId, message_preview: msg.substring(0, 80) },
@@ -257,6 +267,13 @@ const RoomDetail = () => {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const updateChatFrame = async (frameId: string) => {
+    setChatFrame(frameId);
+    if (!userId) return;
+    await supabase.from("profiles").update({ chat_frame: frameId }).eq("id", userId);
+    toast({ title: "Frame updated ✨", description: "Your next messages will use this frame." });
   };
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
@@ -405,22 +422,31 @@ const RoomDetail = () => {
                       {msg.profiles?.display_name || msg.profiles?.username || "User"}
                     </p>
                   )}
-                  <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-secondary text-foreground rounded-bl-md"
-                  }`}>
-                    {isMedia && meta.media_url && (
-                      <RoomMediaMessage
-                        mediaUrl={meta.media_url}
-                        mediaType={meta.media_type || "image"}
-                        caption={msg.content !== meta.file_name ? msg.content || undefined : undefined}
-                      />
-                    )}
-                    {isVoice && meta.audio_url && (
-                      <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
-                    )}
-                    {!isMedia && !isVoice && msg.content}
-                  </div>
+                  {isMedia || isVoice ? (
+                    <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
+                      ? "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-secondary text-foreground rounded-bl-md"
+                    }`}>
+                      {isMedia && meta.media_url && (
+                        <RoomMediaMessage
+                          mediaUrl={meta.media_url}
+                          mediaType={meta.media_type || "image"}
+                          caption={msg.content !== meta.file_name ? msg.content || undefined : undefined}
+                        />
+                      )}
+                      {isVoice && meta.audio_url && (
+                        <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
+                      )}
+                    </div>
+                  ) : (
+                    <FramedBubble
+                      frameId={meta.frame}
+                      align={isMe ? "right" : "left"}
+                      onDoubleClick={isMe ? () => setFramePickerOpen(true) : undefined}
+                    >
+                      {msg.content}
+                    </FramedBubble>
+                  )}
                   <RoomMessageReactions messageId={msg.id} userId={userId} />
                   <p className={`text-[9px] text-muted-foreground mt-0.5 ${isMe ? "text-right mr-1" : "ml-1"}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -447,6 +473,24 @@ const RoomDetail = () => {
             <Paperclip className="w-4 h-4" />
           </Button>
           <RoomVoiceNote onSend={handleVoiceSend} />
+          <button
+            type="button"
+            onClick={() => setFramePickerOpen(true)}
+            title="Pick message frame"
+            className="h-8 px-2 shrink-0 rounded-md bg-secondary hover:bg-secondary/70 text-sm flex items-center gap-1 border border-border"
+          >
+            <span className="text-base leading-none">
+              {(() => {
+                // small live preview of chosen frame's emoji
+                const map: Record<string, string> = {
+                  default: "💬", "neon-cat": "🐱", "puppy-love": "🐶", "dragon-fire": "🐉",
+                  "star-burst": "⭐", arcade: "👾", "bubble-tea": "🧋", galaxy: "🌌",
+                  matrix: "🖥️", royal: "👑", "love-note": "💌", holo: "🦄", frost: "❄️", "cyber-skull": "💀",
+                };
+                return map[chatFrame] || "💬";
+              })()}
+            </span>
+          </button>
           <Input
             placeholder="Type a message..."
             value={newMessage}
@@ -476,6 +520,12 @@ const RoomDetail = () => {
       <RoomCreatePoolSheet open={createPoolOpen} onOpenChange={setCreatePoolOpen} roomId={roomId!} userId={userId!} />
       <RoomGamesSheet open={gamesOpen} onOpenChange={setGamesOpen} roomId={roomId!} userId={userId!} />
       <RoomCrossPostSheet open={crossPostOpen} onOpenChange={setCrossPostOpen} roomId={roomId!} roomName={room.name} userId={userId!} />
+      <FramePickerSheet
+        open={framePickerOpen}
+        onOpenChange={setFramePickerOpen}
+        currentFrame={chatFrame}
+        onSelect={updateChatFrame}
+      />
     </div>
   );
 };

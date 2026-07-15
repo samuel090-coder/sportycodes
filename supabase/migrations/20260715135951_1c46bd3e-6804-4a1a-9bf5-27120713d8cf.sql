@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS chat_frame text NOT NULL DEFAULT 'default';
