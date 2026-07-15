@@ -269,6 +269,13 @@ const RoomDetail = () => {
     }
   };
 
+  const updateChatFrame = async (frameId: string) => {
+    setChatFrame(frameId);
+    if (!userId) return;
+    await supabase.from("profiles").update({ chat_frame: frameId }).eq("id", userId);
+    toast({ title: "Frame updated ✨", description: "Your next messages will use this frame." });
+  };
+
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
   if (!room) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Room not found</div>;
 
