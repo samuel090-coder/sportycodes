@@ -69,6 +69,10 @@ const RoomDetail = () => {
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatFrame, setChatFrame] = useState<string>("default");
+  const [framePickerOpen, setFramePickerOpen] = useState(false);
+
+
 
   useEffect(() => {
     const init = async () => {
