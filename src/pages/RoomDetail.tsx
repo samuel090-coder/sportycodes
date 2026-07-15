@@ -520,7 +520,17 @@ const RoomDetail = () => {
       <RoomCreatePoolSheet open={createPoolOpen} onOpenChange={setCreatePoolOpen} roomId={roomId!} userId={userId!} />
       <RoomGamesSheet open={gamesOpen} onOpenChange={setGamesOpen} roomId={roomId!} userId={userId!} />
       <RoomCrossPostSheet open={crossPostOpen} onOpenChange={setCrossPostOpen} roomId={roomId!} roomName={room.name} userId={userId!} />
+      <FramePickerSheet
+        open={framePickerOpen}
+        onOpenChange={setFramePickerOpen}
+        currentFrame={chatFrame}
+        onSelect={updateChatFrame}
+      />
     </div>
+  );
+};
+
+export default RoomDetail;
   );
 };
 
