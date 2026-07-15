@@ -82,8 +82,9 @@ const RoomDetail = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
       setUserId(user.id);
-      const { data: prof } = await supabase.from("profiles").select("chat_frame").eq("id", user.id).maybeSingle();
+      const { data: prof } = await supabase.from("profiles").select("chat_frame, display_name, avatar_url").eq("id", user.id).maybeSingle();
       if (prof?.chat_frame) setChatFrame(prof.chat_frame);
+      if (prof) setMyProfile({ display_name: prof.display_name, avatar_url: prof.avatar_url });
       await fetchRoom();
       await checkMembership(user.id);
       setLoading(false);
