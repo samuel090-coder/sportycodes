@@ -83,3 +83,92 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* ============= Chat Message Frames ============= */
+@keyframes frame-neon-cycle {
+  0%   { background: linear-gradient(135deg, hsl(180 100% 50%), hsl(270 100% 65%)); }
+  33%  { background: linear-gradient(135deg, hsl(270 100% 65%), hsl(320 100% 60%)); }
+  66%  { background: linear-gradient(135deg, hsl(320 100% 60%), hsl(142 84% 55%)); }
+  100% { background: linear-gradient(135deg, hsl(142 84% 55%), hsl(180 100% 50%)); }
+}
+.frame-anim-neon { animation: frame-neon-cycle 5s linear infinite; }
+
+@keyframes frame-heartbeat {
+  0%, 100% { transform: scale(1); }
+  20% { transform: scale(1.03); }
+  40% { transform: scale(0.99); }
+  60% { transform: scale(1.02); }
+}
+.frame-anim-heartbeat { animation: frame-heartbeat 1.6s ease-in-out infinite; }
+
+@keyframes frame-flame {
+  0%   { filter: hue-rotate(0deg) brightness(1); transform: translateY(0); }
+  50%  { filter: hue-rotate(-15deg) brightness(1.15); transform: translateY(-1px); }
+  100% { filter: hue-rotate(0deg) brightness(1); transform: translateY(0); }
+}
+.frame-anim-flame { animation: frame-flame 1.4s ease-in-out infinite; }
+
+@keyframes frame-shine {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.35); }
+  100% { filter: brightness(1); }
+}
+.frame-anim-shine { animation: frame-shine 2.2s ease-in-out infinite; }
+
+@keyframes frame-spin-slow { to { transform: rotate(360deg); } }
+.frame-spin-slow { animation: frame-spin-slow 6s linear infinite; display: inline-block; }
+
+@keyframes frame-marchingants {
+  to { background-position: 20px 0; }
+}
+.frame-anim-marchingants {
+  background-image: repeating-linear-gradient(45deg, hsl(142 84% 55% / 0.15) 0 6px, transparent 6px 12px);
+  animation: frame-marchingants 1s linear infinite;
+}
+
+@keyframes frame-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%     { transform: translateY(-2px); }
+}
+.frame-anim-bounce { animation: frame-bounce 1.8s ease-in-out infinite; }
+
+@keyframes frame-spin-conic { to { transform: rotate(360deg); } }
+.frame-anim-spin-conic {
+  animation: frame-spin-conic 6s linear infinite;
+}
+
+@keyframes frame-scanlines {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 12px; }
+}
+.frame-anim-scanlines {
+  background-image: repeating-linear-gradient(0deg, hsl(142 84% 55% / 0.08) 0 2px, transparent 2px 4px);
+  animation: frame-scanlines 0.6s linear infinite;
+}
+
+@keyframes frame-holo {
+  0%   { background: linear-gradient(90deg, #ff77e9, #78dbff, #a4ff9c, #ffd77a, #ff77e9); background-size: 300% 100%; background-position: 0% 50%; }
+  100% { background: linear-gradient(90deg, #ff77e9, #78dbff, #a4ff9c, #ffd77a, #ff77e9); background-size: 300% 100%; background-position: 100% 50%; }
+}
+.frame-anim-holo { animation: frame-holo 4s linear infinite; }
+
+@keyframes frame-frost {
+  0%, 100% { box-shadow: 0 0 12px hsl(200 100% 70% / 0.4); }
+  50%     { box-shadow: 0 0 24px hsl(200 100% 80% / 0.7); }
+}
+.frame-anim-frost { animation: frame-frost 2.4s ease-in-out infinite; }
+
+@keyframes frame-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%     { transform: translateY(-3px) rotate(-6deg); }
+}
+.frame-anim-float { animation: frame-float 2.2s ease-in-out infinite; }
+
+@keyframes frame-glitch {
+  0%, 100% { transform: translate(0, 0); filter: hue-rotate(0deg); }
+  20% { transform: translate(-1px, 1px); filter: hue-rotate(15deg); }
+  40% { transform: translate(1px, -1px); filter: hue-rotate(-10deg); }
+  60% { transform: translate(-1px, 0);   filter: hue-rotate(5deg); }
+}
+.frame-anim-glitch { animation: frame-glitch 1.6s steps(4, end) infinite; }
+
