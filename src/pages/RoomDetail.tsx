@@ -72,6 +72,8 @@ const RoomDetail = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [chatFrame, setChatFrame] = useState<string>("default");
   const [framePickerOpen, setFramePickerOpen] = useState(false);
+  const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
 
 
 
