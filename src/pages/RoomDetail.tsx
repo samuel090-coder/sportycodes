@@ -311,6 +311,9 @@ const RoomDetail = () => {
         <div className="flex items-center gap-0.5">
           {isMember && (
             <>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={() => setVoiceCallOpen(true)} title="Voice Call">
+                <Phone className="w-3.5 h-3.5" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
                 <Tag className="w-3.5 h-3.5" />
               </Button>
