@@ -533,6 +533,16 @@ const RoomDetail = () => {
         currentFrame={chatFrame}
         onSelect={updateChatFrame}
       />
+      {userId && (
+        <RoomVoiceCall
+          open={voiceCallOpen}
+          onClose={() => setVoiceCallOpen(false)}
+          roomId={roomId!}
+          userId={userId}
+          displayName={myProfile?.display_name || "User"}
+          avatarUrl={myProfile?.avatar_url}
+        />
+      )}
     </div>
   );
 };
