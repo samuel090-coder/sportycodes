@@ -531,6 +531,3 @@ const RoomDetail = () => {
 };
 
 export default RoomDetail;
-
-
-export default RoomDetail;
