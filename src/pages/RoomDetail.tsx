@@ -73,6 +73,7 @@ const RoomDetail = () => {
   const [chatFrame, setChatFrame] = useState<string>("default");
   const [framePickerOpen, setFramePickerOpen] = useState(false);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [activeCallers, setActiveCallers] = useState<{ displayName?: string; avatarUrl?: string | null }[]>([]);
   const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
 
 
