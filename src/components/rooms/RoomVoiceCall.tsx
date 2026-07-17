@@ -42,6 +42,8 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, Peer>>({});
   const channelRef = useRef<any>(null);
+  const pingChannelRef = useRef<any>(null);
+  const pingIntervalRef = useRef<any>(null);
   const audioContainerRef = useRef<HTMLDivElement>(null);
 
   const updatePeer = (uid: string, patch: Partial<Peer>) => {
