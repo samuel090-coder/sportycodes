@@ -196,6 +196,23 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
             setConnected(true);
           }
         });
+
+      // Public heartbeat channel so ALL room members (even those not in the call) know a call is live
+      const pingCh = supabase.channel(`voice-ping-${roomId}`, { config: { broadcast: { self: false } } });
+      pingChannelRef.current = pingCh;
+      pingCh.subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          const send = () => {
+            pingCh.send({
+              type: "broadcast",
+              event: "ping",
+              payload: { userId, displayName, avatarUrl, ts: Date.now() },
+            });
+          };
+          send();
+          pingIntervalRef.current = setInterval(send, 3000);
+        }
+      });
     } catch (err: any) {
       toast({ title: "Microphone blocked", description: err.message || "Enable mic access to join the call", variant: "destructive" });
       onClose();
