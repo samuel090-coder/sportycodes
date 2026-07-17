@@ -112,33 +112,29 @@ const RoomDetail = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isMember, roomId]);
 
-  // Observe active voice-call participants so members see a "ringing" banner
+  // Listen for active voice-call heartbeats so members see a "ringing" banner
   useEffect(() => {
-    if (!isMember || !roomId || !userId) return;
-    const observerKey = `observer-${userId}-${Math.random().toString(36).slice(2, 8)}`;
-    const ch = supabase.channel(`voice-${roomId}`, {
-      config: { presence: { key: observerKey } },
-    });
-    const sync = () => {
-      const state = ch.presenceState() as Record<string, any[]>;
-      const callers: { displayName?: string; avatarUrl?: string | null }[] = [];
-      Object.entries(state).forEach(([key, metas]) => {
-        if (key.startsWith("observer-")) return;
-        const m = metas[0] || {};
-        callers.push({ displayName: m.displayName, avatarUrl: m.avatarUrl });
-      });
-      setActiveCallers(callers);
+    if (!isMember || !roomId) return;
+    const seen = new Map<string, { ts: number; displayName?: string; avatarUrl?: string | null }>();
+    const refresh = () => {
+      const now = Date.now();
+      for (const [uid, v] of seen) if (now - v.ts > 8000) seen.delete(uid);
+      setActiveCallers(Array.from(seen.values()).map((v) => ({ displayName: v.displayName, avatarUrl: v.avatarUrl })));
     };
-    ch.on("presence", { event: "sync" }, sync)
-      .on("presence", { event: "join" }, sync)
-      .on("presence", { event: "leave" }, sync)
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await ch.track({ observer: true });
-        }
-      });
-    return () => { supabase.removeChannel(ch); };
-  }, [isMember, roomId, userId]);
+    const ch = supabase.channel(`voice-ping-${roomId}`, { config: { broadcast: { self: false } } })
+      .on("broadcast", { event: "ping" }, ({ payload }) => {
+        if (!payload?.userId) return;
+        seen.set(payload.userId, { ts: Date.now(), displayName: payload.displayName, avatarUrl: payload.avatarUrl });
+        refresh();
+      })
+      .on("broadcast", { event: "left" }, ({ payload }) => {
+        if (payload?.userId) seen.delete(payload.userId);
+        refresh();
+      })
+      .subscribe();
+    const interval = setInterval(refresh, 3000);
+    return () => { clearInterval(interval); supabase.removeChannel(ch); };
+  }, [isMember, roomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
