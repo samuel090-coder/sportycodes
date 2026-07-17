@@ -112,6 +112,34 @@ const RoomDetail = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isMember, roomId]);
 
+  // Observe active voice-call participants so members see a "ringing" banner
+  useEffect(() => {
+    if (!isMember || !roomId || !userId) return;
+    const observerKey = `observer-${userId}-${Math.random().toString(36).slice(2, 8)}`;
+    const ch = supabase.channel(`voice-${roomId}`, {
+      config: { presence: { key: observerKey } },
+    });
+    const sync = () => {
+      const state = ch.presenceState() as Record<string, any[]>;
+      const callers: { displayName?: string; avatarUrl?: string | null }[] = [];
+      Object.entries(state).forEach(([key, metas]) => {
+        if (key.startsWith("observer-")) return;
+        const m = metas[0] || {};
+        callers.push({ displayName: m.displayName, avatarUrl: m.avatarUrl });
+      });
+      setActiveCallers(callers);
+    };
+    ch.on("presence", { event: "sync" }, sync)
+      .on("presence", { event: "join" }, sync)
+      .on("presence", { event: "leave" }, sync)
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await ch.track({ observer: true });
+        }
+      });
+    return () => { supabase.removeChannel(ch); };
+  }, [isMember, roomId, userId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
