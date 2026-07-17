@@ -42,6 +42,8 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, Peer>>({});
   const channelRef = useRef<any>(null);
+  const pingChannelRef = useRef<any>(null);
+  const pingIntervalRef = useRef<any>(null);
   const audioContainerRef = useRef<HTMLDivElement>(null);
 
   const updatePeer = (uid: string, patch: Partial<Peer>) => {
@@ -194,6 +196,23 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
             setConnected(true);
           }
         });
+
+      // Public heartbeat channel so ALL room members (even those not in the call) know a call is live
+      const pingCh = supabase.channel(`voice-ping-${roomId}`, { config: { broadcast: { self: false } } });
+      pingChannelRef.current = pingCh;
+      pingCh.subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          const send = () => {
+            pingCh.send({
+              type: "broadcast",
+              event: "ping",
+              payload: { userId, displayName, avatarUrl, ts: Date.now() },
+            });
+          };
+          send();
+          pingIntervalRef.current = setInterval(send, 3000);
+        }
+      });
     } catch (err: any) {
       toast({ title: "Microphone blocked", description: err.message || "Enable mic access to join the call", variant: "destructive" });
       onClose();
@@ -201,6 +220,13 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
   };
 
   const endCall = () => {
+    try {
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+      pingChannelRef.current?.send({ type: "broadcast", event: "left", payload: { userId } });
+      pingChannelRef.current && supabase.removeChannel(pingChannelRef.current);
+    } catch {}
+    pingChannelRef.current = null;
     try {
       channelRef.current?.untrack();
       channelRef.current && supabase.removeChannel(channelRef.current);
