@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.generate_room_invite_code() TO authenticated;
