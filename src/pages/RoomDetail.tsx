@@ -122,11 +122,62 @@ const RoomDetail = () => {
   // Listen for active voice-call heartbeats so members see a "ringing" banner
   useEffect(() => {
     if (!isMember || !roomId) return;
+  // Load persisted missed calls
+  useEffect(() => {
+    if (!roomId || !userId) return;
+    try {
+      const raw = localStorage.getItem(`missed-calls-${roomId}-${userId}`);
+      if (raw) setMissedCalls(JSON.parse(raw));
+    } catch {}
+  }, [roomId, userId]);
+
+  const persistMissed = (list: MissedCall[]) => {
+    setMissedCalls(list);
+    if (roomId && userId) {
+      try { localStorage.setItem(`missed-calls-${roomId}-${userId}`, JSON.stringify(list.slice(0, 50))); } catch {}
+    }
+  };
+
+  // Listen for active voice-call heartbeats so members see a "ringing" banner
+  useEffect(() => {
+    if (!isMember || !roomId) return;
     const seen = new Map<string, { ts: number; displayName?: string; avatarUrl?: string | null }>();
     const refresh = () => {
       const now = Date.now();
       for (const [uid, v] of seen) if (now - v.ts > 8000) seen.delete(uid);
-      setActiveCallers(Array.from(seen.values()).map((v) => ({ displayName: v.displayName, avatarUrl: v.avatarUrl })));
+      const list = Array.from(seen.values()).map((v) => ({ displayName: v.displayName, avatarUrl: v.avatarUrl }));
+      setActiveCallers(list);
+
+      // Session tracking for missed-call detection
+      if (list.length > 0 && !callSessionRef.current) {
+        callSessionRef.current = { startedAt: now, participants: new Map() };
+        joinedThisSessionRef.current = voiceCallOpenRef.current;
+      }
+      if (callSessionRef.current) {
+        for (const [uid, v] of seen) {
+          callSessionRef.current.participants.set(uid, { displayName: v.displayName, avatarUrl: v.avatarUrl });
+        }
+      }
+      if (list.length === 0 && callSessionRef.current) {
+        const session = callSessionRef.current;
+        callSessionRef.current = null;
+        if (!joinedThisSessionRef.current && !voiceCallOpenRef.current) {
+          const missed: MissedCall = {
+            id: `${session.startedAt}`,
+            startedAt: session.startedAt,
+            endedAt: now,
+            participants: Array.from(session.participants.values()),
+          };
+          setMissedCalls((prev) => {
+            const next = [missed, ...prev].slice(0, 50);
+            if (roomId && userId) {
+              try { localStorage.setItem(`missed-calls-${roomId}-${userId}`, JSON.stringify(next)); } catch {}
+            }
+            return next;
+          });
+        }
+        joinedThisSessionRef.current = false;
+      }
     };
     const ch = supabase.channel(`voice-ping-${roomId}`, { config: { broadcast: { self: false } } })
       .on("broadcast", { event: "ping" }, ({ payload }) => {
@@ -141,7 +192,7 @@ const RoomDetail = () => {
       .subscribe();
     const interval = setInterval(refresh, 3000);
     return () => { clearInterval(interval); supabase.removeChannel(ch); };
-  }, [isMember, roomId]);
+  }, [isMember, roomId, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
