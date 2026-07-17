@@ -119,9 +119,6 @@ const RoomDetail = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isMember, roomId]);
 
-  // Listen for active voice-call heartbeats so members see a "ringing" banner
-  useEffect(() => {
-    if (!isMember || !roomId) return;
   // Load persisted missed calls
   useEffect(() => {
     if (!roomId || !userId) return;
