@@ -151,14 +151,17 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
           // For each remote user, if we don't have a peer and our id is lower, initiate
           Object.keys(state).forEach((uid) => {
             if (uid === userId) return;
+            if (uid.startsWith("observer-")) return; // ignore listeners not in the call
+            const meta = state[uid][0] || {};
+            if (meta?.observer) return;
             if (!peersRef.current[uid]) {
-              const meta = state[uid][0] || {};
               const initiator = userId < uid; // deterministic
               createPeer(uid, { displayName: meta.displayName || "User", avatarUrl: meta.avatarUrl }, initiator);
             }
           });
         })
         .on("presence", { event: "leave" }, ({ key }) => {
+          if (key.startsWith("observer-")) return;
           cleanupPeer(key);
         })
         .on("broadcast", { event: "offer" }, async ({ payload }) => {
