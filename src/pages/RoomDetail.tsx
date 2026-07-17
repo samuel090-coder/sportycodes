@@ -394,6 +394,14 @@ const RoomDetail = () => {
               <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={() => setVoiceCallOpen(true)} title="Voice Call">
                 <Phone className="w-3.5 h-3.5" />
               </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={() => setMissedOpen(true)} title="Missed Calls">
+                <PhoneMissed className={`w-3.5 h-3.5 ${missedCalls.length > 0 ? "text-destructive" : ""}`} />
+                {missedCalls.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-1">
+                    {missedCalls.length}
+                  </span>
+                )}
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
                 <Tag className="w-3.5 h-3.5" />
               </Button>
