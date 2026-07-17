@@ -653,6 +653,13 @@ const RoomDetail = () => {
           avatarUrl={myProfile?.avatar_url}
         />
       )}
+      <MissedCallsDialog
+        open={missedOpen}
+        onClose={() => setMissedOpen(false)}
+        calls={missedCalls}
+        onClear={() => persistMissed([])}
+        onCallBack={() => { setMissedOpen(false); setVoiceCallOpen(true); }}
+      />
     </div>
   );
 };
