@@ -221,6 +221,13 @@ export const RoomVoiceCall = ({ roomId, userId, displayName, avatarUrl, open, on
 
   const endCall = () => {
     try {
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+      pingChannelRef.current?.send({ type: "broadcast", event: "left", payload: { userId } });
+      pingChannelRef.current && supabase.removeChannel(pingChannelRef.current);
+    } catch {}
+    pingChannelRef.current = null;
+    try {
       channelRef.current?.untrack();
       channelRef.current && supabase.removeChannel(channelRef.current);
     } catch {}
