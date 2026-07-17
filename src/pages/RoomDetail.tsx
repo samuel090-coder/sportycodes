@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown, Phone } from "lucide-react";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown, Phone, PhoneMissed } from "lucide-react";
 import { RoomVoiceCall } from "@/components/rooms/RoomVoiceCall";
+import { MissedCallsDialog, type MissedCall } from "@/components/rooms/MissedCallsDialog";
 import { useToast } from "@/hooks/use-toast";
 import { RoomSettings } from "@/components/rooms/RoomSettings";
 import { RoomEventSheet } from "@/components/rooms/RoomEventSheet";
@@ -75,6 +76,12 @@ const RoomDetail = () => {
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
   const [activeCallers, setActiveCallers] = useState<{ displayName?: string; avatarUrl?: string | null }[]>([]);
   const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
+  const [missedCalls, setMissedCalls] = useState<MissedCall[]>([]);
+  const [missedOpen, setMissedOpen] = useState(false);
+  const callSessionRef = useRef<{ startedAt: number; participants: Map<string, { displayName?: string; avatarUrl?: string | null }> } | null>(null);
+  const joinedThisSessionRef = useRef(false);
+  const voiceCallOpenRef = useRef(false);
+  useEffect(() => { voiceCallOpenRef.current = voiceCallOpen; if (voiceCallOpen) joinedThisSessionRef.current = true; }, [voiceCallOpen]);
 
 
 
@@ -112,6 +119,22 @@ const RoomDetail = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isMember, roomId]);
 
+  // Load persisted missed calls
+  useEffect(() => {
+    if (!roomId || !userId) return;
+    try {
+      const raw = localStorage.getItem(`missed-calls-${roomId}-${userId}`);
+      if (raw) setMissedCalls(JSON.parse(raw));
+    } catch {}
+  }, [roomId, userId]);
+
+  const persistMissed = (list: MissedCall[]) => {
+    setMissedCalls(list);
+    if (roomId && userId) {
+      try { localStorage.setItem(`missed-calls-${roomId}-${userId}`, JSON.stringify(list.slice(0, 50))); } catch {}
+    }
+  };
+
   // Listen for active voice-call heartbeats so members see a "ringing" banner
   useEffect(() => {
     if (!isMember || !roomId) return;
@@ -119,7 +142,39 @@ const RoomDetail = () => {
     const refresh = () => {
       const now = Date.now();
       for (const [uid, v] of seen) if (now - v.ts > 8000) seen.delete(uid);
-      setActiveCallers(Array.from(seen.values()).map((v) => ({ displayName: v.displayName, avatarUrl: v.avatarUrl })));
+      const list = Array.from(seen.values()).map((v) => ({ displayName: v.displayName, avatarUrl: v.avatarUrl }));
+      setActiveCallers(list);
+
+      // Session tracking for missed-call detection
+      if (list.length > 0 && !callSessionRef.current) {
+        callSessionRef.current = { startedAt: now, participants: new Map() };
+        joinedThisSessionRef.current = voiceCallOpenRef.current;
+      }
+      if (callSessionRef.current) {
+        for (const [uid, v] of seen) {
+          callSessionRef.current.participants.set(uid, { displayName: v.displayName, avatarUrl: v.avatarUrl });
+        }
+      }
+      if (list.length === 0 && callSessionRef.current) {
+        const session = callSessionRef.current;
+        callSessionRef.current = null;
+        if (!joinedThisSessionRef.current && !voiceCallOpenRef.current) {
+          const missed: MissedCall = {
+            id: `${session.startedAt}`,
+            startedAt: session.startedAt,
+            endedAt: now,
+            participants: Array.from(session.participants.values()),
+          };
+          setMissedCalls((prev) => {
+            const next = [missed, ...prev].slice(0, 50);
+            if (roomId && userId) {
+              try { localStorage.setItem(`missed-calls-${roomId}-${userId}`, JSON.stringify(next)); } catch {}
+            }
+            return next;
+          });
+        }
+        joinedThisSessionRef.current = false;
+      }
     };
     const ch = supabase.channel(`voice-ping-${roomId}`, { config: { broadcast: { self: false } } })
       .on("broadcast", { event: "ping" }, ({ payload }) => {
@@ -134,7 +189,7 @@ const RoomDetail = () => {
       .subscribe();
     const interval = setInterval(refresh, 3000);
     return () => { clearInterval(interval); supabase.removeChannel(ch); };
-  }, [isMember, roomId]);
+  }, [isMember, roomId, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -338,6 +393,14 @@ const RoomDetail = () => {
             <>
               <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={() => setVoiceCallOpen(true)} title="Voice Call">
                 <Phone className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={() => setMissedOpen(true)} title="Missed Calls">
+                <PhoneMissed className={`w-3.5 h-3.5 ${missedCalls.length > 0 ? "text-destructive" : ""}`} />
+                {missedCalls.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-1">
+                    {missedCalls.length}
+                  </span>
+                )}
               </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
                 <Tag className="w-3.5 h-3.5" />
@@ -590,6 +653,13 @@ const RoomDetail = () => {
           avatarUrl={myProfile?.avatar_url}
         />
       )}
+      <MissedCallsDialog
+        open={missedOpen}
+        onClose={() => setMissedOpen(false)}
+        calls={missedCalls}
+        onClear={() => persistMissed([])}
+        onCallBack={() => { setMissedOpen(false); setVoiceCallOpen(true); }}
+      />
     </div>
   );
 };
