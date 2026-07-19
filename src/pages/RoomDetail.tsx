@@ -87,6 +87,42 @@ const RoomDetail = () => {
   const voiceCallOpenRef = useRef(false);
   useEffect(() => { voiceCallOpenRef.current = voiceCallOpen; if (voiceCallOpen) joinedThisSessionRef.current = true; }, [voiceCallOpen]);
 
+  // ---- FX state ----
+  const [pendingEffect, setPendingEffect] = useState<MsgEffect>("none");
+  const [fxTick, setFxTick] = useState({ confetti: 0, fireworks: 0, cashrain: 0, bursts: [] as { id: number; emoji: string; x: number; y: number }[] });
+  const fxSeenRef = useRef(0);
+  const soundFx = useSoundFX();
+
+  const triggerConfetti = () => setFxTick((s) => ({ ...s, confetti: s.confetti + 1 }));
+  const triggerFireworks = () => setFxTick((s) => ({ ...s, fireworks: s.fireworks + 1 }));
+  const triggerCashRainLocal = () => { setFxTick((s) => ({ ...s, cashrain: s.cashrain + 1 })); soundFx.play("coin"); };
+  const spawnBurst = (emoji: string) => {
+    const id = ++fxSeenRef.current;
+    const x = window.innerWidth / 2 + (Math.random() - 0.5) * 200;
+    const y = window.innerHeight / 2 + (Math.random() - 0.5) * 200;
+    setFxTick((s) => ({ ...s, bursts: [...s.bursts, { id, emoji, x, y }] }));
+    setTimeout(() => setFxTick((s) => ({ ...s, bursts: s.bursts.filter((b) => b.id !== id) })), 1500);
+    soundFx.play("pop");
+  };
+
+  useRoomFXBus(roomId, (ev: FxEvent) => {
+    if (ev.type === "confetti") triggerConfetti();
+    else if (ev.type === "fireworks") { triggerFireworks(); soundFx.play("pop"); }
+    else if (ev.type === "cashrain") triggerCashRainLocal();
+    else if (ev.type === "burst") spawnBurst(ev.emoji);
+  });
+
+  const broadcastCashRain = async () => {
+    if (!roomId || !userId) return;
+    await sendFx(roomId, { type: "cashrain", from: userId });
+  };
+  const broadcastBurst = async (emoji: string) => {
+    if (!roomId || !userId) return;
+    await sendFx(roomId, { type: "burst", from: userId, emoji });
+  };
+
+
+
 
 
   useEffect(() => {
