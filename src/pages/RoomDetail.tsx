@@ -24,6 +24,10 @@ import { RoomMessageReactions } from "@/components/rooms/RoomMessageReactions";
 import { Badge } from "@/components/ui/badge";
 import { FramedBubble } from "@/components/rooms/MessageFrames";
 import { FramePickerSheet } from "@/components/rooms/FramePickerSheet";
+import {
+  RoomFXLayer, ComposerFXMenu, MessageEffectWrapper, useSoundFX, useRoomFXBus, sendFx,
+  parseSlashCommand, commandToMessage, type MsgEffect, type FxEvent,
+} from "@/components/rooms/RoomFX";
 
 interface Message {
   id: string;
@@ -82,6 +86,42 @@ const RoomDetail = () => {
   const joinedThisSessionRef = useRef(false);
   const voiceCallOpenRef = useRef(false);
   useEffect(() => { voiceCallOpenRef.current = voiceCallOpen; if (voiceCallOpen) joinedThisSessionRef.current = true; }, [voiceCallOpen]);
+
+  // ---- FX state ----
+  const [pendingEffect, setPendingEffect] = useState<MsgEffect>("none");
+  const [fxTick, setFxTick] = useState({ confetti: 0, fireworks: 0, cashrain: 0, bursts: [] as { id: number; emoji: string; x: number; y: number }[] });
+  const fxSeenRef = useRef(0);
+  const soundFx = useSoundFX();
+
+  const triggerConfetti = () => setFxTick((s) => ({ ...s, confetti: s.confetti + 1 }));
+  const triggerFireworks = () => setFxTick((s) => ({ ...s, fireworks: s.fireworks + 1 }));
+  const triggerCashRainLocal = () => { setFxTick((s) => ({ ...s, cashrain: s.cashrain + 1 })); soundFx.play("coin"); };
+  const spawnBurst = (emoji: string) => {
+    const id = ++fxSeenRef.current;
+    const x = window.innerWidth / 2 + (Math.random() - 0.5) * 200;
+    const y = window.innerHeight / 2 + (Math.random() - 0.5) * 200;
+    setFxTick((s) => ({ ...s, bursts: [...s.bursts, { id, emoji, x, y }] }));
+    setTimeout(() => setFxTick((s) => ({ ...s, bursts: s.bursts.filter((b) => b.id !== id) })), 1500);
+    soundFx.play("pop");
+  };
+
+  useRoomFXBus(roomId, (ev: FxEvent) => {
+    if (ev.type === "confetti") triggerConfetti();
+    else if (ev.type === "fireworks") { triggerFireworks(); soundFx.play("pop"); }
+    else if (ev.type === "cashrain") triggerCashRainLocal();
+    else if (ev.type === "burst") spawnBurst(ev.emoji);
+  });
+
+  const broadcastCashRain = async () => {
+    if (!roomId || !userId) return;
+    await sendFx(roomId, { type: "cashrain", from: userId });
+  };
+  const broadcastBurst = async (emoji: string) => {
+    if (!roomId || !userId) return;
+    await sendFx(roomId, { type: "burst", from: userId, emoji });
+  };
+
+
 
 
 
@@ -287,13 +327,44 @@ const RoomDetail = () => {
     if (!newMessage.trim() || !userId || !roomId) return;
     const msg = newMessage.trim();
     setNewMessage("");
+    soundFx.play("send");
+
+    // Slash commands
+    const parsed = parseSlashCommand(msg);
+    if (parsed) {
+      const built = commandToMessage(parsed, myProfile?.display_name || "Someone");
+      if (built) {
+        await supabase.from("room_messages").insert({
+          room_id: roomId, user_id: userId,
+          content: built.content, message_type: built.message_type, metadata: {},
+        });
+        if (parsed.kind === "cashrain") broadcastCashRain();
+      }
+      return;
+    }
+
+    // Auto win-celebration
+    const isWin = /🏆|won\b|winner|jackpot/i.test(msg);
+    if (isWin) {
+      sendFx(roomId, { type: "confetti", from: userId });
+      soundFx.play("pop");
+    }
+
+    const effect = pendingEffect;
     await supabase.from("room_messages").insert({
       room_id: roomId,
       user_id: userId,
       content: msg,
       message_type: "text",
-      metadata: { frame: chatFrame },
+      metadata: { frame: chatFrame, effect: effect === "none" ? undefined : effect },
     });
+
+    // Broadcast fireworks for fireworks effect (visual for everyone)
+    if (effect === "fireworks") sendFx(roomId, { type: "fireworks", from: userId });
+    if (effect === "confetti") sendFx(roomId, { type: "confetti", from: userId });
+
+    setPendingEffect("none");
+
     supabase.functions.invoke("notify-room-message", {
       body: { room_id: roomId, sender_id: userId, message_preview: msg.substring(0, 80) },
     }).catch(() => {});
@@ -561,7 +632,9 @@ const RoomDetail = () => {
                       align={isMe ? "right" : "left"}
                       onDoubleClick={isMe ? () => setFramePickerOpen(true) : undefined}
                     >
-                      {msg.content}
+                      <MessageEffectWrapper effect={meta.effect as MsgEffect | undefined}>
+                        {msg.content}
+                      </MessageEffectWrapper>
                     </FramedBubble>
                   )}
                   <RoomMessageReactions messageId={msg.id} userId={userId} />
@@ -590,6 +663,14 @@ const RoomDetail = () => {
             <Paperclip className="w-4 h-4" />
           </Button>
           <RoomVoiceNote onSend={handleVoiceSend} />
+          <ComposerFXMenu
+            effect={pendingEffect}
+            onEffect={setPendingEffect}
+            onCashRain={broadcastCashRain}
+            onBurst={broadcastBurst}
+            soundOn={soundFx.on}
+            onToggleSound={soundFx.toggle}
+          />
           <button
             type="button"
             onClick={() => setFramePickerOpen(true)}
@@ -660,6 +741,9 @@ const RoomDetail = () => {
         onClear={() => persistMissed([])}
         onCallBack={() => { setMissedOpen(false); setVoiceCallOpen(true); }}
       />
+
+      {/* Global room FX overlay (confetti / cash rain / fireworks / mascot / late-night) */}
+      <RoomFXLayer active={fxTick} mascotEmoji={"🐶"} />
     </div>
   );
 };
