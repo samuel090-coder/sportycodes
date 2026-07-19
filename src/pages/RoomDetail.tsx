@@ -741,6 +741,9 @@ const RoomDetail = () => {
         onClear={() => persistMissed([])}
         onCallBack={() => { setMissedOpen(false); setVoiceCallOpen(true); }}
       />
+
+      {/* Global room FX overlay (confetti / cash rain / fireworks / mascot / late-night) */}
+      <RoomFXLayer active={fxTick} mascotEmoji={"🐶"} />
     </div>
   );
 };
