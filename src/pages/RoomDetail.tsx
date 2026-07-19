@@ -327,13 +327,44 @@ const RoomDetail = () => {
     if (!newMessage.trim() || !userId || !roomId) return;
     const msg = newMessage.trim();
     setNewMessage("");
+    soundFx.play("send");
+
+    // Slash commands
+    const parsed = parseSlashCommand(msg);
+    if (parsed) {
+      const built = commandToMessage(parsed, myProfile?.display_name || "Someone");
+      if (built) {
+        await supabase.from("room_messages").insert({
+          room_id: roomId, user_id: userId,
+          content: built.content, message_type: built.message_type, metadata: {},
+        });
+        if (parsed.kind === "cashrain") broadcastCashRain();
+      }
+      return;
+    }
+
+    // Auto win-celebration
+    const isWin = /🏆|won\b|winner|jackpot/i.test(msg);
+    if (isWin) {
+      sendFx(roomId, { type: "confetti", from: userId });
+      soundFx.play("pop");
+    }
+
+    const effect = pendingEffect;
     await supabase.from("room_messages").insert({
       room_id: roomId,
       user_id: userId,
       content: msg,
       message_type: "text",
-      metadata: { frame: chatFrame },
+      metadata: { frame: chatFrame, effect: effect === "none" ? undefined : effect },
     });
+
+    // Broadcast fireworks for fireworks effect (visual for everyone)
+    if (effect === "fireworks") sendFx(roomId, { type: "fireworks", from: userId });
+    if (effect === "confetti") sendFx(roomId, { type: "confetti", from: userId });
+
+    setPendingEffect("none");
+
     supabase.functions.invoke("notify-room-message", {
       body: { room_id: roomId, sender_id: userId, message_preview: msg.substring(0, 80) },
     }).catch(() => {});
