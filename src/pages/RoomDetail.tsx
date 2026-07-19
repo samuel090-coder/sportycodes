@@ -632,7 +632,9 @@ const RoomDetail = () => {
                       align={isMe ? "right" : "left"}
                       onDoubleClick={isMe ? () => setFramePickerOpen(true) : undefined}
                     >
-                      {msg.content}
+                      <MessageEffectWrapper effect={meta.effect as MsgEffect | undefined}>
+                        {msg.content}
+                      </MessageEffectWrapper>
                     </FramedBubble>
                   )}
                   <RoomMessageReactions messageId={msg.id} userId={userId} />
