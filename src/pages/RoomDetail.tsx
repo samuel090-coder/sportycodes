@@ -663,6 +663,14 @@ const RoomDetail = () => {
             <Paperclip className="w-4 h-4" />
           </Button>
           <RoomVoiceNote onSend={handleVoiceSend} />
+          <ComposerFXMenu
+            effect={pendingEffect}
+            onEffect={setPendingEffect}
+            onCashRain={broadcastCashRain}
+            onBurst={broadcastBurst}
+            soundOn={soundFx.on}
+            onToggleSound={soundFx.toggle}
+          />
           <button
             type="button"
             onClick={() => setFramePickerOpen(true)}
