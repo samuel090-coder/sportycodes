@@ -18,6 +18,7 @@ const menuItems = [
     icon: Activity,
     items: [
       { title: "Analytics", path: "/admin/analytics", icon: Activity },
+      { title: "Usage Dashboard", path: "/admin/usage", icon: Activity },
     ],
   },
   {

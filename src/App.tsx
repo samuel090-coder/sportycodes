@@ -58,6 +58,8 @@ import SupportChatWidget from "./components/SupportChatWidget";
 import ApkDownloadBanner from "./components/ApkDownloadBanner";
 import ResetPassword from "./pages/ResetPassword";
 import { SupportInboxSection } from "./components/admin/SupportInboxSection";
+import { UsageSection } from "./components/admin/UsageSection";
+import PresenceTracker from "./components/PresenceTracker";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -89,6 +91,7 @@ const App = () => {
             <AnnouncementBanner />
             <AnnouncementPopup />
             <AnnouncementToast />
+            <PresenceTracker />
             <SupportChatWidget />
             <ApkDownloadBanner />
             <InstallGate>
@@ -114,6 +117,7 @@ const App = () => {
                 <Route path="/wins" element={<WinningReviews />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route path="analytics" element={<AnalyticsSection />} />
+                  <Route path="usage" element={<UsageSection />} />
                   <Route path="security" element={<SecuritySection />} />
                   <Route path="win-reviews" element={<WinReviewsSection />} />
                   <Route path="users" element={<UserManagementSection />} />
