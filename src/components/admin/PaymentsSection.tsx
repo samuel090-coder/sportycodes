@@ -600,10 +600,11 @@ export const PaymentsSection = () => {
           <div className="space-y-4 mt-4">
             {/* User Search */}
             <div className="space-y-2">
-              <Label className="text-foreground">Find User (Username or User ID)</Label>
+              <Label className="text-foreground">Find User by Email</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Enter username or user ID..."
+                  type="email"
+                  placeholder="user@example.com"
                   value={creditUserEmail}
                   onChange={(e) => {
                     setCreditUserEmail(e.target.value);
