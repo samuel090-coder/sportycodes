@@ -273,9 +273,14 @@ const Wallet = () => {
       setLiveStatus("pending");
       try {
         localStorage.setItem(`vdeposit:${user.id}`, JSON.stringify({
-          amount: depositAmount, depositId: inserted?.id, createdAt: Date.now(),
+          amount: depositAmount, depositId: inserted?.id, createdAt: Date.now(), account: bankDetails,
         }));
+        // Rotate to a different account for the next deposit
+        const prev = parseInt(localStorage.getItem(`vbankidx:${user.id}`) || "", 10);
+        const base = Number.isFinite(prev) ? prev : deposits.length;
+        localStorage.setItem(`vbankidx:${user.id}`, String(base + 1));
       } catch {}
+
 
       toast.success("Deposit submitted! Watching for confirmation...");
       setDepositOpen(false); setDepositAmount(""); setScreenshot(null);
