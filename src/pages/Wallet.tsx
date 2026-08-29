@@ -74,6 +74,7 @@ const Wallet = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [bankDetails, setBankDetails] = useState({ bank_name: "", account_number: "", account_name: "" });
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [userName, setUserName] = useState<string>("");
   const [branding, setBranding] = useState({
     deposit_title: "Secure Deposit",
