@@ -231,7 +231,10 @@ export const SettingsSection = () => {
         </div>
       </Card>
 
-      {/* Bank Account Settings */}
+      {/* Rotating deposit accounts */}
+      <BankAccountsSection />
+
+      {/* Bank Account Settings (legacy fallback) */}
       <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
         <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
           <Building2 className="w-5 h-5 text-primary" />
