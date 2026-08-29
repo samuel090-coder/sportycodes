@@ -686,8 +686,22 @@ const Wallet = () => {
                   {depositStage === "amount" && (
                     <Button
                       onClick={() => {
+                        if (bankAccounts.length > 0) {
+                          let idx = 0;
+                          try {
+                            const stored = parseInt(localStorage.getItem(`vbankidx:${user?.id}`) || "", 10);
+                            idx = Number.isFinite(stored) ? stored : deposits.length;
+                          } catch { idx = deposits.length; }
+                          const acct = bankAccounts[Math.abs(idx) % bankAccounts.length];
+                          setBankDetails({
+                            bank_name: acct.bank_name,
+                            account_number: acct.account_number,
+                            account_name: acct.account_name,
+                          });
+                        }
                         setDepositStage("generating");
                         setRevealStep(0);
+
                         [1, 2, 3, 4].forEach((step, i) => {
                           setTimeout(() => {
                             setRevealStep(step);
