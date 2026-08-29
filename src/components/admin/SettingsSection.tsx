@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { MaintenanceSection } from "./MaintenanceSection";
 import { LiveVideosSection } from "./LiveVideosSection";
+import { BankAccountsSection } from "./BankAccountsSection";
 
 export const SettingsSection = () => {
   const [isLoading, setIsLoading] = useState(true);
