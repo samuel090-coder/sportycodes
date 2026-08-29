@@ -216,67 +216,27 @@ export const PaymentsSection = () => {
 
   const searchUser = async () => {
     if (!creditUserEmail.trim()) {
-      toast.error("Please enter a user email");
+      toast.error("Please enter the user's email");
       return;
     }
 
     setSearchingUser(true);
     setFoundUser(null);
     try {
-      // Search for user by email in profiles (via auth)
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, username")
-        .limit(100);
-
+      const { data, error } = await supabase.functions.invoke("admin-credit-wallet", {
+        body: { email: creditUserEmail.trim(), lookupOnly: true },
+      });
       if (error) throw error;
-
-      // Now check wallets to find matching user
-      const { data: wallets } = await supabase
-        .from("wallets")
-        .select("user_id, balance");
-
-      // Try to find user by checking deposit_requests for matching email pattern
-      const { data: depositUser } = await supabase
-        .from("deposit_requests")
-        .select("user_id")
-        .limit(1);
-
-      // For now, search by user_id if it looks like a UUID, otherwise show profiles list
-      if (creditUserEmail.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        const profile = profiles?.find(p => p.id === creditUserEmail);
-        const wallet = wallets?.find(w => w.user_id === creditUserEmail);
-        
-        if (profile || wallet) {
-          setFoundUser({
-            id: creditUserEmail,
-            display_name: profile?.display_name || profile?.username || "User",
-            balance: wallet?.balance || 0
-          });
-        } else {
-          toast.error("User not found");
-        }
-      } else {
-        // Search by username or display_name
-        const profile = profiles?.find(p => 
-          p.username?.toLowerCase() === creditUserEmail.toLowerCase() ||
-          p.display_name?.toLowerCase().includes(creditUserEmail.toLowerCase())
-        );
-
-        if (profile) {
-          const wallet = wallets?.find(w => w.user_id === profile.id);
-          setFoundUser({
-            id: profile.id,
-            display_name: profile.display_name || profile.username || "User",
-            balance: wallet?.balance || 0
-          });
-        } else {
-          toast.error("User not found. Try using their User ID instead.");
-        }
-      }
-    } catch (error) {
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setFoundUser({
+        id: (data as any).user_id,
+        email: (data as any).email,
+        display_name: (data as any).display_name,
+        balance: (data as any).balance,
+      });
+    } catch (error: any) {
       console.error("Error searching user:", error);
-      toast.error("Failed to search for user");
+      toast.error(error.message || "User not found");
     } finally {
       setSearchingUser(false);
     }
@@ -289,76 +249,40 @@ export const PaymentsSection = () => {
     }
 
     const amount = parseFloat(creditAmount);
-    if (amount <= 0) {
+    if (!(amount > 0)) {
       toast.error("Amount must be greater than 0");
       return;
     }
 
     setIsCrediting(true);
     try {
-      // Get current wallet
-      const { data: wallet, error: walletFetchError } = await supabase
-        .from("wallets")
-        .select("balance, total_deposited")
-        .eq("user_id", foundUser.id)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("admin-credit-wallet", {
+        body: { email: foundUser.email || creditUserEmail.trim(), amount, note: creditNote || "Direct credit by admin" },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
 
-      if (walletFetchError) throw walletFetchError;
+      logAudit("wallet_direct_credit", {
+        targetTable: "wallets",
+        targetUserId: (data as any).user_id,
+        details: { amount, note: creditNote || null },
+      });
 
-      if (wallet) {
-        // Update existing wallet
-        const { error: updateError } = await supabase
-          .from("wallets")
-          .update({
-            balance: (wallet.balance || 0) + amount,
-            total_deposited: (wallet.total_deposited || 0) + amount
-          })
-          .eq("user_id", foundUser.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Create new wallet
-        const { error: insertError } = await supabase
-          .from("wallets")
-          .insert({
-            user_id: foundUser.id,
-            balance: amount,
-            total_deposited: amount
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      // Create a deposit record for tracking
-      const { data: sessionData } = await supabase.auth.getSession();
-      const { error: depositError } = await supabase
-        .from("deposit_requests")
-        .insert({
-          user_id: foundUser.id,
-          amount,
-          payment_method: "admin_direct_credit",
-          status: "approved",
-          processed_at: new Date().toISOString(),
-          processed_by: sessionData?.session?.user?.id,
-          admin_note: creditNote || "Direct credit by admin"
-        });
-
-      if (depositError) throw depositError;
-
-      toast.success(`Successfully credited ₦${amount.toLocaleString()} to ${foundUser.display_name}'s wallet!`);
+      toast.success(`Credited ₦${amount.toLocaleString()} to ${(data as any).display_name}`);
       setDirectCreditOpen(false);
       setCreditUserEmail("");
       setCreditAmount("");
       setCreditNote("");
       setFoundUser(null);
       fetchDeposits();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error crediting wallet:", error);
-      toast.error("Failed to credit wallet");
+      toast.error(error.message || "Failed to credit wallet");
     } finally {
       setIsCrediting(false);
     }
   };
+
 
   const getStatusBadge = (status: string) => {
     const styles = {
