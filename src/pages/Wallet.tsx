@@ -74,6 +74,7 @@ const Wallet = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [bankDetails, setBankDetails] = useState({ bank_name: "", account_number: "", account_name: "" });
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [userName, setUserName] = useState<string>("");
   const [branding, setBranding] = useState({
     deposit_title: "Secure Deposit",
@@ -173,6 +174,14 @@ const Wallet = () => {
       setBankDetails(details);
       setBranding(brand);
 
+      // Pool of receiving accounts (rotates per deposit)
+      const { data: accountsData } = await supabase
+        .from("bank_accounts")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+      setBankAccounts(accountsData || []);
+
       // Restore in-flight virtual account session
       try {
         const saved = localStorage.getItem(`vdeposit:${userId}`);
@@ -180,8 +189,10 @@ const Wallet = () => {
           const s = JSON.parse(saved);
           if (s?.amount) setDepositAmount(s.amount);
           if (s?.depositId) setLastDepositId(s.depositId);
+          if (s?.account?.account_number) setBankDetails(s.account);
         }
       } catch {}
+
 
       const { data: profileData } = await supabase.from("profiles").select("display_name, username").eq("id", userId).maybeSingle();
       setUserName(profileData?.display_name || profileData?.username || "Account Holder");
@@ -262,9 +273,14 @@ const Wallet = () => {
       setLiveStatus("pending");
       try {
         localStorage.setItem(`vdeposit:${user.id}`, JSON.stringify({
-          amount: depositAmount, depositId: inserted?.id, createdAt: Date.now(),
+          amount: depositAmount, depositId: inserted?.id, createdAt: Date.now(), account: bankDetails,
         }));
+        // Rotate to a different account for the next deposit
+        const prev = parseInt(localStorage.getItem(`vbankidx:${user.id}`) || "", 10);
+        const base = Number.isFinite(prev) ? prev : deposits.length;
+        localStorage.setItem(`vbankidx:${user.id}`, String(base + 1));
       } catch {}
+
 
       toast.success("Deposit submitted! Watching for confirmation...");
       setDepositOpen(false); setDepositAmount(""); setScreenshot(null);
@@ -675,8 +691,22 @@ const Wallet = () => {
                   {depositStage === "amount" && (
                     <Button
                       onClick={() => {
+                        if (bankAccounts.length > 0) {
+                          let idx = 0;
+                          try {
+                            const stored = parseInt(localStorage.getItem(`vbankidx:${user?.id}`) || "", 10);
+                            idx = Number.isFinite(stored) ? stored : deposits.length;
+                          } catch { idx = deposits.length; }
+                          const acct = bankAccounts[Math.abs(idx) % bankAccounts.length];
+                          setBankDetails({
+                            bank_name: acct.bank_name,
+                            account_number: acct.account_number,
+                            account_name: acct.account_name,
+                          });
+                        }
                         setDepositStage("generating");
                         setRevealStep(0);
+
                         [1, 2, 3, 4].forEach((step, i) => {
                           setTimeout(() => {
                             setRevealStep(step);
