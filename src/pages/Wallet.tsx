@@ -174,6 +174,14 @@ const Wallet = () => {
       setBankDetails(details);
       setBranding(brand);
 
+      // Pool of receiving accounts (rotates per deposit)
+      const { data: accountsData } = await supabase
+        .from("bank_accounts")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+      setBankAccounts(accountsData || []);
+
       // Restore in-flight virtual account session
       try {
         const saved = localStorage.getItem(`vdeposit:${userId}`);
@@ -181,8 +189,10 @@ const Wallet = () => {
           const s = JSON.parse(saved);
           if (s?.amount) setDepositAmount(s.amount);
           if (s?.depositId) setLastDepositId(s.depositId);
+          if (s?.account?.account_number) setBankDetails(s.account);
         }
       } catch {}
+
 
       const { data: profileData } = await supabase.from("profiles").select("display_name, username").eq("id", userId).maybeSingle();
       setUserName(profileData?.display_name || profileData?.username || "Account Holder");
