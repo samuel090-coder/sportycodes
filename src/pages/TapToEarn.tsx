@@ -17,6 +17,8 @@ const TapToEarn = () => {
   const [isTapping, setIsTapping] = useState(false);
   const [tapAnimation, setTapAnimation] = useState(false);
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const [depositTotal, setDepositTotal] = useState(0);
+
   
   // Dynamic settings from admin
   const [centsPerTap, setCentsPerTap] = useState(0.50);
@@ -108,10 +110,19 @@ const TapToEarn = () => {
         .select("*")
         .eq("user_id", userId)
         .eq("tap_date", today)
-        .single();
+        .maybeSingle();
       setTodayTaps(tapsData || { tap_count: 0, earnings: 0 });
+
+      // Approved deposits total (earning gate)
+      const { data: depositData } = await supabase
+        .from("deposit_requests")
+        .select("amount")
+        .eq("user_id", userId)
+        .eq("status", "approved");
+      setDepositTotal((depositData || []).reduce((s: number, d: any) => s + Number(d.amount || 0), 0));
     } catch (error) {
       console.error("Error loading user data:", error);
+
     } finally {
       setIsLoading(false);
     }
@@ -119,12 +130,21 @@ const TapToEarn = () => {
 
   const handleTap = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
     if (!user || isTapping) return;
-    
+
+    if (depositTotal < 1000) {
+      toast.error("Deposit ₦1,000 to unlock tap-to-earn", {
+        description: "Your approved deposits must total at least ₦1,000.",
+        action: { label: "Deposit", onClick: () => navigate("/wallet") },
+      });
+      return;
+    }
+
     const currentTaps = todayTaps?.tap_count || 0;
     if (currentTaps >= maxDailyTaps) {
       toast.error("Daily tap limit reached! Come back tomorrow.");
       return;
     }
+
 
     setIsTapping(true);
     setTapAnimation(true);
@@ -191,16 +211,25 @@ const TapToEarn = () => {
       if (newTapCount % 10 === 0) {
         toast.success(`+₦${earnAmount.toFixed(2)} earned! Total today: ₦${newEarnings.toFixed(2)}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Tap error:", error);
-      toast.error("Failed to register tap. Try again.");
+      const msg = String(error?.message || "");
+      if (msg.toLowerCase().includes("minimum") && msg.includes("deposit")) {
+        toast.error("Deposit ₦1,000 to unlock tap-to-earn", {
+          description: "Your approved deposits must total at least ₦1,000.",
+          action: { label: "Deposit", onClick: () => navigate("/wallet") },
+        });
+      } else {
+        toast.error(msg || "Failed to register tap. Try again.");
+      }
     } finally {
       setTimeout(() => {
         setIsTapping(false);
         setTapAnimation(false);
       }, 100);
     }
-  }, [user, isTapping, todayTaps, streak, centsPerTap, maxDailyTaps, streakMultiplier]);
+  }, [user, isTapping, todayTaps, streak, centsPerTap, maxDailyTaps, streakMultiplier, depositTotal, navigate]);
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -348,6 +377,21 @@ const TapToEarn = () => {
             </div>
           </div>
         </div>
+
+        {depositTotal < 1000 && (
+          <div className="mb-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+            <p className="text-sm font-bold text-foreground">Tap-to-earn is locked</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You need at least ₦1,000 in approved deposits to start earning.
+              Approved so far: <span className="text-primary font-bold">₦{depositTotal.toFixed(2)}</span>
+            </p>
+            <Button onClick={() => navigate("/wallet")} className="mt-3 rounded-xl" size="sm">
+              Deposit now
+            </Button>
+          </div>
+        )}
+
+
 
         {/* Tap Zone - The Star of the Show */}
         <div className="relative flex flex-col items-center justify-center my-8">
