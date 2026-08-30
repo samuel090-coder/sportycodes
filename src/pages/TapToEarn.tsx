@@ -378,6 +378,21 @@ const TapToEarn = () => {
           </div>
         </div>
 
+        {depositTotal < 1000 && (
+          <div className="mb-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+            <p className="text-sm font-bold text-foreground">Tap-to-earn is locked</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You need at least ₦1,000 in approved deposits to start earning.
+              Approved so far: <span className="text-primary font-bold">₦{depositTotal.toFixed(2)}</span>
+            </p>
+            <Button onClick={() => navigate("/wallet")} className="mt-3 rounded-xl" size="sm">
+              Deposit now
+            </Button>
+          </div>
+        )}
+
+
+
         {/* Tap Zone - The Star of the Show */}
         <div className="relative flex flex-col items-center justify-center my-8">
           {/* Orbital Rings */}
