@@ -130,12 +130,21 @@ const TapToEarn = () => {
 
   const handleTap = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
     if (!user || isTapping) return;
-    
+
+    if (depositTotal < 1000) {
+      toast.error("Deposit ₦1,000 to unlock tap-to-earn", {
+        description: "Your approved deposits must total at least ₦1,000.",
+        action: { label: "Deposit", onClick: () => navigate("/wallet") },
+      });
+      return;
+    }
+
     const currentTaps = todayTaps?.tap_count || 0;
     if (currentTaps >= maxDailyTaps) {
       toast.error("Daily tap limit reached! Come back tomorrow.");
       return;
     }
+
 
     setIsTapping(true);
     setTapAnimation(true);
