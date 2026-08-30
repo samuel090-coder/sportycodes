@@ -14,6 +14,7 @@ import { CheckCircle, XCircle, ArrowDownCircle, ArrowUpCircle, Eye, CreditCard, 
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit, getScreenshotSignedUrl } from "@/lib/audit";
 import { DepositMessageDialog } from "./DepositMessageDialog";
+import { buildSiteUrl } from "@/lib/siteUrl";
 
 export const PaymentsSection = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
@@ -123,7 +124,7 @@ export const PaymentsSection = () => {
               body: {
                 type: 'ai_custom',
                 userId,
-                data: { subject: ai.subject, body: ai.body, title: ai.subject, ctaText: 'Open Wallet', ctaUrl: 'https://sportycodes.lovable.app/wallet' },
+                data: { subject: ai.subject, body: ai.body, title: ai.subject, ctaText: 'Open Wallet', ctaUrl: buildSiteUrl('/wallet') },
               },
             });
             return;

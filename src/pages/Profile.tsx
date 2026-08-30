@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { SITE_HOST, buildSiteUrl } from "@/lib/siteUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -419,14 +420,14 @@ const Profile = () => {
               <p className="text-xs text-muted-foreground mb-1">Your Invite Link</p>
               <div className="flex items-center gap-2">
                 <p className="text-xs font-mono text-primary flex-1 truncate">
-                  sportycodes.lovable.app/ref/{profile.referral_short_code}
+                  {SITE_HOST}/ref/{profile.referral_short_code}
                 </p>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2"
                   onClick={() => {
-                    navigator.clipboard.writeText(`https://sportycodes.lovable.app/ref/${profile.referral_short_code}`);
+                    navigator.clipboard.writeText(buildSiteUrl(`/ref/${profile.referral_short_code}`));
                     toast.success("Invite link copied!");
                   }}
                 >

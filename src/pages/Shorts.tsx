@@ -31,7 +31,8 @@ import {
   UserMinus,
   Bookmark,
   Reply,
-  CornerDownRight
+  CornerDownRight,
+  Trash2
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
@@ -307,6 +308,50 @@ const Shorts = () => {
       setShorts(prev => prev.map(s => 
         s.user_id === userId ? { ...s, is_following: isFollowing } : s
       ));
+    }
+  };
+
+  const handleDeleteShort = async (shortId: string) => {
+    if (!user) return;
+    if (!window.confirm("Delete this post permanently?")) return;
+    try {
+      const { error } = await supabase
+        .from("shorts")
+        .delete()
+        .eq("id", shortId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setShorts(prev => {
+        const next = prev.filter(s => s.id !== shortId);
+        setCurrentIndex(i => Math.max(0, Math.min(i, next.length - 1)));
+        return next;
+      });
+      toast.success("Post deleted");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete post");
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, parentId: string | null) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from("shorts_comments")
+        .delete()
+        .eq("id", commentId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setComments(prev => parentId
+        ? prev.map(c => c.id === parentId
+            ? { ...c, replies: (c.replies || []).filter(r => r.id !== commentId) }
+            : c)
+        : prev.filter(c => c.id !== commentId));
+      setShorts(prev => prev.map(s =>
+        s.id === selectedShortId ? { ...s, comments_count: Math.max(0, (s.comments_count || 1) - 1) } : s
+      ));
+      toast.success("Comment deleted");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete comment");
     }
   };
 
@@ -742,6 +787,18 @@ const Shorts = () => {
                 </div>
                 <span className="text-white text-xs mt-1 font-bold">Save</span>
               </button>
+
+              {currentShort.user_id === user?.id && (
+                <button
+                  onClick={() => handleDeleteShort(currentShort.id)}
+                  className="flex flex-col items-center group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-destructive/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-destructive/40">
+                    <Trash2 className="w-6 h-6 text-destructive" />
+                  </div>
+                  <span className="text-white text-xs mt-1 font-bold">Delete</span>
+                </button>
+              )}
             </div>
 
             {/* Navigation Arrows */}
@@ -969,6 +1026,15 @@ const Shorts = () => {
                             <Reply className="w-3 h-3" />
                             Reply
                           </button>
+                          {comment.user_id === user?.id && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id, null)}
+                              className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -991,9 +1057,20 @@ const Shorts = () => {
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold text-foreground">{reply.profile?.display_name || "User"}</p>
                               <p className="text-xs text-foreground/80 break-words">{reply.content}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {new Date(reply.created_at).toLocaleDateString()}
-                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(reply.created_at).toLocaleDateString()}
+                                </p>
+                                {reply.user_id === user?.id && (
+                                  <button
+                                    onClick={() => handleDeleteComment(reply.id, comment.id)}
+                                    className="text-xs text-destructive font-medium flex items-center gap-1 hover:underline"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
