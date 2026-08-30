@@ -17,6 +17,8 @@ const TapToEarn = () => {
   const [isTapping, setIsTapping] = useState(false);
   const [tapAnimation, setTapAnimation] = useState(false);
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const [depositTotal, setDepositTotal] = useState(0);
+
   
   // Dynamic settings from admin
   const [centsPerTap, setCentsPerTap] = useState(0.50);
