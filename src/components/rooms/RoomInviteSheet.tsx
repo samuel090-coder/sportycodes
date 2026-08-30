@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Search, UserPlus, Check, Link2, Users, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { buildSiteUrl } from "@/lib/siteUrl";
 
 interface RoomInviteSheetProps {
   open: boolean;
@@ -29,7 +30,7 @@ export function RoomInviteSheet({ open, onOpenChange, roomId, roomName, userId }
   const { toast } = useToast();
 
   const inviteLink = roomInviteCode 
-    ? `https://sportycodes.lovable.app/r/${roomInviteCode}`
+    ? buildSiteUrl(`/r/${roomInviteCode}`)
     : `${window.location.origin}/rooms/${roomId}`;
 
   useEffect(() => {
