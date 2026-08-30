@@ -110,10 +110,19 @@ const TapToEarn = () => {
         .select("*")
         .eq("user_id", userId)
         .eq("tap_date", today)
-        .single();
+        .maybeSingle();
       setTodayTaps(tapsData || { tap_count: 0, earnings: 0 });
+
+      // Approved deposits total (earning gate)
+      const { data: depositData } = await supabase
+        .from("deposit_requests")
+        .select("amount")
+        .eq("user_id", userId)
+        .eq("status", "approved");
+      setDepositTotal((depositData || []).reduce((s: number, d: any) => s + Number(d.amount || 0), 0));
     } catch (error) {
       console.error("Error loading user data:", error);
+
     } finally {
       setIsLoading(false);
     }
