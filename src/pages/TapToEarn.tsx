@@ -211,16 +211,25 @@ const TapToEarn = () => {
       if (newTapCount % 10 === 0) {
         toast.success(`+₦${earnAmount.toFixed(2)} earned! Total today: ₦${newEarnings.toFixed(2)}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Tap error:", error);
-      toast.error("Failed to register tap. Try again.");
+      const msg = String(error?.message || "");
+      if (msg.toLowerCase().includes("minimum") && msg.includes("deposit")) {
+        toast.error("Deposit ₦1,000 to unlock tap-to-earn", {
+          description: "Your approved deposits must total at least ₦1,000.",
+          action: { label: "Deposit", onClick: () => navigate("/wallet") },
+        });
+      } else {
+        toast.error(msg || "Failed to register tap. Try again.");
+      }
     } finally {
       setTimeout(() => {
         setIsTapping(false);
         setTapAnimation(false);
       }, 100);
     }
-  }, [user, isTapping, todayTaps, streak, centsPerTap, maxDailyTaps, streakMultiplier]);
+  }, [user, isTapping, todayTaps, streak, centsPerTap, maxDailyTaps, streakMultiplier, depositTotal, navigate]);
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
