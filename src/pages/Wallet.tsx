@@ -872,6 +872,37 @@ const Wallet = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Withdrawal Requirements — only revealed when a depositor attempts a withdrawal */}
+      <Dialog open={reqOpen} onOpenChange={setReqOpen}>
+        <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-foreground">Unlock Withdrawals</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              One last step before you can cash out.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="bg-secondary/40 rounded-xl p-4 border border-border/40">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-foreground">Valid invites</p>
+                <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3</span>
+              </div>
+              <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
+              <p className="text-xs text-muted-foreground">
+                Invite {Math.max(0, 3 - validInvites)} more {3 - validInvites === 1 ? "person" : "people"} who deposit to unlock withdrawals. Total invited: {totalInvites}
+              </p>
+            </div>
+            <Button
+              onClick={() => { setReqOpen(false); navigate("/profile"); }}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+            >
+              Get my invite link
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       <BottomNav />
     </div>
   );
