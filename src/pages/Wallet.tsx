@@ -295,16 +295,34 @@ const Wallet = () => {
     }
   };
 
+  const hasDeposited = (wallet?.total_deposited || 0) > 0 || deposits.some((d) => d.status === "approved");
+
+  const handleWithdrawClick = () => {
+    // No deposit yet → send them to deposit instead of showing requirements
+    if (!hasDeposited || (wallet?.balance || 0) <= 0) {
+      promptDeposit({ context: "Fund your wallet before you can withdraw." });
+      setDepositOpen(true);
+      return;
+    }
+    // Depositor, but requirements not met → reveal them now
+    if (validInvites < 3) { setReqOpen(true); return; }
+    setWithdrawOpen(true);
+  };
+
   const handleWithdraw = async () => {
     if (!user || !withdrawAmount || !withdrawBank || !withdrawAccountName || !withdrawAccountNumber) {
       toast.error("Please fill all bank details"); return;
     }
     if (validInvites < 3) {
-      toast.error(`You need ${3 - validInvites} more valid invites (who have deposited) before withdrawing`); return;
+      setWithdrawOpen(false); setReqOpen(true); return;
     }
     const amount = parseFloat(withdrawAmount);
-    if (amount > (wallet?.balance || 0)) { toast.error("Insufficient balance"); return; }
+    if (amount > (wallet?.balance || 0)) {
+      promptDeposit({ needed: amount, balance: wallet?.balance || 0 });
+      return;
+    }
     if (amount < 500) { toast.error("Minimum withdrawal is ₦500"); return; }
+
 
     setIsSubmitting(true);
     try {
