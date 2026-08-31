@@ -24,8 +24,8 @@ import { RoomMessageReactions } from "@/components/rooms/RoomMessageReactions";
 import { Badge } from "@/components/ui/badge";
 import { FramedBubble } from "@/components/rooms/MessageFrames";
 import { FramePickerSheet } from "@/components/rooms/FramePickerSheet";
-import {
 import { promptDeposit } from "@/lib/insufficientFunds";
+import {
   RoomFXLayer, ComposerFXMenu, MessageEffectWrapper, useSoundFX, useRoomFXBus, sendFx,
   parseSlashCommand, commandToMessage, type MsgEffect, type FxEvent,
 } from "@/components/rooms/RoomFX";
