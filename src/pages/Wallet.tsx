@@ -376,7 +376,7 @@ const Wallet = () => {
               <Button onClick={() => setDepositOpen(true)} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl">
                 <ArrowDownLeft className="w-5 h-5 mr-2" /> Deposit
               </Button>
-              <Button onClick={() => setWithdrawOpen(true)} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
+              <Button onClick={handleWithdrawClick} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
                 <ArrowUpRight className="w-5 h-5 mr-2" /> Withdraw
               </Button>
             </div>
