@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, CheckCircle2, Wallet, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 const Payment = () => {
   const location = useLocation();
@@ -49,7 +50,7 @@ const Payment = () => {
     }
 
     if (wallet.balance < paymentAmount) {
-      toast.error("Insufficient wallet balance. Please deposit funds first.");
+      promptDeposit();
       return;
     }
 

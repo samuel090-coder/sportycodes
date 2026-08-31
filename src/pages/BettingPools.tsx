@@ -26,6 +26,7 @@ import {
   X
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 interface BettingPool {
   id: string;
@@ -161,7 +162,7 @@ const BettingPools = () => {
 
     const depositAmount = parseFloat(creatorDeposit);
     if (depositAmount > walletBalance) {
-      toast.error("Insufficient balance for deposit");
+      promptDeposit({ context: "Not enough to fund this pool." });
       return;
     }
 
@@ -205,7 +206,7 @@ const BettingPools = () => {
     if (!user || !selectedPool || selectedOption === null) return;
 
     if (selectedPool.entry_fee > walletBalance) {
-      toast.error("Insufficient balance");
+      promptDeposit();
       return;
     }
 

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Gamepad2, Coins, Dice1, Swords, HelpCircle, Ticket, TrendingUp, Hash, Gavel, Trophy, Flame, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 interface RoomGamesSheetProps {
   open: boolean;
@@ -62,7 +63,7 @@ export function RoomGamesSheet({ open, onOpenChange, roomId, userId }: RoomGames
       if (fee > 0) {
         const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
         if (!wallet || Number(wallet.balance) < fee) {
-          toast({ title: "Insufficient balance", description: `Need ₦${fee} to create this game`, variant: "destructive" });
+          promptDeposit({ needed: fee, context: "Needed to create this game." });
           setCreating(false);
           return;
         }

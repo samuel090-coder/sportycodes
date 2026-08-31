@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Target, Gamepad2, Lock, Check, ShoppingCart, FileText, Vote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 interface RoomEventCardProps {
   message: {
@@ -73,7 +74,7 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
     try {
       const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
       if (!wallet || Number(wallet.balance) < price) {
-        toast({ title: "Insufficient balance", description: "Please top up your wallet", variant: "destructive" });
+        promptDeposit();
         setBuying(false);
         return;
       }
@@ -116,7 +117,7 @@ export function RoomEventCard({ message, userId, roomId }: RoomEventCardProps) {
       const entryFee = Number(eventData.entry_fee);
       const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
       if (!wallet || Number(wallet.balance) < entryFee) {
-        toast({ title: "Insufficient balance", description: `Need ₦${entryFee}`, variant: "destructive" });
+        promptDeposit({ needed: entryFee });
         setPlacingBet(false);
         return;
       }
