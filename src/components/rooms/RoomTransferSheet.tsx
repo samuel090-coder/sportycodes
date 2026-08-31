@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DollarSign, Search, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 interface RoomTransferSheetProps {
   open: boolean;
@@ -76,7 +77,7 @@ export function RoomTransferSheet({ open, onOpenChange, roomId, userId }: RoomTr
     if (!selectedUser || !amount) return;
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) { toast({ title: "Invalid amount", variant: "destructive" }); return; }
-    if (amt > balance) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
+    if (amt > balance) { promptDeposit({ balance }); return; }
 
     setSending(true);
     try {

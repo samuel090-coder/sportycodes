@@ -15,6 +15,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 const VIPSubscription = () => {
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ const VIPSubscription = () => {
     }
 
     if (wallet.balance < vipPrice) {
-      toast.error("Insufficient wallet balance. Please deposit funds first.");
+      promptDeposit();
       return;
     }
 

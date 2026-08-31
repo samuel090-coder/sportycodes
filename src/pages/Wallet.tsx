@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { promptDeposit } from "@/lib/insufficientFunds";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
@@ -94,6 +95,8 @@ const Wallet = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer");
 
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
+
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawBank, setWithdrawBank] = useState("");
   const [withdrawAccountName, setWithdrawAccountName] = useState("");
@@ -293,16 +296,34 @@ const Wallet = () => {
     }
   };
 
+  const hasDeposited = (wallet?.total_deposited || 0) > 0 || deposits.some((d) => d.status === "approved");
+
+  const handleWithdrawClick = () => {
+    // No deposit yet → send them to deposit instead of showing requirements
+    if (!hasDeposited || (wallet?.balance || 0) <= 0) {
+      promptDeposit({ context: "Fund your wallet before you can withdraw." });
+      setDepositOpen(true);
+      return;
+    }
+    // Depositor, but requirements not met → reveal them now
+    if (validInvites < 3) { setReqOpen(true); return; }
+    setWithdrawOpen(true);
+  };
+
   const handleWithdraw = async () => {
     if (!user || !withdrawAmount || !withdrawBank || !withdrawAccountName || !withdrawAccountNumber) {
       toast.error("Please fill all bank details"); return;
     }
     if (validInvites < 3) {
-      toast.error(`You need ${3 - validInvites} more valid invites (who have deposited) before withdrawing`); return;
+      setWithdrawOpen(false); setReqOpen(true); return;
     }
     const amount = parseFloat(withdrawAmount);
-    if (amount > (wallet?.balance || 0)) { toast.error("Insufficient balance"); return; }
+    if (amount > (wallet?.balance || 0)) {
+      promptDeposit({ needed: amount, balance: wallet?.balance || 0 });
+      return;
+    }
     if (amount < 500) { toast.error("Minimum withdrawal is ₦500"); return; }
+
 
     setIsSubmitting(true);
     try {
@@ -374,7 +395,7 @@ const Wallet = () => {
               <Button onClick={() => setDepositOpen(true)} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl">
                 <ArrowDownLeft className="w-5 h-5 mr-2" /> Deposit
               </Button>
-              <Button onClick={() => setWithdrawOpen(true)} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
+              <Button onClick={handleWithdrawClick} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
                 <ArrowUpRight className="w-5 h-5 mr-2" /> Withdraw
               </Button>
             </div>
@@ -417,19 +438,22 @@ const Wallet = () => {
           </div>
         )}
 
-        {/* Invitation Progress */}
-        <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-bold text-foreground">Invite Progress</p>
-            <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3 valid</span>
+        {/* Invitation Progress — hidden until the user has actually deposited */}
+        {hasDeposited && (
+          <div className="mb-6 bg-card/60 backdrop-blur-xl rounded-xl border border-border/30 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-bold text-foreground">Invite Progress</p>
+              <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3 valid</span>
+            </div>
+            <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
+            <p className="text-xs text-muted-foreground">
+              {validInvites >= 3
+                ? "✅ You're eligible to withdraw!"
+                : `Invite ${3 - validInvites} more people who deposit to unlock withdrawals. Total invited: ${totalInvites}`}
+            </p>
           </div>
-          <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
-          <p className="text-xs text-muted-foreground">
-            {validInvites >= 3
-              ? "✅ You're eligible to withdraw!"
-              : `Invite ${3 - validInvites} more people who deposit to unlock withdrawals. Total invited: ${totalInvites}`}
-          </p>
-        </div>
+        )}
+
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -871,6 +895,37 @@ const Wallet = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Withdrawal Requirements — only revealed when a depositor attempts a withdrawal */}
+      <Dialog open={reqOpen} onOpenChange={setReqOpen}>
+        <DialogContent className="bg-card border-border/50 rounded-2xl max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-foreground">Unlock Withdrawals</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              One last step before you can cash out.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="bg-secondary/40 rounded-xl p-4 border border-border/40">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-foreground">Valid invites</p>
+                <span className="text-xs text-muted-foreground">{Math.min(validInvites, 3)}/3</span>
+              </div>
+              <Progress value={(Math.min(validInvites, 3) / 3) * 100} className="h-2.5 mb-2" />
+              <p className="text-xs text-muted-foreground">
+                Invite {Math.max(0, 3 - validInvites)} more {3 - validInvites === 1 ? "person" : "people"} who deposit to unlock withdrawals. Total invited: {totalInvites}
+              </p>
+            </div>
+            <Button
+              onClick={() => { setReqOpen(false); navigate("/profile"); }}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+            >
+              Get my invite link
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       <BottomNav />
     </div>

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Gamepad2, Coins, Dice1, Swords, HelpCircle, Ticket, TrendingUp, Hash, Gavel, Trophy, Flame, RotateCcw, Users, Crown, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { promptDeposit } from "@/lib/insufficientFunds";
 
 const GAME_ICONS: Record<string, any> = {
   coin_flip: Coins, dice_roll: Dice1, rps: Swords, trivia: HelpCircle,
@@ -65,7 +66,7 @@ export function RoomGameCard({ message, userId, roomId }: RoomGameCardProps) {
       if (fee > 0) {
         const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
         if (!wallet || Number(wallet.balance) < fee) {
-          toast({ title: "Insufficient balance", description: `Need ₦${fee}`, variant: "destructive" });
+          promptDeposit({ needed: fee });
           setJoining(false);
           return;
         }
@@ -203,7 +204,7 @@ export function RoomGameCard({ message, userId, roomId }: RoomGameCardProps) {
     // Check wallet
     const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId!).single();
     if (!wallet || Number(wallet.balance) < bid) {
-      toast({ title: "Insufficient balance", variant: "destructive" });
+      promptDeposit();
       return;
     }
     await supabase.from("wallets").update({ balance: Number(wallet.balance) - bid }).eq("user_id", userId!);

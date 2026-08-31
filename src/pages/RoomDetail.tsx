@@ -24,6 +24,7 @@ import { RoomMessageReactions } from "@/components/rooms/RoomMessageReactions";
 import { Badge } from "@/components/ui/badge";
 import { FramedBubble } from "@/components/rooms/MessageFrames";
 import { FramePickerSheet } from "@/components/rooms/FramePickerSheet";
+import { promptDeposit } from "@/lib/insufficientFunds";
 import {
   RoomFXLayer, ComposerFXMenu, MessageEffectWrapper, useSoundFX, useRoomFXBus, sendFx,
   parseSlashCommand, commandToMessage, type MsgEffect, type FxEvent,
@@ -282,7 +283,7 @@ const RoomDetail = () => {
     if (room.join_fee && room.join_fee > 0) {
       const { data: wallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
       if (!wallet || Number(wallet.balance) < room.join_fee) {
-        toast({ title: "Insufficient balance", description: `This room requires ₦${room.join_fee} to join`, variant: "destructive" });
+        promptDeposit({ needed: room.join_fee, context: "Required to join this room." });
         setJoining(false);
         return;
       }
