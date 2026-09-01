@@ -90,6 +90,12 @@ const RoomDetail = () => {
   const joinedThisSessionRef = useRef(false);
   const voiceCallOpenRef = useRef(false);
   useEffect(() => { voiceCallOpenRef.current = voiceCallOpen; if (voiceCallOpen) joinedThisSessionRef.current = true; }, [voiceCallOpen]);
+  const { online, typing, notifyTyping } = useRoomPresence(isMember ? roomId : undefined, {
+    userId,
+    displayName: myProfile?.display_name || "User",
+    avatarUrl: myProfile?.avatar_url,
+  });
+
 
   // ---- FX state ----
   const [pendingEffect, setPendingEffect] = useState<MsgEffect>("none");
