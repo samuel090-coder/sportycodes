@@ -48,7 +48,7 @@ export function RoomActionsSheet({
     { key: "cross", label: "Tag group", icon: Share2, onClick: run(onCrossPost), show: isMember },
     { key: "settings", label: "Settings", icon: Settings, onClick: run(onSettings), show: isAdmin },
     { key: "leave", label: "Leave room", icon: LogOut, onClick: run(onLeave), tone: "danger", show: isMember && !isAdmin },
-  ].filter((a) => a.show);
+  ] as Action[]).filter((a) => a.show);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
