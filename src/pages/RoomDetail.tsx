@@ -288,10 +288,14 @@ const RoomDetail = () => {
       const userIds = [...new Set(data.map(m => m.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url, username").in("id", userIds);
       const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
-      setMessages(data.map(m => ({
+      const next = data.map(m => ({
         ...m,
         profiles: profileMap[m.user_id] || { display_name: "Unknown", avatar_url: null, username: null }
-      })));
+      }));
+      setMessages(prev => {
+        const same = prev.length === next.length && prev.every((m, i) => m.id === next[i].id);
+        return same ? prev : next;
+      });
     }
   };
 
