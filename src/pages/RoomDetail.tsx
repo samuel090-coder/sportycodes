@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown, Phone, PhoneMissed } from "lucide-react";
+import { ArrowLeft, Send, Settings, Tag, DollarSign, Users, LogOut, UserPlus, Gamepad2, Share2, Image, Paperclip, Crown, Phone, PhoneMissed, ChevronRight } from "lucide-react";
+import { RoomActionsSheet } from "@/components/rooms/RoomActionsSheet";
+import { RoomPresenceBar, useRoomPresence } from "@/components/rooms/RoomPresenceBar";
 import { RoomVoiceCall } from "@/components/rooms/RoomVoiceCall";
 import { MissedCallsDialog, type MissedCall } from "@/components/rooms/MissedCallsDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -83,10 +85,17 @@ const RoomDetail = () => {
   const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   const [missedCalls, setMissedCalls] = useState<MissedCall[]>([]);
   const [missedOpen, setMissedOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const callSessionRef = useRef<{ startedAt: number; participants: Map<string, { displayName?: string; avatarUrl?: string | null }> } | null>(null);
   const joinedThisSessionRef = useRef(false);
   const voiceCallOpenRef = useRef(false);
   useEffect(() => { voiceCallOpenRef.current = voiceCallOpen; if (voiceCallOpen) joinedThisSessionRef.current = true; }, [voiceCallOpen]);
+  const { online, typing, notifyTyping } = useRoomPresence(isMember ? roomId : undefined, {
+    userId,
+    displayName: myProfile?.display_name || "User",
+    avatarUrl: myProfile?.avatar_url,
+  });
+
 
   // ---- FX state ----
   const [pendingEffect, setPendingEffect] = useState<MsgEffect>("none");
@@ -152,12 +161,23 @@ const RoomDetail = () => {
         async (payload) => {
           const msg = payload.new as any;
           const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url, username").eq("id", msg.user_id).single();
-          setMessages(prev => [...prev, { ...msg, profiles: profile }]);
+          setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profiles: profile }]);
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Safety net so users never need to refresh if a realtime packet is missed
+    const poll = setInterval(() => { fetchMessages(); }, 15000);
+    const onVisible = () => { if (document.visibilityState === "visible") fetchMessages(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      supabase.removeChannel(channel);
+    };
   }, [isMember, roomId]);
 
   // Load persisted missed calls
@@ -268,10 +288,14 @@ const RoomDetail = () => {
       const userIds = [...new Set(data.map(m => m.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url, username").in("id", userIds);
       const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
-      setMessages(data.map(m => ({
+      const next = data.map(m => ({
         ...m,
         profiles: profileMap[m.user_id] || { display_name: "Unknown", avatar_url: null, username: null }
-      })));
+      }));
+      setMessages(prev => {
+        const same = prev.length === next.length && prev.every((m, i) => m.id === next[i].id);
+        return same ? prev : next;
+      });
     }
   };
 
@@ -437,72 +461,44 @@ const RoomDetail = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="shrink-0 bg-card border-b border-border px-3 py-2.5 flex items-center gap-3">
-        <button onClick={() => navigate("/rooms")} className="text-muted-foreground hover:text-foreground">
+      {/* Header — minimal: back, avatar, name. Tap opens all room features */}
+      <div className="shrink-0 bg-card border-b border-border px-3 py-2.5 flex items-center gap-2">
+        <button onClick={() => navigate("/rooms")} className="text-muted-foreground hover:text-foreground p-1 -ml-1">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden">
-          {room.avatar_url ? (
-            <img src={room.avatar_url} alt={room.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-sm font-bold text-primary">{room.name[0]?.toUpperCase()}</span>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h2 className="font-semibold text-sm text-foreground truncate">{room.name}</h2>
-            {room.join_fee && room.join_fee > 0 && (
-              <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
-                <Crown className="w-2.5 h-2.5" /> Premium
-              </Badge>
+        <button
+          onClick={() => setActionsOpen(true)}
+          className="flex-1 min-w-0 flex items-center gap-3 rounded-xl px-1 py-1 hover:bg-secondary/50 transition text-left"
+        >
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden">
+              {room.avatar_url ? (
+                <img src={room.avatar_url} alt={room.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-primary">{room.name[0]?.toUpperCase()}</span>
+              )}
+            </div>
+            {missedCalls.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-1">
+                {missedCalls.length}
+              </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">{room.member_count} members</p>
-        </div>
-        <div className="flex items-center gap-0.5">
-          {isMember && (
-            <>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={() => setVoiceCallOpen(true)} title="Voice Call">
-                <Phone className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={() => setMissedOpen(true)} title="Missed Calls">
-                <PhoneMissed className={`w-3.5 h-3.5 ${missedCalls.length > 0 ? "text-destructive" : ""}`} />
-                {missedCalls.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-1">
-                    {missedCalls.length}
-                  </span>
-                )}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
-                <Tag className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setGamesOpen(true)} title="Games">
-                <Gamepad2 className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTransferOpen(true)} title="Transfer">
-                <DollarSign className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteOpen(true)} title="Invite">
-                <UserPlus className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCrossPostOpen(true)} title="Tag Group">
-                <Share2 className="w-3.5 h-3.5" />
-              </Button>
-            </>
-          )}
-          {isAdmin && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)}>
-              <Settings className="w-3.5 h-3.5" />
-            </Button>
-          )}
-          {isMember && !isAdmin && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={leaveRoom}>
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-semibold text-[15px] text-foreground truncate">{room.name}</h2>
+              {room.join_fee && room.join_fee > 0 && (
+                <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
+                  <Crown className="w-2.5 h-2.5" /> Premium
+                </Badge>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate">Tap for group info & features</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
       </div>
+
 
       {/* Incoming / ongoing voice-call banner */}
       {isMember && activeCallers.length > 0 && !voiceCallOpen && (
@@ -598,21 +594,26 @@ const RoomDetail = () => {
             return (
               <div key={msg.id} className={`flex gap-2 ${isMe ? "justify-end" : ""}`}>
                 {!isMe && (
-                  <Avatar className="w-7 h-7 shrink-0">
-                    <AvatarImage src={msg.profiles?.avatar_url || ""} />
-                    <AvatarFallback className="text-xs bg-secondary">
-                      {msg.profiles?.display_name?.[0]?.toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <button onClick={() => navigate(`/user/${msg.user_id}`)} className="shrink-0" title="View profile">
+                    <Avatar className="w-7 h-7">
+                      <AvatarImage src={msg.profiles?.avatar_url || ""} />
+                      <AvatarFallback className="text-xs bg-secondary">
+                        {msg.profiles?.display_name?.[0]?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                 )}
                 <div className={`max-w-[75%] ${isMe ? "order-1" : ""}`}>
                   {!isMe && (
-                    <p className="text-[10px] font-medium text-primary mb-0.5 ml-1">
+                    <button
+                      onClick={() => navigate(`/user/${msg.user_id}`)}
+                      className="text-[10px] font-medium text-primary mb-0.5 ml-1 hover:underline"
+                    >
                       {msg.profiles?.display_name || msg.profiles?.username || "User"}
-                    </p>
+                    </button>
                   )}
                   {isMedia || isVoice ? (
-                    <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
+                    <div className={`rounded-2xl px-3 py-2 text-sm ${isVoice ? "shadow-md" : ""} ${isMe
                       ? "bg-primary text-primary-foreground rounded-br-md"
                       : "bg-secondary text-foreground rounded-bl-md"
                     }`}>
@@ -624,7 +625,7 @@ const RoomDetail = () => {
                         />
                       )}
                       {isVoice && meta.audio_url && (
-                        <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
+                        <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} mine={isMe} />
                       )}
                     </div>
                   ) : (
