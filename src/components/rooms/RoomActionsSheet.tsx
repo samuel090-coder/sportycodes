@@ -38,7 +38,7 @@ export function RoomActionsSheet({
 }: RoomActionsSheetProps) {
   const run = (fn: () => void) => () => { onOpenChange(false); setTimeout(fn, 120); };
 
-  const actions: Action[] = [
+  const actions = ([
     { key: "call", label: "Voice call", icon: Phone, onClick: run(onCall), tone: "success", show: isMember },
     { key: "missed", label: "Missed calls", icon: PhoneMissed, onClick: run(onMissed), badge: missedCount, show: isMember },
     { key: "event", label: "Tag event", icon: Tag, onClick: run(onEvent), show: isMember },
