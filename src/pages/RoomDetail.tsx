@@ -594,21 +594,26 @@ const RoomDetail = () => {
             return (
               <div key={msg.id} className={`flex gap-2 ${isMe ? "justify-end" : ""}`}>
                 {!isMe && (
-                  <Avatar className="w-7 h-7 shrink-0">
-                    <AvatarImage src={msg.profiles?.avatar_url || ""} />
-                    <AvatarFallback className="text-xs bg-secondary">
-                      {msg.profiles?.display_name?.[0]?.toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <button onClick={() => navigate(`/user/${msg.user_id}`)} className="shrink-0" title="View profile">
+                    <Avatar className="w-7 h-7">
+                      <AvatarImage src={msg.profiles?.avatar_url || ""} />
+                      <AvatarFallback className="text-xs bg-secondary">
+                        {msg.profiles?.display_name?.[0]?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                 )}
                 <div className={`max-w-[75%] ${isMe ? "order-1" : ""}`}>
                   {!isMe && (
-                    <p className="text-[10px] font-medium text-primary mb-0.5 ml-1">
+                    <button
+                      onClick={() => navigate(`/user/${msg.user_id}`)}
+                      className="text-[10px] font-medium text-primary mb-0.5 ml-1 hover:underline"
+                    >
                       {msg.profiles?.display_name || msg.profiles?.username || "User"}
-                    </p>
+                    </button>
                   )}
                   {isMedia || isVoice ? (
-                    <div className={`rounded-2xl px-3 py-2 text-sm ${isMe
+                    <div className={`rounded-2xl px-3 py-2 text-sm ${isVoice ? "shadow-md" : ""} ${isMe
                       ? "bg-primary text-primary-foreground rounded-br-md"
                       : "bg-secondary text-foreground rounded-bl-md"
                     }`}>
@@ -620,7 +625,7 @@ const RoomDetail = () => {
                         />
                       )}
                       {isVoice && meta.audio_url && (
-                        <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} />
+                        <RoomVoicePlayer audioUrl={meta.audio_url} duration={meta.duration} mine={isMe} />
                       )}
                     </div>
                   ) : (
