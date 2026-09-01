@@ -437,72 +437,44 @@ const RoomDetail = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="shrink-0 bg-card border-b border-border px-3 py-2.5 flex items-center gap-3">
-        <button onClick={() => navigate("/rooms")} className="text-muted-foreground hover:text-foreground">
+      {/* Header — minimal: back, avatar, name. Tap opens all room features */}
+      <div className="shrink-0 bg-card border-b border-border px-3 py-2.5 flex items-center gap-2">
+        <button onClick={() => navigate("/rooms")} className="text-muted-foreground hover:text-foreground p-1 -ml-1">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden">
-          {room.avatar_url ? (
-            <img src={room.avatar_url} alt={room.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-sm font-bold text-primary">{room.name[0]?.toUpperCase()}</span>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h2 className="font-semibold text-sm text-foreground truncate">{room.name}</h2>
-            {room.join_fee && room.join_fee > 0 && (
-              <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
-                <Crown className="w-2.5 h-2.5" /> Premium
-              </Badge>
+        <button
+          onClick={() => setActionsOpen(true)}
+          className="flex-1 min-w-0 flex items-center gap-3 rounded-xl px-1 py-1 hover:bg-secondary/50 transition text-left"
+        >
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden">
+              {room.avatar_url ? (
+                <img src={room.avatar_url} alt={room.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-primary">{room.name[0]?.toUpperCase()}</span>
+              )}
+            </div>
+            {missedCalls.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-1">
+                {missedCalls.length}
+              </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">{room.member_count} members</p>
-        </div>
-        <div className="flex items-center gap-0.5">
-          {isMember && (
-            <>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={() => setVoiceCallOpen(true)} title="Voice Call">
-                <Phone className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={() => setMissedOpen(true)} title="Missed Calls">
-                <PhoneMissed className={`w-3.5 h-3.5 ${missedCalls.length > 0 ? "text-destructive" : ""}`} />
-                {missedCalls.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-1">
-                    {missedCalls.length}
-                  </span>
-                )}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEventOpen(true)} title="Tag Event">
-                <Tag className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setGamesOpen(true)} title="Games">
-                <Gamepad2 className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTransferOpen(true)} title="Transfer">
-                <DollarSign className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteOpen(true)} title="Invite">
-                <UserPlus className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCrossPostOpen(true)} title="Tag Group">
-                <Share2 className="w-3.5 h-3.5" />
-              </Button>
-            </>
-          )}
-          {isAdmin && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)}>
-              <Settings className="w-3.5 h-3.5" />
-            </Button>
-          )}
-          {isMember && !isAdmin && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={leaveRoom}>
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-semibold text-[15px] text-foreground truncate">{room.name}</h2>
+              {room.join_fee && room.join_fee > 0 && (
+                <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
+                  <Crown className="w-2.5 h-2.5" /> Premium
+                </Badge>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate">Tap for group info & features</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
       </div>
+
 
       {/* Incoming / ongoing voice-call banner */}
       {isMember && activeCallers.length > 0 && !voiceCallOpen && (
