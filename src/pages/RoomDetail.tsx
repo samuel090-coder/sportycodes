@@ -85,6 +85,7 @@ const RoomDetail = () => {
   const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   const [missedCalls, setMissedCalls] = useState<MissedCall[]>([]);
   const [missedOpen, setMissedOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const callSessionRef = useRef<{ startedAt: number; participants: Map<string, { displayName?: string; avatarUrl?: string | null }> } | null>(null);
   const joinedThisSessionRef = useRef(false);
   const voiceCallOpenRef = useRef(false);
