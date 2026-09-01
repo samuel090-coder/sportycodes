@@ -161,12 +161,23 @@ const RoomDetail = () => {
         async (payload) => {
           const msg = payload.new as any;
           const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url, username").eq("id", msg.user_id).single();
-          setMessages(prev => [...prev, { ...msg, profiles: profile }]);
+          setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profiles: profile }]);
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Safety net so users never need to refresh if a realtime packet is missed
+    const poll = setInterval(() => { fetchMessages(); }, 15000);
+    const onVisible = () => { if (document.visibilityState === "visible") fetchMessages(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      supabase.removeChannel(channel);
+    };
   }, [isMember, roomId]);
 
   // Load persisted missed calls
