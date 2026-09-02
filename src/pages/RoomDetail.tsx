@@ -651,6 +651,9 @@ const RoomDetail = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Presence / typing */}
+      {isMember && <RoomPresenceBar online={online} typing={typing} />}
+
       {/* Input bar */}
       {isMember && (
         <div className="shrink-0 bg-card border-t border-border px-3 py-2 flex items-center gap-1.5">
@@ -694,7 +697,7 @@ const RoomDetail = () => {
           <Input
             placeholder="Type a message..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => { setNewMessage(e.target.value); notifyTyping(); }}
             onKeyDown={handleKeyDown}
             className="flex-1"
           />
@@ -705,6 +708,25 @@ const RoomDetail = () => {
       )}
 
       {/* Sheets */}
+      <RoomActionsSheet
+        open={actionsOpen}
+        onOpenChange={setActionsOpen}
+        room={room}
+        isMember={isMember}
+        isAdmin={isAdmin}
+        missedCount={missedCalls.length}
+        onCall={() => setVoiceCallOpen(true)}
+        onMissed={() => setMissedOpen(true)}
+        onEvent={() => setEventOpen(true)}
+        onGames={() => setGamesOpen(true)}
+        onTransfer={() => setTransferOpen(true)}
+        onInvite={() => setInviteOpen(true)}
+        onCrossPost={() => setCrossPostOpen(true)}
+        onSettings={() => setSettingsOpen(true)}
+        onLeave={leaveRoom}
+      />
+
+
       {isAdmin && (
         <RoomSettings
           open={settingsOpen}
