@@ -697,7 +697,7 @@ const RoomDetail = () => {
           <Input
             placeholder="Type a message..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => { setNewMessage(e.target.value); notifyTyping(); }}
             onKeyDown={handleKeyDown}
             className="flex-1"
           />
