@@ -708,6 +708,25 @@ const RoomDetail = () => {
       )}
 
       {/* Sheets */}
+      <RoomActionsSheet
+        open={actionsOpen}
+        onOpenChange={setActionsOpen}
+        room={room}
+        isMember={isMember}
+        isAdmin={isAdmin}
+        missedCount={missedCalls.length}
+        onCall={() => setVoiceCallOpen(true)}
+        onMissed={() => setMissedOpen(true)}
+        onEvent={() => setEventOpen(true)}
+        onGames={() => setGamesOpen(true)}
+        onTransfer={() => setTransferOpen(true)}
+        onInvite={() => setInviteOpen(true)}
+        onCrossPost={() => setCrossPostOpen(true)}
+        onSettings={() => setSettingsOpen(true)}
+        onLeave={leaveRoom}
+      />
+
+
       {isAdmin && (
         <RoomSettings
           open={settingsOpen}
