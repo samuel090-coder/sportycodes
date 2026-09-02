@@ -651,6 +651,9 @@ const RoomDetail = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Presence / typing */}
+      {isMember && <RoomPresenceBar online={online} typing={typing} />}
+
       {/* Input bar */}
       {isMember && (
         <div className="shrink-0 bg-card border-t border-border px-3 py-2 flex items-center gap-1.5">
