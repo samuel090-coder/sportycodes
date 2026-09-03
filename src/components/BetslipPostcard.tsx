@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock, ShieldCheck, CalendarDays, Clock, Trophy } from "lucide-react";
 
 export interface BetslipSelection {
   home_team: string;
@@ -17,12 +17,17 @@ export interface BetslipPostcardData {
   bonus?: number;
   payout?: number;
   slip_date?: string;
+  /** optional scheduling metadata */
+  match_date?: string;
+  match_time?: string;
+  competition?: string;
+  league?: string;
   selections: BetslipSelection[];
 }
 
 interface Props {
   data: BetslipPostcardData;
-  /** when false, the booking code is hidden behind a blue locked overlay */
+  /** when false, the booking code AND all selections stay protected */
   unlocked?: boolean;
 }
 
@@ -32,6 +37,15 @@ const fmt = (n?: number) =>
     : "—";
 
 export function BetslipPostcard({ data, unlocked = true }: Props) {
+  const meta = [
+    data.match_date && { icon: CalendarDays, label: data.match_date },
+    data.match_time && { icon: Clock, label: data.match_time },
+    (data.competition || data.league) && {
+      icon: Trophy,
+      label: [data.competition, data.league].filter(Boolean).join(" · "),
+    },
+  ].filter(Boolean) as { icon: typeof Clock; label: string }[];
+
   return (
     <div className="relative w-full max-w-md mx-auto rounded-2xl overflow-hidden border-2 border-cyber-neon-red/60 shadow-neon-red bg-cyber-dark font-mono">
       {/* Header */}
@@ -46,12 +60,27 @@ export function BetslipPostcard({ data, unlocked = true }: Props) {
         </div>
       </div>
 
+      {/* Schedule metadata */}
+      {meta.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-4 pt-3">
+          {meta.map((m, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 rounded-full border border-cyber-neon-cyan/30 bg-cyber-panel px-2 py-0.5 text-[10px] text-cyber-neon-cyan"
+            >
+              <m.icon className="h-3 w-3" />
+              {m.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Booking Code */}
       <div className="px-4 pt-5 pb-3 text-center">
         <div className="text-cyber-neon-cyan text-xs tracking-widest opacity-80">BOOKING CODE</div>
         <div className="relative mt-1">
           {unlocked ? (
-            <div className="text-cyber-neon-green text-4xl font-black tracking-wider drop-shadow-[0_0_12px_rgba(34,197,94,0.6)]">
+            <div className="text-cyber-neon-green text-4xl font-black tracking-wider drop-shadow-[0_0_12px_rgba(34,197,94,0.6)] animate-in fade-in zoom-in-95 duration-500">
               {data.booking_code}
             </div>
           ) : (
@@ -97,25 +126,50 @@ export function BetslipPostcard({ data, unlocked = true }: Props) {
         </div>
       </div>
 
-      {/* Selections */}
+      {/* Selections — fully protected until access is granted */}
       <div className="px-4 pb-4">
-        <div className="text-cyber-neon-red text-xs font-black tracking-widest mb-2">SELECTIONS</div>
-        <div className="space-y-2">
-          {data.selections.map((s, i) => (
-            <div
-              key={i}
-              className="rounded-md bg-cyber-panel border border-cyber-neon-red/20 p-2.5 text-xs"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-cyber-neon-green font-black text-sm">{s.pick}</span>
-                <span className="text-white font-bold">{fmt(s.odds)}</span>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-cyber-neon-red text-xs font-black tracking-widest">SELECTIONS</span>
+          <span className="text-[10px] text-cyber-neon-cyan/70">
+            {data.selections.length} pick{data.selections.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        <div className="relative">
+          <div
+            className={`space-y-2 transition-all duration-700 ${
+              unlocked ? "blur-0 opacity-100" : "blur-[7px] opacity-60 select-none pointer-events-none scale-[0.99]"
+            }`}
+            aria-hidden={!unlocked}
+          >
+            {data.selections.map((s, i) => (
+              <div key={i} className="rounded-md bg-cyber-panel border border-cyber-neon-red/20 p-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-cyber-neon-green font-black text-sm">{s.pick}</span>
+                  <span className="text-white font-bold">{fmt(s.odds)}</span>
+                </div>
+                <div className="text-white/90 mt-0.5 font-bold">
+                  {s.home_team} <span className="text-cyber-neon-cyan/60">vs</span> {s.away_team}
+                </div>
+                <div className="text-cyber-neon-cyan/70">{s.market}</div>
               </div>
-              <div className="text-white/90 mt-0.5 font-bold">
-                {s.home_team} <span className="text-cyber-neon-cyan/60">vs</span> {s.away_team}
+            ))}
+          </div>
+
+          {!unlocked && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-cyber-dark/40 via-cyber-dark/70 to-cyber-dark/90 backdrop-blur-[2px] animate-in fade-in duration-500">
+              <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-cyber-neon-red/60 bg-black/60">
+                <span className="absolute inset-0 animate-ping rounded-full border border-cyber-neon-red/40" />
+                <ShieldCheck className="h-5 w-5 text-cyber-neon-red" />
               </div>
-              <div className="text-cyber-neon-cyan/70">{s.market}</div>
+              <div className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-white">
+                Predictions Protected
+              </div>
+              <div className="mt-0.5 px-6 text-center text-[10px] text-cyber-neon-cyan/80">
+                Unlock to reveal every selection, market and odd
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
 

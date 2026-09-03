@@ -46,9 +46,25 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
+      devOptions: { enabled: false },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        navigateFallback: "index.html",
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/functions\//, /^\/api\//],
         runtimeCaching: [
+          {
+            // HTML navigations always try the network first
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-cache",
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /^https:\/\/lgrnqxekdllvagiqrmpm\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
@@ -61,6 +77,16 @@ export default defineConfig(({ mode }) => ({
               cacheableResponse: {
                 statuses: [0, 200],
               },
+            },
+          },
+          {
+            urlPattern: ({ request, sameOrigin }) =>
+              sameOrigin && ["image", "font", "style", "script"].includes(request.destination),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "asset-cache",
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],
