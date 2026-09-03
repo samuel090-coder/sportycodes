@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoadingScreen from "./components/LoadingScreen";
 import InstallGate from "./components/InstallGate";
+import InstallPrompt from "./components/InstallPrompt";
 import { MaintenanceGate } from "./components/MaintenanceGate";
 import SureOdds from "./pages/SureOdds";
 import Payment from "./pages/Payment";
@@ -94,6 +95,7 @@ const App = () => {
             <PresenceTracker />
             <SupportChatWidget />
             <ApkDownloadBanner />
+            <InstallPrompt />
             <InstallGate>
               <Routes>
                 <Route path="/" element={<SureOdds />} />
