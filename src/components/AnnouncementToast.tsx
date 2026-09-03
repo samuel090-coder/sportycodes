@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Megaphone, ExternalLink } from "lucide-react";
+import { AnnouncementToastView } from "@/components/announcements/AnnouncementSurfaces";
 
 interface Announcement {
   id: string;
@@ -81,50 +81,21 @@ export const AnnouncementToast = () => {
 
   const showToast = (announcement: Announcement) => {
     if (shownIds.has(announcement.id) || dismissedIds.has(announcement.id)) return;
-    
+
     setShownIds(prev => new Set([...prev, announcement.id]));
 
-    const toastContent = (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 font-bold">
-          <Megaphone className="w-4 h-4" />
-          {announcement.title}
-        </div>
-        <p className="text-sm opacity-90">{announcement.content}</p>
-        {announcement.link_url && (
-          <a
-            href={announcement.link_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm underline hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {announcement.link_text || "Learn More"}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
-      </div>
+    toast.custom(
+      (t) => (
+        <AnnouncementToastView
+          a={announcement}
+          onDismiss={() => {
+            handleDismiss(announcement.id);
+            toast.dismiss(t);
+          }}
+        />
+      ),
+      { duration: announcement.is_dismissible ? 10000 : Infinity }
     );
-
-    const toastOptions: any = {
-      description: toastContent,
-      duration: announcement.is_dismissible ? 10000 : Infinity,
-      style: {
-        backgroundColor: announcement.bg_color,
-        color: announcement.text_color,
-        border: `2px solid ${announcement.bg_color}`,
-      },
-      onDismiss: () => handleDismiss(announcement.id),
-    };
-
-    if (announcement.is_dismissible) {
-      toastOptions.action = {
-        label: "Dismiss",
-        onClick: () => handleDismiss(announcement.id),
-      };
-    }
-
-    toast(announcement.title, toastOptions);
   };
 
   const handleDismiss = async (announcementId: string) => {
