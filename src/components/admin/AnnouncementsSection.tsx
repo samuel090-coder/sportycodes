@@ -27,6 +27,18 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AnnouncementBannerView,
+  AnnouncementPopupBody,
+  AnnouncementToastView,
+  AnnouncementView,
+} from "@/components/announcements/AnnouncementSurfaces";
+import { RICH_HELP } from "@/lib/announcementRich";
+import {
+  ANNOUNCEMENT_TEMPLATES,
+  TEMPLATE_CATEGORIES,
+  AnnouncementTemplate,
+} from "@/lib/announcementTemplates";
 
 interface Announcement {
   id: string;
@@ -87,6 +99,41 @@ export const AnnouncementsSection = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateCategory, setTemplateCategory] = useState("all");
+
+  const filteredTemplates = ANNOUNCEMENT_TEMPLATES.filter((t) => {
+    const q = templateSearch.trim().toLowerCase();
+    const matchesQ = !q || `${t.name} ${t.title} ${t.category}`.toLowerCase().includes(q);
+    const matchesC = templateCategory === "all" || t.category === templateCategory;
+    return matchesQ && matchesC;
+  });
+
+  const applyTemplate = (t: AnnouncementTemplate) => {
+    setTitle(t.title);
+    setContent(t.content);
+    setDisplayType(t.display_type);
+    setPreviewType(t.display_type);
+    setBgColor(t.bg_color);
+    setTextColor(t.text_color);
+    if (t.link_text) setLinkText(t.link_text);
+    toast.success(`Template applied: ${t.name}`);
+  };
+
+  const insertMarkup = (snippet: string) => {
+    setContent((prev) => (prev ? `${prev.replace(/\s+$/, "")}\n${snippet}` : snippet));
+  };
+
+  const previewData: AnnouncementView = {
+    title: title || "Announcement Title",
+    content: content || "Your message here...",
+    bg_color: bgColor,
+    text_color: textColor,
+    link_url: linkUrl || undefined,
+    link_text: linkText || undefined,
+    image_url: imageUrl || undefined,
+    is_dismissible: isDismissible,
+  };
 
   useEffect(() => {
     fetchAnnouncements();
@@ -423,9 +470,10 @@ export const AnnouncementsSection = () => {
           </DialogHeader>
 
           <Tabs defaultValue="content" className="mt-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="style">Style & Display</TabsTrigger>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
               <TabsTrigger value="preview">Preview</TabsTrigger>
             </TabsList>
 
@@ -442,12 +490,57 @@ export const AnnouncementsSection = () => {
               </div>
               <div className="space-y-2">
                 <Label>Content</Label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    ["# Title", "# Big Title"],
+                    ["## Subtitle", "## Subtitle"],
+                    ["Bold", "**bold text**"],
+                    ["Highlight", "==highlighted=="],
+                    ["Badge", "[[NEW]]"],
+                    ["Bullets", "- first item\n- second item"],
+                    ["Numbered", "1. step one\n2. step two"],
+                    ["Quote", "> quoted line"],
+                    ["Callout", "!info: important note"],
+                    ["Alert", "!error: urgent alert"],
+                    ["Promo", "!promo: limited offer"],
+                    ["Divider", "---"],
+                    ["Button", "[Claim Now](https://sportycodes.lovable.app)"],
+                    ["Image", "![](https://image-url)"],
+                    ["Countdown", "@@countdown:2026-12-31T20:00@@"],
+                  ].map(([label, snippet]) => (
+                    <Button
+                      key={label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => insertMarkup(snippet)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
                 <Textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Your announcement message..."
-                  className="bg-secondary/50 border-border min-h-[100px]"
+                  placeholder={RICH_HELP}
+                  className="bg-secondary/50 border-border min-h-[160px] font-mono text-xs"
                 />
+                <div className="rounded-xl border border-border bg-background p-3">
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Live preview ({displayType})
+                  </div>
+                  {displayType === "banner" && <AnnouncementBannerView a={previewData} />}
+                  {displayType === "popup" && (
+                    <div
+                      className="overflow-hidden rounded-2xl border-2 bg-card"
+                      style={{ borderColor: bgColor }}
+                    >
+                      <AnnouncementPopupBody a={previewData} />
+                    </div>
+                  )}
+                  {displayType === "toast" && <AnnouncementToastView a={previewData} />}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -662,7 +755,7 @@ export const AnnouncementsSection = () => {
               </div>
             </TabsContent>
 
-            {/* Preview Tab */}
+            {/* Preview Tab — renders the EXACT user-facing components */}
             <TabsContent value="preview" className="mt-4">
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -679,78 +772,95 @@ export const AnnouncementsSection = () => {
                   ))}
                 </div>
 
-                <div className="bg-background rounded-xl border border-border p-4 min-h-[300px] relative overflow-hidden">
-                  {/* Banner Preview */}
+                <div className="relative min-h-[340px] overflow-hidden rounded-xl border border-border bg-background">
                   {previewType === "banner" && (
-                    <div
-                      className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center justify-center gap-3"
-                      style={{ backgroundColor: bgColor, color: textColor }}
-                    >
-                      <Megaphone className="w-4 h-4" />
-                      <span className="font-bold">{title || "Announcement Title"}</span>
-                      <span className="opacity-90">{content || "Your message here..."}</span>
-                      {linkUrl && (
-                        <span className="underline">{linkText || "Learn More"}</span>
-                      )}
-                      {isDismissible && <X className="w-4 h-4 ml-auto" />}
+                    <div className="absolute left-0 right-0 top-0">
+                      <AnnouncementBannerView a={previewData} />
                     </div>
                   )}
 
-                  {/* Popup Preview */}
                   {previewType === "popup" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <div className="bg-card rounded-2xl border-2 max-w-md w-full m-4" style={{ borderColor: bgColor }}>
-                        <div
-                          className="px-6 py-4 rounded-t-2xl flex items-center gap-3"
-                          style={{ backgroundColor: bgColor, color: textColor }}
-                        >
-                          <Megaphone className="w-6 h-6" />
-                          <span className="font-bold">{title || "Announcement"}</span>
-                        </div>
-                        <div className="p-6">
-                          <p className="text-foreground">{content || "Your message here..."}</p>
-                          {linkUrl && (
-                            <a className="text-primary underline mt-4 inline-flex items-center gap-1">
-                              {linkText || "Learn More"} <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
-                            {isDismissible && <Button variant="outline">Dismiss</Button>}
-                            <Button style={{ backgroundColor: bgColor, color: textColor }}>Got it</Button>
-                          </div>
-                        </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-4">
+                      <div
+                        className="w-full max-w-md overflow-hidden rounded-2xl border-2 bg-card"
+                        style={{ borderColor: bgColor }}
+                      >
+                        <AnnouncementPopupBody a={previewData} />
                       </div>
                     </div>
                   )}
 
-                  {/* Toast Preview */}
                   {previewType === "toast" && (
                     <div className="absolute bottom-4 right-4">
-                      <div
-                        className="p-4 rounded-lg shadow-lg max-w-sm border-2"
-                        style={{ backgroundColor: bgColor, color: textColor, borderColor: bgColor }}
-                      >
-                        <div className="flex items-center gap-2 font-bold mb-1">
-                          <Megaphone className="w-4 h-4" />
-                          {title || "Announcement"}
-                        </div>
-                        <p className="text-sm opacity-90">{content || "Your message here..."}</p>
-                        {linkUrl && (
-                          <a className="text-sm underline mt-2 inline-flex items-center gap-1">
-                            {linkText || "Learn More"} <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
+                      <AnnouncementToastView a={previewData} onDismiss={() => {}} />
                     </div>
                   )}
 
-                  {/* Page content placeholder */}
-                  <div className={`p-4 ${previewType === "banner" ? "mt-12" : ""}`}>
-                    <div className="bg-muted/30 rounded-lg h-8 w-48 mb-4" />
-                    <div className="bg-muted/30 rounded-lg h-4 w-full mb-2" />
-                    <div className="bg-muted/30 rounded-lg h-4 w-3/4 mb-2" />
-                    <div className="bg-muted/30 rounded-lg h-4 w-1/2" />
+                  <div className={`p-4 ${previewType === "banner" ? "mt-16" : ""}`}>
+                    <div className="mb-4 h-8 w-48 rounded-lg bg-muted/30" />
+                    <div className="mb-2 h-4 w-full rounded-lg bg-muted/30" />
+                    <div className="mb-2 h-4 w-3/4 rounded-lg bg-muted/30" />
+                    <div className="h-4 w-1/2 rounded-lg bg-muted/30" />
                   </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Templates Tab */}
+            <TabsContent value="templates" className="mt-4">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    placeholder="Search templates..."
+                    className="h-9 max-w-xs bg-secondary/50"
+                  />
+                  <Select value={templateCategory} onValueChange={setTemplateCategory}>
+                    <SelectTrigger className="h-9 w-44 bg-secondary/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All categories</SelectItem>
+                      {TEMPLATE_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">
+                    {filteredTemplates.length} templates
+                  </span>
+                </div>
+
+                <div className="grid max-h-[55vh] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                  {filteredTemplates.slice(0, 120).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => applyTemplate(t)}
+                      className="rounded-xl border border-border bg-card p-3 text-left transition hover:border-primary hover:shadow-lg"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold">{t.name}</span>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                          style={{ backgroundColor: t.bg_color, color: t.text_color }}
+                        >
+                          {t.display_type}
+                        </span>
+                      </div>
+                      <div className="pointer-events-none max-h-32 overflow-hidden rounded-lg">
+                        <AnnouncementToastView
+                          a={{
+                            title: t.title,
+                            content: t.content,
+                            bg_color: t.bg_color,
+                            text_color: t.text_color,
+                          }}
+                        />
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </TabsContent>
