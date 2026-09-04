@@ -8,6 +8,13 @@
       "when": 1788046670151,
       "tag": "0000_create_bank_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788516316919,
+      "tag": "0001_add_sure_odds_event_metadata",
+      "breakpoints": true
     }
   ]
 }

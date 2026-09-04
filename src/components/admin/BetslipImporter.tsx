@@ -26,6 +26,10 @@ export function BetslipImporter({ onSaved }: { onSaved?: () => void }) {
   const [data, setData] = useState<BetslipPostcardData>(empty);
   const [price, setPrice] = useState<number>(500);
   const [confidence, setConfidence] = useState("HIGH");
+  const [matchDate, setMatchDate] = useState("");
+  const [matchTime, setMatchTime] = useState("");
+  const [competition, setCompetition] = useState("");
+  const [league, setLeague] = useState("");
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -93,11 +97,20 @@ export function BetslipImporter({ onSaved }: { onSaved?: () => void }) {
         bonus: data.bonus || 0,
         selections: data.selections as any,
         is_postcard: true,
+        competition: competition || null,
+        league: league || null,
+        scheduled_time: matchDate
+          ? new Date(`${matchDate}T${matchTime || "00:00"}`).toISOString()
+          : null,
       };
       const { error } = await supabase.from("sure_odds").insert(insertRow);
       if (error) throw error;
       toast.success("Postcard saved & live!");
       setData(empty);
+      setMatchDate("");
+      setMatchTime("");
+      setCompetition("");
+      setLeague("");
       onSaved?.();
     } catch (err: any) {
       console.error(err);
@@ -132,6 +145,25 @@ export function BetslipImporter({ onSaved }: { onSaved?: () => void }) {
           </span>
         </Button>
       </label>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-cyber-neon-cyan text-xs font-mono">Match Date</Label>
+          <Input type="date" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} className="bg-cyber-panel border-cyber-neon-red/30" />
+        </div>
+        <div>
+          <Label className="text-cyber-neon-cyan text-xs font-mono">Match Time</Label>
+          <Input type="time" value={matchTime} onChange={(e) => setMatchTime(e.target.value)} className="bg-cyber-panel border-cyber-neon-red/30" />
+        </div>
+        <div>
+          <Label className="text-cyber-neon-cyan text-xs font-mono">Competition (optional)</Label>
+          <Input value={competition} onChange={(e) => setCompetition(e.target.value)} placeholder="UEFA Champions League" className="bg-cyber-panel border-cyber-neon-red/30" />
+        </div>
+        <div>
+          <Label className="text-cyber-neon-cyan text-xs font-mono">League (optional)</Label>
+          <Input value={league} onChange={(e) => setLeague(e.target.value)} placeholder="Premier League" className="bg-cyber-panel border-cyber-neon-red/30" />
+        </div>
+      </div>
 
       {(data.booking_code || data.selections.length > 0) && (
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -200,7 +232,16 @@ export function BetslipImporter({ onSaved }: { onSaved?: () => void }) {
           {/* Live preview */}
           <div>
             <h4 className="text-cyber-neon-cyan font-mono font-black text-sm mb-2">LIVE PREVIEW (USER VIEW — LOCKED)</h4>
-            <BetslipPostcard data={data} unlocked={false} />
+            <BetslipPostcard
+          data={{
+            ...data,
+            match_date: matchDate || undefined,
+            match_time: matchTime || undefined,
+            competition: competition || undefined,
+            league: league || undefined,
+          }}
+          unlocked={false}
+        />
             <h4 className="text-cyber-neon-cyan font-mono font-black text-sm mt-4 mb-2">UNLOCKED VIEW</h4>
             <BetslipPostcard data={data} unlocked={true} />
           </div>
