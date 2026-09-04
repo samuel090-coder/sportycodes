@@ -1804,12 +1804,14 @@ export type Database = {
           away_team_logo: string | null
           bet_code: string
           bonus: number
+          competition: string | null
           confidence: string
           created_at: string | null
           home_team: string
           home_team_logo: string | null
           id: string
           is_postcard: boolean
+          league: string | null
           match_count: number
           odds: number
           payout: number | null
@@ -1828,12 +1830,14 @@ export type Database = {
           away_team_logo?: string | null
           bet_code: string
           bonus?: number
+          competition?: string | null
           confidence: string
           created_at?: string | null
           home_team: string
           home_team_logo?: string | null
           id?: string
           is_postcard?: boolean
+          league?: string | null
           match_count?: number
           odds: number
           payout?: number | null
@@ -1852,12 +1856,14 @@ export type Database = {
           away_team_logo?: string | null
           bet_code?: string
           bonus?: number
+          competition?: string | null
           confidence?: string
           created_at?: string | null
           home_team?: string
           home_team_logo?: string | null
           id?: string
           is_postcard?: boolean
+          league?: string | null
           match_count?: number
           odds?: number
           payout?: number | null
