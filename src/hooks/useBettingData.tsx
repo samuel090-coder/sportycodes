@@ -34,6 +34,8 @@ export interface SureOdd {
   adZoneId?: string | null; // MonetAg ad zone for this specific odd
   adEnabled?: boolean; // Toggle to enable/disable watch ad option for this odd
   isPostcard?: boolean;
+  competition?: string;
+  league?: string;
   bonus?: number;
   selections?: Array<{ home_team: string; away_team: string; market: string; pick: string; odds: number }>;
 }
@@ -125,6 +127,8 @@ export const useBettingData = () => {
         adZoneId: item.ad_zone_id || undefined,
         adEnabled: item.ad_enabled !== false, // Default to true if not set
         isPostcard: (item as any).is_postcard || false,
+        competition: (item as any).competition || undefined,
+        league: (item as any).league || undefined,
         bonus: (item as any).bonus || 0,
         selections: (item as any).selections || [],
       }));

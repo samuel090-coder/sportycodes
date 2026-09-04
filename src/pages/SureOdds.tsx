@@ -403,6 +403,14 @@ const SureOdds = () => {
                           stake: odd.stake,
                           bonus: odd.bonus,
                           payout: odd.payout,
+                          competition: odd.competition,
+                          league: odd.league,
+                          match_date: odd.scheduledTime
+                            ? new Date(odd.scheduledTime).toLocaleDateString()
+                            : undefined,
+                          match_time: odd.scheduledTime
+                            ? new Date(odd.scheduledTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                            : undefined,
                           selections: odd.selections || [],
                         }}
                       />
