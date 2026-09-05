@@ -160,7 +160,12 @@ const VIPSubscription = () => {
               <Crown className="w-16 h-16 text-white mx-auto mb-3" />
               <h2 className="text-2xl font-black text-white mb-2">VIP ACTIVE</h2>
               <p className="text-white/80">
-                Expires: {new Date(currentSubscription.expires_at).toLocaleDateString()}
+                Expires: {currentSubscription?.expires_at
+                  ? new Date(currentSubscription.expires_at).toLocaleDateString()
+                  : "—"}
+              </p>
+              <p className="mt-1 text-sm font-bold text-white">
+                {daysLeft <= 1 ? "Expires today — renew to keep access" : `${daysLeft} days remaining`}
               </p>
             </div>
           </Card>
