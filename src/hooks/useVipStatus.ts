@@ -33,7 +33,11 @@ export const useVipStatus = (userId?: string | null, userEmail?: string | null) 
     }
 
     // Clear out anything past its expiry date before reading.
-    await supabase.rpc("expire_vip_subscriptions").catch(() => {});
+    try {
+      await supabase.rpc("expire_vip_subscriptions");
+    } catch {
+      /* non-fatal */
+    }
 
     const { data } = await supabase
       .from("vip_subscriptions")
