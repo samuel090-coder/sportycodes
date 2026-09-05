@@ -15,6 +15,13 @@
       "when": 1788516316919,
       "tag": "0001_add_sure_odds_event_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788567556586,
+      "tag": "0002_vip_auto_expiry",
+      "breakpoints": true
     }
   ]
 }

@@ -2289,6 +2289,7 @@ export type Database = {
         Returns: undefined
       }
       current_user_email: { Args: never; Returns: string }
+      expire_vip_subscriptions: { Args: never; Returns: number }
       generate_referral_short_code: { Args: never; Returns: string }
       generate_room_invite_code: { Args: never; Returns: string }
       get_user_phone: { Args: { _user_id: string }; Returns: string }
