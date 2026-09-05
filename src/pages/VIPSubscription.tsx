@@ -112,8 +112,7 @@ const VIPSubscription = () => {
     }
   };
 
-  const isVipActive = currentSubscription?.status === "active" && 
-    new Date(currentSubscription.expires_at) > new Date();
+  const isVipActive = isVip;
 
   const insufficientBalance = wallet && wallet.balance < vipPrice;
 
