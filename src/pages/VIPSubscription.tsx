@@ -16,15 +16,20 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { promptDeposit } from "@/lib/insufficientFunds";
+import { useVipPrice } from "@/hooks/useVipPrice";
+import { useVipStatus } from "@/hooks/useVipStatus";
 
 const VIPSubscription = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
-  const [vipPrice, setVipPrice] = useState(2000);
-  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
+  const { vipPrice } = useVipPrice();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { subscription: currentSubscription, isVip, daysLeft, refreshVip } = useVipStatus(
+    user?.id,
+    user?.email
+  );
 
   useEffect(() => {
     checkAuth();
@@ -43,17 +48,6 @@ const VIPSubscription = () => {
   const loadData = async (userId: string) => {
     setIsLoading(true);
     try {
-      // Load VIP price
-      const { data: priceData } = await supabase
-        .from("app_settings")
-        .select("setting_value")
-        .eq("setting_key", "vip_monthly_price")
-        .maybeSingle();
-      
-      if (priceData?.setting_value) {
-        setVipPrice(parseFloat(priceData.setting_value));
-      }
-
       // Load wallet
       const { data: walletData } = await supabase
         .from("wallets")
@@ -61,19 +55,7 @@ const VIPSubscription = () => {
         .eq("user_id", userId)
         .single();
       setWallet(walletData);
-
-      // Check current subscription
-      const { data: subData } = await supabase
-        .from("vip_subscriptions")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (subData) {
-        setCurrentSubscription(subData);
-      }
+      refreshVip();
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
