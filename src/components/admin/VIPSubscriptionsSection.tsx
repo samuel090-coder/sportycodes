@@ -87,15 +87,26 @@ export const VIPSubscriptionsSection = () => {
   };
 
   const handleSavePrice = async () => {
+    const parsed = parseFloat(vipPrice);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      toast.error("Enter a valid price");
+      return;
+    }
     setSavingPrice(true);
     try {
-      await supabase.from("app_settings").upsert({
-        setting_key: "vip_monthly_price",
-        setting_value: vipPrice
-      });
+      const { error } = await supabase.from("app_settings").upsert(
+        {
+          setting_key: "vip_monthly_price",
+          setting_value: String(parsed),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "setting_key" }
+      );
+      if (error) throw error;
+      setVipPrice(String(parsed));
       toast.success("VIP price updated!");
-    } catch (error) {
-      toast.error("Failed to update price");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update price");
     } finally {
       setSavingPrice(false);
     }
