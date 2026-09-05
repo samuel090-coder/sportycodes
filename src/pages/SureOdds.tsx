@@ -19,6 +19,7 @@ import { HilltopAdRenderer } from "@/components/HilltopAdRenderer";
 import { LiveVideoBillboard } from "@/components/LiveVideoBillboard";
 import { SiteAdverts } from "@/components/SiteAdverts";
 import { BetslipPostcard } from "@/components/BetslipPostcard";
+import { useVipStatus } from "@/hooks/useVipStatus";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
