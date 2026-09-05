@@ -19,6 +19,7 @@ import { HilltopAdRenderer } from "@/components/HilltopAdRenderer";
 import { LiveVideoBillboard } from "@/components/LiveVideoBillboard";
 import { SiteAdverts } from "@/components/SiteAdverts";
 import { BetslipPostcard } from "@/components/BetslipPostcard";
+import { useVipStatus } from "@/hooks/useVipStatus";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
@@ -30,7 +31,7 @@ const SureOdds = () => {
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const [selectedOdd, setSelectedOdd] = useState<typeof sureOdds[0] | null>(null);
   const [cardsAdsEnabled, setCardsAdsEnabled] = useState(true);
-  const [isVip, setIsVip] = useState(false);
+  const { isVip } = useVipStatus(userId, userEmail);
 
   useEffect(() => {
     // Check for authenticated user first
@@ -39,18 +40,6 @@ const SureOdds = () => {
       if (session?.user) {
         setUserId(session.user.id);
         setUserEmail(session.user.email || null);
-        
-        // Check VIP status
-        const { data: vipData } = await supabase
-          .from("vip_subscriptions")
-          .select("status, expires_at")
-          .eq("user_id", session.user.id)
-          .eq("status", "active")
-          .maybeSingle();
-
-        if (vipData && new Date(vipData.expires_at) > new Date()) {
-          setIsVip(true);
-        }
       } else {
         // Get or create user email identifier for guests
         let email = localStorage.getItem('user_payment_email');

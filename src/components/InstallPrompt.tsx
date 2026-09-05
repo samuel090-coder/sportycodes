@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Rocket, Zap, Gauge, Bell } from "lucide-react";
+import { Rocket, Zap, Gauge, Bell, RefreshCw } from "lucide-react";
 
 const SNOOZE_KEY = "sc_install_snoozed_at";
-/** re-ask 30 minutes after "Maybe Later", and on every new visit */
+/** re-ask 30 minutes after "Exit", and on every new visit */
 const SNOOZE_MS = 30 * 60 * 1000;
 
 interface BIPEvent extends Event {
@@ -34,13 +34,11 @@ export const InstallPrompt = () => {
       e.preventDefault();
       setDeferred(e as BIPEvent);
       const snoozed = Number(localStorage.getItem(SNOOZE_KEY) || 0);
-      if (Date.now() - snoozed > SNOOZE_MS) {
-        setTimeout(() => setOpen(true), 2500);
-      } else {
-        // try again once the snooze window elapses within this session
-        const wait = SNOOZE_MS - (Date.now() - snoozed);
-        setTimeout(() => setOpen(true), Math.min(wait, SNOOZE_MS));
-      }
+      const elapsed = Date.now() - snoozed;
+      // Always re-ask on a new visit; within the same session wait out the snooze.
+      const delay = elapsed > SNOOZE_MS ? 2000 : Math.min(SNOOZE_MS - elapsed, SNOOZE_MS);
+      const t = setTimeout(() => setOpen(true), delay);
+      return () => clearTimeout(t);
     };
 
     const onInstalled = () => {
@@ -61,6 +59,7 @@ export const InstallPrompt = () => {
     if (!deferred) return;
     setInstalling(true);
     try {
+      // Fire the browser's native installer right away — no navigation.
       await deferred.prompt();
       const choice = await deferred.userChoice;
       if (choice.outcome === "accepted") {
@@ -70,47 +69,56 @@ export const InstallPrompt = () => {
         localStorage.setItem(SNOOZE_KEY, String(Date.now()));
         setOpen(false);
       }
+    } catch {
+      localStorage.setItem(SNOOZE_KEY, String(Date.now()));
+      setOpen(false);
     } finally {
       setInstalling(false);
     }
   };
 
-  const later = () => {
+  const exit = () => {
     localStorage.setItem(SNOOZE_KEY, String(Date.now()));
     setOpen(false);
   };
 
+  // Browsers/devices without install support never see this modal.
   if (!deferred) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : later())}>
-      <DialogContent className="max-w-[22rem] overflow-hidden rounded-2xl border-2 border-primary/40 p-0 sm:max-w-sm">
-        <div className="relative bg-gradient-to-br from-primary to-red-800 px-5 py-6 text-center">
+    <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : exit())}>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[20rem] overflow-hidden rounded-2xl border-2 border-primary/40 p-0 duration-300 sm:max-w-sm">
+        <div className="relative bg-gradient-to-br from-primary to-red-800 px-5 py-5 text-center">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_60%)]" />
-          <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-black/30 shadow-lg">
+          <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-black/30 shadow-lg">
             <span className="absolute inset-0 animate-ping rounded-2xl border border-white/30" />
-            <Rocket className="h-8 w-8 text-primary-foreground" />
+            <Rocket className="h-7 w-7 animate-bounce text-primary-foreground" />
           </div>
-          <h2 className="relative mt-3 text-lg font-black tracking-tight text-primary-foreground">
-            Experience Sport Codes Faster
+          <h2 className="relative mt-3 text-base font-black tracking-tight text-primary-foreground">
+            Install Sporty Codes
           </h2>
         </div>
 
-        <div className="space-y-4 px-5 py-5">
-          <p className="text-center text-sm leading-relaxed text-muted-foreground">
-            Browser mode is slower and limits your experience. Install the Sport Codes app to enjoy
-            faster loading, quicker updates, better performance, and a smoother experience.
+        <div className="space-y-4 px-5 py-4">
+          <p className="text-center text-xs leading-relaxed text-muted-foreground">
+            Browsing in the browser is slower. The installed app loads faster, performs better,
+            updates quicker and gives you a smoother experience.
           </p>
 
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-4 gap-1.5 text-center">
             {[
-              { icon: Zap, label: "Instant" },
-              { icon: Gauge, label: "Faster" },
+              { icon: Zap, label: "Faster" },
+              { icon: Gauge, label: "Smooth" },
+              { icon: RefreshCw, label: "Updates" },
               { icon: Bell, label: "Alerts" },
-            ].map(({ icon: Icon, label }) => (
-              <div key={label} className="rounded-xl border border-border bg-muted/40 py-2">
+            ].map(({ icon: Icon, label }, i) => (
+              <div
+                key={label}
+                className="animate-fade-in rounded-xl border border-border bg-muted/40 py-2"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
                 <Icon className="mx-auto h-4 w-4 text-primary" />
-                <div className="mt-1 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">
+                <div className="mt-1 text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">
                   {label}
                 </div>
               </div>
@@ -121,12 +129,12 @@ export const InstallPrompt = () => {
             <Button
               onClick={install}
               disabled={installing}
-              className="h-11 w-full rounded-xl text-sm font-black uppercase tracking-wide"
+              className="h-11 w-full rounded-xl text-sm font-black uppercase tracking-wide transition-transform active:scale-95"
             >
               {installing ? "Opening installer…" : "Install Now"}
             </Button>
-            <Button onClick={later} variant="ghost" className="h-9 w-full text-xs text-muted-foreground">
-              Maybe Later
+            <Button onClick={exit} variant="ghost" className="h-9 w-full text-xs text-muted-foreground">
+              Exit
             </Button>
           </div>
         </div>
