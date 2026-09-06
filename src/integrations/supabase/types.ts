@@ -923,6 +923,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          category: string
+          created_at: string
+          id: string
+          image_url: string | null
+          is_broadcast: boolean
+          is_read: boolean
+          metadata: Json
+          title: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_broadcast?: boolean
+          is_read?: boolean
+          metadata?: Json
+          title: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_broadcast?: boolean
+          is_read?: boolean
+          metadata?: Json
+          title?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number | null
@@ -2288,6 +2330,17 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      create_notification: {
+        Args: {
+          _body?: string
+          _category?: string
+          _metadata?: Json
+          _title: string
+          _url?: string
+          _user_id: string
+        }
+        Returns: string
+      }
       current_user_email: { Args: never; Returns: string }
       expire_vip_subscriptions: { Args: never; Returns: number }
       generate_referral_short_code: { Args: never; Returns: string }
@@ -2321,6 +2374,7 @@ export type Database = {
         Returns: string
       }
       update_user_streak: { Args: { _user_id: string }; Returns: Json }
+      vip_renewal_reminders: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
