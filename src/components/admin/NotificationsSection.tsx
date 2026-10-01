@@ -363,30 +363,29 @@ export const NotificationsSection = () => {
       const payload: any = {
         title,
         body,
-        data: {}
+        audience: sendToAll ? audience : "user",
+        category: sendToAll ? "announcement" : "general",
       };
 
-      // Add image if provided
-      if (imageUrl) {
-        payload.data.image = imageUrl;
-      }
+      if (imageUrl) payload.image = imageUrl;
+      if (linkUrl.trim()) payload.url = linkUrl.trim();
+      if (!sendToAll && targetEmail) payload.userEmail = targetEmail;
 
-      // Add target email if not sending to all
-      if (!sendToAll && targetEmail) {
-        payload.userEmail = targetEmail;
-      }
-
-      const { error } = await supabase.functions.invoke("send-push-notification", {
+      const { data, error } = await supabase.functions.invoke("notify-users", {
         body: payload,
       });
 
       if (error) throw error;
 
+      const recipients = (data as any)?.recipients ?? 0;
+      const pushSent = (data as any)?.pushSent ?? 0;
+
       toast.success(
-        sendToAll 
-          ? `Notification broadcast to ${subscriberCount} subscribers!`
+        sendToAll
+          ? `Sent to ${recipients} ${audience === "all" ? "users" : audience + " users"} (${pushSent} push delivered)`
           : `Notification sent to ${targetEmail}!`
       );
+
     } catch (error: any) {
       console.error("Error sending notification:", error);
       toast.error(error.message || "Failed to send notification");
