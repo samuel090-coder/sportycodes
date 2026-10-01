@@ -168,6 +168,8 @@ export const NotificationsSection = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [targetEmail, setTargetEmail] = useState("");
   const [sendToAll, setSendToAll] = useState(true);
+  const [audience, setAudience] = useState<"all" | "vip" | "free">("all");
+  const [linkUrl, setLinkUrl] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -361,30 +363,29 @@ export const NotificationsSection = () => {
       const payload: any = {
         title,
         body,
-        data: {}
+        audience: sendToAll ? audience : "user",
+        category: sendToAll ? "announcement" : "general",
       };
 
-      // Add image if provided
-      if (imageUrl) {
-        payload.data.image = imageUrl;
-      }
+      if (imageUrl) payload.image = imageUrl;
+      if (linkUrl.trim()) payload.url = linkUrl.trim();
+      if (!sendToAll && targetEmail) payload.userEmail = targetEmail;
 
-      // Add target email if not sending to all
-      if (!sendToAll && targetEmail) {
-        payload.userEmail = targetEmail;
-      }
-
-      const { error } = await supabase.functions.invoke("send-push-notification", {
+      const { data, error } = await supabase.functions.invoke("notify-users", {
         body: payload,
       });
 
       if (error) throw error;
 
+      const recipients = (data as any)?.recipients ?? 0;
+      const pushSent = (data as any)?.pushSent ?? 0;
+
       toast.success(
-        sendToAll 
-          ? `Notification broadcast to ${subscriberCount} subscribers!`
+        sendToAll
+          ? `Sent to ${recipients} ${audience === "all" ? "users" : audience + " users"} (${pushSent} push delivered)`
           : `Notification sent to ${targetEmail}!`
       );
+
     } catch (error: any) {
       console.error("Error sending notification:", error);
       toast.error(error.message || "Failed to send notification");
@@ -697,6 +698,26 @@ export const NotificationsSection = () => {
                   </label>
                 </div>
 
+                {sendToAll && (
+                  <div className="flex flex-wrap gap-3">
+                    {([
+                      { key: "all", label: "Everyone" },
+                      { key: "vip", label: "VIP members only" },
+                      { key: "free", label: "Free users only" },
+                    ] as const).map((seg) => (
+                      <label key={seg.key} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={audience === seg.key}
+                          onChange={() => setAudience(seg.key)}
+                          className="accent-cyber-neon-purple"
+                        />
+                        <span className="text-cyber-neon-green/80 font-mono text-xs">{seg.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
                 {!sendToAll && (
                   <Input
                     type="email"
@@ -706,7 +727,18 @@ export const NotificationsSection = () => {
                     placeholder="user@example.com"
                   />
                 )}
+
+                <div className="space-y-1">
+                  <Label className="text-cyber-neon-cyan font-mono text-xs">DEEP LINK (optional)</Label>
+                  <Input
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    className="bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono"
+                    placeholder="/sure-odds"
+                  />
+                </div>
               </div>
+
 
               {/* Test Send (This Device) */}
               <div className="p-4 bg-cyber-dark/50 border border-cyber-neon-green/30 rounded-lg space-y-3">

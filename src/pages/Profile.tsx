@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import NotificationBell from "@/components/NotificationBell";
 import {
   Dialog,
   DialogContent,
@@ -297,6 +298,7 @@ const Profile = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             {isAdmin && (
               <Button
                 onClick={() => navigate("/admin")}

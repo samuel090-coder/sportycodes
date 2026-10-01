@@ -102,6 +102,23 @@ const VIPSubscription = () => {
 
       if (error) throw error;
 
+      // Private push for this member only (in-app record is created by the DB trigger)
+      try {
+        await supabase.functions.invoke("notify-users", {
+          body: {
+            audience: "user",
+            userId: user.id,
+            userEmail: user.email,
+            title: "👑 VIP activated",
+            body: `Your VIP membership is active until ${expiresAt.toLocaleDateString()}. All premium predictions are unlocked.`,
+            category: "vip",
+            url: "/vip",
+          },
+        });
+      } catch {
+        /* non-blocking */
+      }
+
       toast.success("VIP subscription activated! Enjoy unlimited access.");
       setWallet({ ...wallet, balance: newBalance });
       loadData(user.id);
