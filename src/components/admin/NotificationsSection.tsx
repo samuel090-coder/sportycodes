@@ -168,6 +168,8 @@ export const NotificationsSection = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [targetEmail, setTargetEmail] = useState("");
   const [sendToAll, setSendToAll] = useState(true);
+  const [audience, setAudience] = useState<"all" | "vip" | "free">("all");
+  const [linkUrl, setLinkUrl] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -697,6 +699,26 @@ export const NotificationsSection = () => {
                   </label>
                 </div>
 
+                {sendToAll && (
+                  <div className="flex flex-wrap gap-3">
+                    {([
+                      { key: "all", label: "Everyone" },
+                      { key: "vip", label: "VIP members only" },
+                      { key: "free", label: "Free users only" },
+                    ] as const).map((seg) => (
+                      <label key={seg.key} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={audience === seg.key}
+                          onChange={() => setAudience(seg.key)}
+                          className="accent-cyber-neon-purple"
+                        />
+                        <span className="text-cyber-neon-green/80 font-mono text-xs">{seg.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
                 {!sendToAll && (
                   <Input
                     type="email"
@@ -706,7 +728,18 @@ export const NotificationsSection = () => {
                     placeholder="user@example.com"
                   />
                 )}
+
+                <div className="space-y-1">
+                  <Label className="text-cyber-neon-cyan font-mono text-xs">DEEP LINK (optional)</Label>
+                  <Input
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    className="bg-cyber-dark/50 border-cyber-neon-purple/50 text-cyber-neon-green font-mono"
+                    placeholder="/sure-odds"
+                  />
+                </div>
               </div>
+
 
               {/* Test Send (This Device) */}
               <div className="p-4 bg-cyber-dark/50 border border-cyber-neon-green/30 rounded-lg space-y-3">
