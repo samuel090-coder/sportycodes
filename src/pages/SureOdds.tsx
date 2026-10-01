@@ -20,6 +20,7 @@ import { LiveVideoBillboard } from "@/components/LiveVideoBillboard";
 import { SiteAdverts } from "@/components/SiteAdverts";
 import { BetslipPostcard } from "@/components/BetslipPostcard";
 import { useVipStatus } from "@/hooks/useVipStatus";
+import NotificationBell from "@/components/NotificationBell";
 
 const SureOdds = () => {
   const { sureOdds, isLoading } = useBettingData();
