@@ -56,43 +56,27 @@ serve(async (req) => {
       return new Response(JSON.stringify({ sent: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: subscriptions } = await supabase
-      .from("push_subscriptions")
-      .select("subscription")
-      .in("user_email", memberEmails);
-
-    if (!subscriptions || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ sent: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
-    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-
-    if (!vapidPrivateKey || !vapidPublicKey) {
-      return new Response(JSON.stringify({ sent: 0, error: "VAPID keys not set" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // Send notifications via the existing send-push-notification function
+    // Send one targeted push per current member email. The push sender only
+    // filters by `userEmail`; without it, it broadcasts to every subscriber.
     let sent = 0;
     const title = `💬 ${room.name}`;
     const body = `${senderName}: ${message_preview || "sent a message"}`;
+    const uniqueEmails = [...new Set(memberEmails as string[])];
 
-    for (const sub of subscriptions) {
-      try {
-        await supabase.functions.invoke("send-push-notification", {
+    await Promise.allSettled(
+      uniqueEmails.map(async (email) => {
+        const { data } = await supabase.functions.invoke("send-push-notification", {
           body: {
-            subscription: sub.subscription,
+            userEmail: email,
             title,
             body,
-            icon: "/icon-192.png",
+            tag: `room-${room_id}`,
             data: { url: `/rooms/${room_id}` },
           },
         });
-        sent++;
-      } catch {
-        // Skip failed sends
-      }
-    }
+        sent += Number((data as any)?.sent ?? 0);
+      }),
+    );
 
     return new Response(JSON.stringify({ sent }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
