@@ -344,6 +344,7 @@ const SureOdds = () => {
                 Get VIP
               </Button>
             )}
+            </div>
           </div>
         </div>
       </header>
