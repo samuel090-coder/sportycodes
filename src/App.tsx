@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import TapToEarn from "./pages/TapToEarn";
 import Wallet from "./pages/Wallet";
 import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
 import Shorts from "./pages/Shorts";
 import Leaderboard from "./pages/Leaderboard";
 import UserProfile from "./pages/UserProfile";
@@ -106,6 +107,7 @@ const App = () => {
                 <Route path="/tap" element={<TapToEarn />} />
                 <Route path="/wallet" element={<Wallet />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/shorts" element={<Shorts />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/user/:userId" element={<UserProfile />} />
