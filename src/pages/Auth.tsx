@@ -73,6 +73,18 @@ const Auth = () => {
         display_name: profile?.display_name || useEmail.split("@")[0],
         avatar_url: profile?.avatar_url || undefined,
       });
+      // Private login alert for this account only
+      try {
+        await supabase.from("notifications").insert({
+          user_id: data.user!.id,
+          title: "🔐 New login",
+          body: `You signed in on ${new Date().toLocaleString()}. If this wasn't you, change your password.`,
+          category: "security",
+          url: "/profile",
+        });
+      } catch {
+        /* non-blocking */
+      }
       toast.success(`Welcome back, ${profile?.display_name || ""}!`);
       navigate("/dashboard");
     } catch (err: any) {
