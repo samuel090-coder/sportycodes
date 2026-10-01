@@ -327,6 +327,8 @@ const SureOdds = () => {
               <h1 className="text-3xl font-black text-primary-foreground">SURE ODDS</h1>
               <p className="text-sm text-primary-foreground/80 mt-1">Copy sure betting codes from verified predictions</p>
             </div>
+            <div className="flex items-center gap-2">
+            <NotificationBell iconClassName="text-primary-foreground" />
             {isVip ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-bet-warning/20 border border-bet-warning">
                 <Crown className="w-4 h-4 text-bet-warning" />
