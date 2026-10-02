@@ -164,10 +164,20 @@ const RoomDetail = () => {
           setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profiles: profile }]);
         }
       )
-      .subscribe();
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_messages", filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          const old = payload.old as any;
+          if (old?.id) setMessages(prev => prev.filter(m => m.id !== old.id));
+        }
+      )
+      .subscribe((status) => {
+        // Catch up on anything missed whenever the live connection (re)opens
+        if (status === "SUBSCRIBED") fetchMessages();
+      });
 
     // Safety net so users never need to refresh if a realtime packet is missed
-    const poll = setInterval(() => { fetchMessages(); }, 15000);
+    const poll = setInterval(() => { fetchMessages(); }, 4000);
+    window.addEventListener("online", fetchMessages as any);
     const onVisible = () => { if (document.visibilityState === "visible") fetchMessages(); };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
@@ -656,7 +666,7 @@ const RoomDetail = () => {
 
       {/* Input bar */}
       {isMember && (
-        <div className="shrink-0 bg-card border-t border-border px-3 py-2 flex items-center gap-1.5">
+        <div className="shrink-0 bg-background/95 backdrop-blur-xl border-t border-border/60 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex items-end gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -664,27 +674,23 @@ const RoomDetail = () => {
             className="hidden"
             onChange={handleFileUpload}
           />
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-            <Paperclip className="w-4 h-4" />
-          </Button>
-          <RoomVoiceNote onSend={handleVoiceSend} />
-          <ComposerFXMenu
-            effect={pendingEffect}
-            onEffect={setPendingEffect}
-            onCashRain={broadcastCashRain}
-            onBurst={broadcastBurst}
-            soundOn={soundFx.on}
-            onToggleSound={soundFx.toggle}
-          />
-          <button
-            type="button"
-            onClick={() => setFramePickerOpen(true)}
-            title="Pick message frame"
-            className="h-8 px-2 shrink-0 rounded-md bg-secondary hover:bg-secondary/70 text-sm flex items-center gap-1 border border-border"
-          >
-            <span className="text-base leading-none">
+          <div className="flex-1 min-w-0 flex items-end gap-0.5 bg-card border border-border rounded-3xl pl-1 pr-1.5 py-1 focus-within:border-primary/60 transition-colors">
+            <ComposerFXMenu
+              effect={pendingEffect}
+              onEffect={setPendingEffect}
+              onCashRain={broadcastCashRain}
+              onBurst={broadcastBurst}
+              soundOn={soundFx.on}
+              onToggleSound={soundFx.toggle}
+            />
+            <button
+              type="button"
+              onClick={() => setFramePickerOpen(true)}
+              title="Pick message frame"
+              aria-label="Pick message frame"
+              className="h-9 w-9 shrink-0 rounded-full hover:bg-secondary flex items-center justify-center text-lg"
+            >
               {(() => {
-                // small live preview of chosen frame's emoji
                 const map: Record<string, string> = {
                   default: "💬", "neon-cat": "🐱", "puppy-love": "🐶", "dragon-fire": "🐉",
                   "star-burst": "⭐", arcade: "👾", "bubble-tea": "🧋", galaxy: "🌌",
@@ -692,18 +698,44 @@ const RoomDetail = () => {
                 };
                 return map[chatFrame] || "💬";
               })()}
-            </span>
-          </button>
-          <Input
-            placeholder="Type a message..."
-            value={newMessage}
-            onChange={(e) => { setNewMessage(e.target.value); notifyTyping(); }}
-            onKeyDown={handleKeyDown}
-            className="flex-1"
-          />
-          <Button size="icon" onClick={sendMessage} disabled={!newMessage.trim() || uploading}>
-            <Send className="w-4 h-4" />
-          </Button>
+            </button>
+            <textarea
+              rows={1}
+              placeholder="Message"
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                notifyTyping();
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+              }}
+              onKeyDown={handleKeyDown}
+              className="flex-1 min-w-0 resize-none bg-transparent text-base leading-6 py-1.5 px-1 max-h-[120px] outline-none placeholder:text-muted-foreground text-foreground"
+            />
+            <button
+              type="button"
+              aria-label="Attach photo or video"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="h-9 w-9 shrink-0 rounded-full hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-50"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+          </div>
+          {newMessage.trim() ? (
+            <Button
+              size="icon"
+              aria-label="Send message"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={sendMessage}
+              disabled={uploading}
+              className="h-11 w-11 rounded-full shrink-0 shadow-lg active:scale-95 transition-transform"
+            >
+              <Send className="w-5 h-5" />
+            </Button>
+          ) : (
+            <RoomVoiceNote onSend={handleVoiceSend} />
+          )}
         </div>
       )}
 
