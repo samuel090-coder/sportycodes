@@ -108,8 +108,8 @@ export function RoomVoiceNote({ onSend }: RoomVoiceNoteProps) {
 
   if (!recording && !recorded) {
     return (
-      <Button variant="ghost" size="icon" onClick={startRecording} className="shrink-0" title="Voice note">
-        <Mic className="w-4 h-4" />
+      <Button size="icon" onClick={startRecording} className="shrink-0 h-11 w-11 rounded-full shadow-lg active:scale-95 transition-transform" title="Record voice note" aria-label="Record voice note">
+        <Mic className="w-5 h-5" />
       </Button>
     );
   }

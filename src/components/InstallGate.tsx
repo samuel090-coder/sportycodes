@@ -64,7 +64,8 @@ const InstallGate = ({ children }: InstallGateProps) => {
   return (
     <>
       {children}
-      {showWarning && !isStandalone && location.pathname !== '/install' && (
+      {/* Banner disabled by owner request — the centred install modal remains. */}
+      {false && showWarning && !isStandalone && location.pathname !== '/install' && (
         <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-5">
           <div className="max-w-md mx-auto bg-card border-2 border-primary/30 rounded-lg shadow-lg p-4">
             <div className="flex items-start gap-3">
