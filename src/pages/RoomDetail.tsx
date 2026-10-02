@@ -184,6 +184,7 @@ const RoomDetail = () => {
 
     return () => {
       clearInterval(poll);
+      window.removeEventListener("online", fetchMessages as any);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       supabase.removeChannel(channel);
