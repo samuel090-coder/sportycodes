@@ -2330,6 +2330,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      cancel_my_vip: { Args: never; Returns: number }
       create_notification: {
         Args: {
           _body?: string
@@ -2372,6 +2373,10 @@ export type Database = {
           _target_user_id?: string
         }
         Returns: string
+      }
+      purchase_vip_with_wallet: {
+        Args: { _expected_price: number; _request_id: string }
+        Returns: Json
       }
       update_user_streak: { Args: { _user_id: string }; Returns: Json }
       vip_renewal_reminders: { Args: never; Returns: number }
