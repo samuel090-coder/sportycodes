@@ -45,9 +45,12 @@ export const useVipStatus = (userId?: string | null, userEmail?: string | null) 
       .select("id, status, starts_at, expires_at, price")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(100);
 
-    setSubscription((data?.[0] as VipSubscriptionInfo) ?? null);
+    const memberships = (data ?? []) as VipSubscriptionInfo[];
+    const activeMembership = memberships.filter(sub => isActive(sub)).sort((a, b) =>
+      new Date(b.expires_at || 0).getTime() - new Date(a.expires_at || 0).getTime())[0];
+    setSubscription(activeMembership ?? memberships[0] ?? null);
     setLoading(false);
   }, [userId]);
 

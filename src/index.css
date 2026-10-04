@@ -199,3 +199,31 @@ All colors MUST be HSL.
   background-size: 200% 100%;
   animation: loader-shine 2s linear infinite;
 }
+
+/* Scoped membership and immersive Reels surfaces */
+.membership-page {
+  --background: 0 0% 3.5%;
+  --card: 0 0% 10%;
+  --primary: 357 92% 47%;
+  --bet-warning: 43 90% 65%;
+  --membership-clock: 0 0% 10%;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Hind', sans-serif;
+}
+.membership-heading { font-family: 'Archivo Black', sans-serif; letter-spacing: 0; }
+.membership-clock { background: hsl(var(--membership-clock)); border: 1px solid hsl(var(--bet-warning) / .15); }
+.reels-page {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --reels-overlay: 0 0% 0%;
+  --reels-scrim: linear-gradient(180deg, hsl(var(--reels-overlay) / .5), transparent 25%, transparent 50%, hsl(var(--reels-overlay) / .85));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.reels-scroll { height: calc(100dvh - 88px); scrollbar-width: none; overscroll-behavior-y: contain; }
+.reels-scroll::-webkit-scrollbar { display: none; }
+.reel-slide { height: calc(100dvh - 88px); scroll-snap-stop: always; }
+.reel-scrim { background: var(--reels-scrim); }
+.reel-action { text-shadow: 0 2px 4px hsl(var(--reels-overlay) / .6); }
+@media (prefers-reduced-motion: reduce) { .reels-scroll { scroll-behavior: auto; } }

@@ -29,6 +29,13 @@
       "when": 1788653749688,
       "tag": "0003_notifications_and_vip_rls_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791109675790,
+      "tag": "0004_atomic_vip_purchase_and_cancellation",
+      "breakpoints": true
     }
   ]
 }

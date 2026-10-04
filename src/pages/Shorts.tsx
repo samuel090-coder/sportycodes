@@ -35,6 +35,7 @@ import {
   Trash2
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { mixReels } from "@/lib/reelsFeed";
 
 interface Short {
   id: string;
@@ -97,7 +98,12 @@ const Shorts = () => {
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   // Touch handling for swipe
-  const touchStartY = useRef<number>(0);
+  const [feedMode, setFeedMode] = useState<"for-you" | "following">("for-you");
+  const [buffering, setBuffering] = useState(false);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [progress, setProgress] = useState(0);
+  const visibleShorts = feedMode === "following" ? shorts.filter(short => short.is_following) : shorts;
+  const seenIds = useRef<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -203,40 +209,12 @@ const Shorts = () => {
         is_following: followsSet.has(short.user_id)
       })) || [];
 
-      // Algorithm: Mix content
-      // 1. Trending (high engagement) - 40%
-      // 2. Following users - 30%
-      // 3. Recent content - 30%
-      const trending = [...enrichedShorts]
-        .sort((a, b) => (b.likes_count + b.comments_count * 2) - (a.likes_count + a.comments_count * 2));
-      
-      const fromFollowing = enrichedShorts.filter(s => followsSet.has(s.user_id));
-      const recent = enrichedShorts.slice(0, 20);
-
-      // Create mixed feed
-      const mixed: Short[] = [];
-      const addedIds = new Set<string>();
-
-      const addUnique = (item: Short) => {
-        if (!addedIds.has(item.id)) {
-          mixed.push(item);
-          addedIds.add(item.id);
-        }
-      };
-
-      // Interleave content
-      for (let i = 0; i < Math.max(trending.length, fromFollowing.length, recent.length); i++) {
-        if (i < trending.length && mixed.length < 50) addUnique(trending[i]);
-        if (i < fromFollowing.length && mixed.length < 50) addUnique(fromFollowing[i]);
-        if (i < recent.length && mixed.length < 50) addUnique(recent[i]);
-      }
-
-      // Add remaining if needed
-      enrichedShorts.forEach(s => {
-        if (mixed.length < 50) addUnique(s);
-      });
-
-      setShorts(mixed);
+      try {
+        seenIds.current = new Set(JSON.parse(localStorage.getItem(`reels-seen:${user.id}`) || "[]"));
+      } catch { seenIds.current = new Set(); }
+      setShorts(mixReels(enrichedShorts, seenIds.current));
+      setCurrentIndex(0);
+      containerRef.current?.scrollTo({ top: 0 });
     } catch (error) {
       console.error("Error loading shorts:", error);
     } finally {
@@ -528,36 +506,68 @@ const Shorts = () => {
   };
 
   const handleScroll = (direction: "up" | "down") => {
-    if (direction === "up" && currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    } else if (direction === "down" && currentIndex < shorts.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartY.current - e.changedTouches[0].clientY;
-    if (Math.abs(diff) > 50) {
-      handleScroll(diff > 0 ? "down" : "up");
-    }
+    const root = containerRef.current;
+    if (!root) return;
+    root.scrollTo({ top: (currentIndex + (direction === "up" ? -1 : 1)) * root.clientHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   };
 
   const togglePlayPause = (videoId: string) => {
     const video = videoRefs.current[videoId];
-    if (video) {
-      if (video.paused) {
-        video.play();
-        setIsPlaying(true);
-      } else {
-        video.pause();
-        setIsPlaying(false);
-      }
-    }
+    if (!video) return;
+    if (video.paused) video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    else { video.pause(); setIsPlaying(false); }
   };
+
+  useEffect(() => {
+    const current = visibleShorts[currentIndex];
+    setProgress(0);
+    setBuffering(false);
+    setIsPlaying(true);
+    Object.entries(videoRefs.current).forEach(([id, video]) => {
+      if (id === current?.id && !commentsOpen && !createOpen && !document.hidden) {
+        video.play().catch(() => setIsPlaying(false));
+      } else video.pause();
+    });
+    if (current && user) {
+      seenIds.current.add(current.id);
+      try { localStorage.setItem(`reels-seen:${user.id}`, JSON.stringify([...seenIds.current].slice(-500))); } catch { /* storage optional */ }
+    }
+  }, [currentIndex, feedMode, shorts, commentsOpen, createOpen, user]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      const current = visibleShorts[currentIndex];
+      Object.values(videoRefs.current).forEach(video => video.pause());
+      if (!document.hidden && current && !commentsOpen && !createOpen && isPlaying) videoRefs.current[current.id]?.play().catch(() => setIsPlaying(false));
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [currentIndex, visibleShorts, commentsOpen, createOpen, isPlaying]);
+
+  useEffect(() => {
+    if (!user) return;
+    try { setSavedIds(new Set(JSON.parse(localStorage.getItem(`reels-saved:${user.id}`) || "[]"))); } catch { /* storage optional */ }
+  }, [user]);
+
+  const saveShort = (id: string) => {
+    const next = new Set(savedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSavedIds(next);
+    try { localStorage.setItem(`reels-saved:${user.id}`, JSON.stringify([...next])); } catch { /* storage optional */ }
+    toast.success(next.has(id) ? "Saved on this device" : "Removed from saved posts");
+  };
+  const shareShort = async (short: Short) => {
+    const url = `${window.location.origin}/shorts?post=${short.id}`;
+    try {
+      if (navigator.share) await navigator.share({ title: "Sporty Codes", text: short.content || "Watch this on Sporty Codes", url });
+      else { await navigator.clipboard.writeText(url); toast.success("Post link copied"); }
+    } catch { /* sharing may be cancelled */ }
+  };
+  useEffect(() => {
+    const postId = new URLSearchParams(window.location.search).get("post");
+    const index = visibleShorts.findIndex(short => short.id === postId);
+    if (index >= 0) { containerRef.current?.scrollTo({ top: index * containerRef.current.clientHeight }); setCurrentIndex(index); }
+  }, [isLoading, feedMode]);
 
   const handleVotePoll = async (shortId: string, optionIndex: number) => {
     if (!user) return;
@@ -606,7 +616,7 @@ const Shorts = () => {
     }
   };
 
-  const currentShort = shorts[currentIndex];
+  const currentShort = visibleShorts[currentIndex];
 
   if (isLoading) {
     return (
@@ -617,246 +627,59 @@ const Shorts = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black pb-20 overflow-hidden">
-      {/* Full screen shorts viewer */}
-      <div 
-        ref={containerRef}
-        className="h-screen relative"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {shorts.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-white px-6 text-center">
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-4">
-              <Video className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">No Posts Yet</h2>
-            <p className="text-white/60 mb-6">Be the first to share something!</p>
-            <Button onClick={() => setCreateOpen(true)} className="rounded-full px-6">
-              <Plus className="w-5 h-5 mr-2" />
-              Create Post
-            </Button>
+    <div className="reels-page h-dvh overflow-hidden relative">
+      <div className="relative max-w-xl mx-auto">
+        <header className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 flex items-center justify-between pointer-events-none">
+          <Button variant="ghost" size="icon" aria-label="Go back" className="pointer-events-auto text-foreground" onClick={() => navigate(-1)}><ChevronUp className="-rotate-90" /></Button>
+          <div className="flex gap-4 pointer-events-auto">
+            {([['following', 'Following'], ['for-you', 'For You']] as const).map(([mode, label]) => <Button key={mode} variant="ghost" className={`px-0 rounded-none text-foreground ${feedMode === mode ? "border-b-2 border-foreground font-bold" : "opacity-60"}`} onClick={() => { setFeedMode(mode); setCurrentIndex(0); containerRef.current?.scrollTo({ top: 0 }); }}>{label}</Button>)}
           </div>
-        ) : currentShort && (
-          <div className="h-full relative">
-            {/* Media Content */}
-            <div className="absolute inset-0 bg-black flex items-center justify-center">
-              {currentShort.media_type === "video" ? (
-                <video
-                  ref={el => { if (el) videoRefs.current[currentShort.id] = el; }}
-                  src={currentShort.media_url || ""}
-                  className="h-full w-full object-cover"
-                  loop
-                  autoPlay
-                  muted={isMuted}
-                  playsInline
-                  onClick={() => togglePlayPause(currentShort.id)}
-                />
-              ) : currentShort.media_url ? (
-                <img 
-                  src={currentShort.media_url} 
-                  alt="Post" 
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="h-full w-full bg-gradient-to-br from-primary/20 via-cyber-neon-purple/20 to-cyber-neon-cyan/20 flex items-center justify-center p-8">
-                  <p className="text-white text-2xl font-bold text-center leading-relaxed">
-                    {currentShort.content}
-                  </p>
-                </div>
-              )}
+          <Button variant="ghost" size="icon" aria-label="Create post" className="pointer-events-auto text-foreground" onClick={() => setCreateOpen(true)}><Plus /></Button>
+        </header>
+        <div ref={containerRef} className="reels-scroll snap-y snap-mandatory overflow-y-auto" onScroll={event => {
+          const root = event.currentTarget;
+          const index = Math.max(0, Math.min(visibleShorts.length - 1, Math.round(root.scrollTop / root.clientHeight)));
+          if (index !== currentIndex) setCurrentIndex(index);
+        }}>
+          {visibleShorts.length === 0 ? <div className="reel-slide flex flex-col justify-center items-center px-6 text-center"><Video className="h-12 w-12 text-primary mb-4" /><h2 className="text-xl font-bold">{feedMode === "following" ? "No posts from people you follow" : "No posts yet"}</h2><Button className="mt-5" onClick={() => feedMode === "following" ? setFeedMode("for-you") : setCreateOpen(true)}>{feedMode === "following" ? "Explore For You" : "Create post"}</Button></div> : visibleShorts.map((short, index) => <article key={short.id} data-reel-id={short.id} className="reel-slide snap-start relative overflow-hidden">
+            {Math.abs(index - currentIndex) <= 1 && <div className="absolute inset-0 flex items-center justify-center bg-background">
+              {short.media_type === "video" && short.media_url ? <video
+                ref={el => { if (el) videoRefs.current[short.id] = el; else delete videoRefs.current[short.id]; }}
+                src={short.media_url} className="h-full w-full object-cover" loop muted={isMuted} playsInline preload="auto"
+                onClick={() => togglePlayPause(short.id)} onWaiting={() => { if (index === currentIndex) setBuffering(true); }}
+                onPlaying={() => { if (index === currentIndex) { setBuffering(false); setIsPlaying(true); } }}
+                onError={() => { if (index === currentIndex) { setBuffering(false); setIsPlaying(false); } }}
+                onTimeUpdate={event => { if (index === currentIndex) { const video = event.currentTarget; setProgress(video.duration ? video.currentTime / video.duration * 100 : 0); } }}
+              /> : short.media_url ? <img src={short.media_url} alt={short.content || "Community post"} className="h-full w-full object-cover" loading={index === currentIndex ? "eager" : "lazy"} /> : <div className="bg-card w-full h-full flex items-center justify-center px-10"><p className="text-2xl font-bold text-center break-words">{short.content}</p></div>}
+            </div>}
+            <div className="absolute inset-0 reel-scrim pointer-events-none" />
+            {short.poll_options && <div className="absolute inset-0 flex justify-center items-center px-7 pr-20"><div className="w-full space-y-3"><p className="font-bold text-xl mb-4">{short.content}</p>{short.poll_options.options.map((option: any, optionIndex: number) => {
+              const total = short.poll_options.options.reduce((sum: number, item: any) => sum + item.votes, 0);
+              return <Button key={optionIndex} variant="outline" className="w-full h-auto min-h-12 justify-between whitespace-normal bg-background/40 text-foreground" onClick={() => handleVotePoll(short.id, optionIndex)}><span className="text-left">{option.text}</span><span className="ml-2">{total ? Math.round(option.votes / total * 100) : 0}%</span></Button>;
+            })}</div></div>}
+            {index === currentIndex && short.media_type === "video" && (buffering || !isPlaying) && <Button variant="ghost" size="icon" aria-label={buffering ? "Video loading" : "Play video"} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 text-foreground bg-background/30 rounded-full" onClick={() => togglePlayPause(short.id)}>{buffering ? <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" /> : <Play className="w-8 h-8 fill-current" />}</Button>}
+            <div className="absolute bottom-7 left-4 right-20 reel-action">
+              <Button variant="ghost" className="text-foreground px-0 h-auto font-bold text-base" onClick={() => navigateToProfile(short.user_id)}>@{short.profile?.username || short.profile?.display_name || "user"}</Button>
+              {short.content && short.media_url && !short.poll_options && <p className="mt-2 text-sm line-clamp-3 break-words leading-relaxed">{short.content}</p>}
+              <p className="mt-3 text-xs text-foreground/70">SPORTY CODES · Community</p>
             </div>
-
-            {/* Poll Overlay */}
-            {currentShort.poll_options && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-6">
-                <div className="w-full max-w-sm space-y-3">
-                  <p className="text-white text-xl font-bold text-center mb-4">{currentShort.content}</p>
-                  {currentShort.poll_options.options.map((option: any, i: number) => {
-                    const totalVotes = currentShort.poll_options.options.reduce((sum: number, o: any) => sum + o.votes, 0);
-                    const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => handleVotePoll(currentShort.id, i)}
-                        className="w-full relative bg-white/10 backdrop-blur-sm rounded-xl p-4 text-white text-left overflow-hidden hover:bg-white/20 transition-colors"
-                      >
-                        <div 
-                          className="absolute inset-0 bg-primary/50 transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                        <div className="relative flex justify-between items-center">
-                          <span className="font-medium">{option.text}</span>
-                          <span className="text-sm opacity-70">{Math.round(percentage)}%</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Gradient overlays */}
-            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-            <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-
-            {/* User Info */}
-            <div className="absolute bottom-32 left-4 right-20 text-white">
-              <div className="flex items-center gap-3 mb-3">
-                <button 
-                  onClick={() => navigateToProfile(currentShort.user_id)}
-                  className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-cyber-neon-purple p-0.5"
-                >
-                  <div className="w-full h-full rounded-full bg-black overflow-hidden">
-                    {currentShort.profile?.avatar_url ? (
-                      <img src={currentShort.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-primary/20 flex items-center justify-center text-lg font-bold">
-                        {currentShort.profile?.display_name?.[0] || "?"}
-                      </div>
-                    )}
-                  </div>
-                </button>
-                <button 
-                  onClick={() => navigateToProfile(currentShort.user_id)}
-                  className="flex-1 text-left"
-                >
-                  <p className="font-bold hover:underline">{currentShort.profile?.display_name || "Unknown"}</p>
-                  <p className="text-white/60 text-sm">@{currentShort.profile?.username || "user"}</p>
-                </button>
-                {currentShort.user_id !== user?.id && (
-                  <Button
-                    onClick={() => handleFollow(currentShort.user_id)}
-                    variant={currentShort.is_following ? "outline" : "default"}
-                    size="sm"
-                    className="rounded-full"
-                  >
-                    {currentShort.is_following ? (
-                      <>
-                        <UserMinus className="w-4 h-4 mr-1" />
-                        Unfollow
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4 mr-1" />
-                        Follow
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-              {currentShort.content && !currentShort.poll_options && currentShort.media_url && (
-                <p className="text-white/90 text-sm line-clamp-3">{currentShort.content}</p>
-              )}
+            <div className="absolute bottom-7 right-3 flex flex-col items-center gap-4 reel-action">
+              <div className="relative mb-1"><Button variant="ghost" size="icon" aria-label="View creator profile" onClick={() => navigateToProfile(short.user_id)} className="w-11 h-11 p-0 rounded-full border-2 border-foreground overflow-hidden bg-card">{short.profile?.avatar_url ? <img src={short.profile.avatar_url} alt="" className="w-full h-full object-cover" /> : <span>{short.profile?.display_name?.[0] || "S"}</span>}</Button>{short.user_id !== user?.id && <Button size="icon" aria-label={short.is_following ? "Unfollow creator" : "Follow creator"} onClick={() => handleFollow(short.user_id)} className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full">{short.is_following ? <UserMinus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}</Button>}</div>
+              <div className="text-center"><Button variant="ghost" size="icon" aria-label="Like post" onClick={() => handleLike(short.id)} className={`h-9 w-11 hover:bg-transparent ${short.is_liked ? "text-primary" : "text-foreground"}`}><Heart className={`w-8 h-8 ${short.is_liked ? "fill-current" : ""}`} /></Button><span className="block text-xs font-bold">{short.likes_count || 0}</span></div>
+              <div className="text-center"><Button variant="ghost" size="icon" aria-label="Open comments" onClick={() => openComments(short.id)} className="h-9 w-11 text-foreground hover:bg-transparent"><MessageCircle className="w-8 h-8" /></Button><span className="block text-xs font-bold">{short.comments_count || 0}</span></div>
+              <div className="text-center"><Button variant="ghost" size="icon" aria-label="Save post" onClick={() => saveShort(short.id)} className="h-9 w-11 text-foreground hover:bg-transparent"><Bookmark className={`w-7 h-7 ${savedIds.has(short.id) ? "fill-current" : ""}`} /></Button><span className="block text-[10px]">{savedIds.has(short.id) ? "Saved" : "Save"}</span></div>
+              <div className="text-center"><Button variant="ghost" size="icon" aria-label="Share post" onClick={() => shareShort(short)} className="h-9 w-11 text-foreground hover:bg-transparent"><Share2 className="w-7 h-7" /></Button><span className="block text-[10px]">Share</span></div>
+              {short.user_id === user?.id && <Button variant="ghost" size="icon" aria-label="Delete post" onClick={() => handleDeleteShort(short.id)} className="h-8 w-10 text-foreground"><Trash2 className="w-5 h-5" /></Button>}
             </div>
-
-            {/* Action Buttons */}
-            <div className="absolute bottom-32 right-4 flex flex-col items-center gap-5">
-              <button
-                onClick={() => handleLike(currentShort.id)}
-                className="flex flex-col items-center group"
-              >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                  currentShort.is_liked ? "bg-red-500" : "bg-white/10 backdrop-blur-sm group-hover:bg-white/20"
-                }`}>
-                  <Heart className={`w-6 h-6 ${currentShort.is_liked ? "text-white fill-white" : "text-white"}`} />
-                </div>
-                <span className="text-white text-xs mt-1 font-bold">{currentShort.likes_count}</span>
-              </button>
-
-              <button
-                onClick={() => openComments(currentShort.id)}
-                className="flex flex-col items-center group"
-              >
-                <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20">
-                  <MessageCircle className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-white text-xs mt-1 font-bold">{currentShort.comments_count}</span>
-              </button>
-
-              <button className="flex flex-col items-center group">
-                <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20">
-                  <Share2 className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-white text-xs mt-1 font-bold">Share</span>
-              </button>
-
-              <button className="flex flex-col items-center group">
-                <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20">
-                  <Bookmark className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-white text-xs mt-1 font-bold">Save</span>
-              </button>
-
-              {currentShort.user_id === user?.id && (
-                <button
-                  onClick={() => handleDeleteShort(currentShort.id)}
-                  className="flex flex-col items-center group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-destructive/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-destructive/40">
-                    <Trash2 className="w-6 h-6 text-destructive" />
-                  </div>
-                  <span className="text-white text-xs mt-1 font-bold">Delete</span>
-                </button>
-              )}
-            </div>
-
-            {/* Navigation Arrows */}
-            {currentIndex > 0 && (
-              <button
-                onClick={() => handleScroll("up")}
-                className="absolute top-20 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white animate-bounce"
-              >
-                <ChevronUp className="w-6 h-6" />
-              </button>
-            )}
-            {currentIndex < shorts.length - 1 && (
-              <button
-                onClick={() => handleScroll("down")}
-                className="absolute bottom-28 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white animate-bounce"
-              >
-                <ChevronDown className="w-6 h-6" />
-              </button>
-            )}
-
-            {/* Video Controls */}
-            {currentShort.media_type === "video" && (
-              <div className="absolute top-20 right-4 flex gap-2">
-                <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white"
-                >
-                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </button>
-              </div>
-            )}
-
-            {/* Progress Indicator */}
-            <div className="absolute top-4 left-4 right-4 flex gap-1">
-              {shorts.slice(0, Math.min(shorts.length, 10)).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1 flex-1 rounded-full transition-all ${
-                    i === currentIndex ? "bg-white" : i < currentIndex ? "bg-white/60" : "bg-white/20"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Create Button */}
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="absolute bottom-24 right-4 w-14 h-14 rounded-full bg-gradient-to-r from-primary to-cyber-neon-purple flex items-center justify-center shadow-lg shadow-primary/30 z-50"
-        >
-          <Plus className="w-7 h-7 text-white" />
-        </button>
+            {short.media_type === "video" && <><Button variant="ghost" size="icon" aria-label={isMuted ? "Unmute video" : "Mute video"} className="absolute top-20 right-3 text-foreground" onClick={() => setIsMuted(!isMuted)}>{isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}</Button><progress aria-label="Video progress" max={100} value={index === currentIndex ? progress : 0} className="absolute bottom-0 left-0 w-full h-0.5 accent-primary" /></>}
+          </article>)}
+        </div>
+        <div className="hidden sm:flex absolute top-1/2 -right-16 flex-col gap-3"><Button variant="outline" size="icon" aria-label="Previous post" disabled={currentIndex === 0} onClick={() => handleScroll("up")}><ChevronUp /></Button><Button variant="outline" size="icon" aria-label="Next post" disabled={currentIndex >= visibleShorts.length - 1} onClick={() => handleScroll("down")}><ChevronDown /></Button></div>
       </div>
 
       {/* Create Post Modal */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-card border-border rounded-2xl max-w-md mx-4 max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border rounded-2xl max-w-md w-[calc(100%-2rem)] mx-auto max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground">Create Post</DialogTitle>
           </DialogHeader>
