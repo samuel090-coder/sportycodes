@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { mixReels } from "@/lib/reelsFeed";
+import CreatePostSheet from "@/components/shorts/CreatePostSheet";
 
 interface Short {
   id: string;
@@ -82,12 +83,6 @@ const Shorts = () => {
   
   // Create post modal
   const [createOpen, setCreateOpen] = useState(false);
-  const [postContent, setPostContent] = useState("");
-  const [postMedia, setPostMedia] = useState<File | null>(null);
-  const [postMediaPreview, setPostMediaPreview] = useState<string | null>(null);
-  const [postType, setPostType] = useState<"text" | "image" | "video" | "poll">("text");
-  const [pollOptions, setPollOptions] = useState(["", ""]);
-  const [isPosting, setIsPosting] = useState(false);
   
   // Comments modal
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -104,6 +99,11 @@ const Shorts = () => {
   const [progress, setProgress] = useState(0);
   const visibleShorts = feedMode === "following" ? shorts.filter(short => short.is_following) : shorts;
   const seenIds = useRef<Set<string>>(new Set());
+  const markWatched = (id: string) => {
+    if (!user || seenIds.current.has(id)) return;
+    seenIds.current.add(id);
+    try { localStorage.setItem(`reels-seen:${user.id}`, JSON.stringify([...seenIds.current].slice(-800))); } catch { /* storage optional */ }
+  };
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -431,80 +431,6 @@ const Shorts = () => {
     }
   };
 
-  const handleCreatePost = async () => {
-    if (!user) return;
-    if (!postContent.trim() && !postMedia && postType !== "poll") {
-      toast.error("Please add some content");
-      return;
-    }
-
-    setIsPosting(true);
-    try {
-      let mediaUrl = null;
-      let mediaType = null;
-
-      if (postMedia) {
-        const fileExt = postMedia.name.split(".").pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("shorts-media")
-          .upload(fileName, postMedia);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("shorts-media")
-          .getPublicUrl(fileName);
-
-        mediaUrl = publicUrl;
-        mediaType = postMedia.type.startsWith("video") ? "video" : "image";
-      }
-
-      const pollData = postType === "poll" && pollOptions.filter(o => o.trim()).length >= 2
-        ? { options: pollOptions.filter(o => o.trim()).map((text, i) => ({ text, votes: 0, index: i })) }
-        : null;
-
-      const { error } = await supabase.from("shorts").insert({
-        user_id: user.id,
-        content: postContent.trim() || null,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        poll_options: pollData
-      });
-
-      if (error) throw error;
-
-      toast.success("Post created! 🎉");
-      setCreateOpen(false);
-      resetCreateForm();
-      loadShorts();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create post");
-    } finally {
-      setIsPosting(false);
-    }
-  };
-
-  const resetCreateForm = () => {
-    setPostContent("");
-    setPostMedia(null);
-    setPostMediaPreview(null);
-    setPostType("text");
-    setPollOptions(["", ""]);
-  };
-
-  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPostMedia(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPostMediaPreview(reader.result as string);
-      reader.readAsDataURL(file);
-      setPostType(file.type.startsWith("video") ? "video" : "image");
-    }
-  };
-
   const handleScroll = (direction: "up" | "down") => {
     const root = containerRef.current;
     if (!root) return;
@@ -528,9 +454,10 @@ const Shorts = () => {
         video.play().catch(() => setIsPlaying(false));
       } else video.pause();
     });
-    if (current && user) {
-      seenIds.current.add(current.id);
-      try { localStorage.setItem(`reels-seen:${user.id}`, JSON.stringify([...seenIds.current].slice(-500))); } catch { /* storage optional */ }
+    // Photos and text count as watched after 2.5s on screen; videos after real playback (see markWatched).
+    if (current && user && current.media_type !== "video") {
+      const timer = setTimeout(() => markWatched(current.id), 2500);
+      return () => clearTimeout(timer);
     }
   }, [currentIndex, feedMode, shorts, commentsOpen, createOpen, user]);
 
@@ -620,8 +547,14 @@ const Shorts = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div className="reels-page h-dvh overflow-hidden relative" aria-busy="true" aria-label="Loading reels">
+        <div className="relative max-w-xl mx-auto reel-slide bg-card overflow-hidden">
+          <div className="absolute inset-0 reel-skeleton" />
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 flex gap-4"><div className="h-4 w-16 rounded bg-muted" /><div className="h-4 w-14 rounded bg-muted" /></div>
+          <div className="absolute bottom-8 left-4 space-y-3"><div className="h-4 w-32 rounded bg-muted" /><div className="h-3 w-56 rounded bg-muted" /><div className="h-3 w-40 rounded bg-muted" /></div>
+          <div className="absolute bottom-8 right-4 flex flex-col items-center gap-6"><div className="h-11 w-11 rounded-full bg-muted" />{[0, 1, 2, 3].map(i => <div key={i} className="h-8 w-8 rounded-full bg-muted" />)}</div>
+        </div>
+        <BottomNav />
       </div>
     );
   }
@@ -649,7 +582,7 @@ const Shorts = () => {
                 onClick={() => togglePlayPause(short.id)} onWaiting={() => { if (index === currentIndex) setBuffering(true); }}
                 onPlaying={() => { if (index === currentIndex) { setBuffering(false); setIsPlaying(true); } }}
                 onError={() => { if (index === currentIndex) { setBuffering(false); setIsPlaying(false); } }}
-                onTimeUpdate={event => { if (index === currentIndex) { const video = event.currentTarget; setProgress(video.duration ? video.currentTime / video.duration * 100 : 0); } }}
+                onTimeUpdate={event => { if (index === currentIndex) { const video = event.currentTarget; setProgress(video.duration ? video.currentTime / video.duration * 100 : 0); if (video.currentTime >= 3 || (video.duration && video.currentTime / video.duration >= 0.5)) markWatched(short.id); } }}
               /> : short.media_url ? <img src={short.media_url} alt={short.content || "Community post"} className="h-full w-full object-cover" loading={index === currentIndex ? "eager" : "lazy"} /> : <div className="bg-card w-full h-full flex items-center justify-center px-10"><p className="text-2xl font-bold text-center break-words">{short.content}</p></div>}
             </div>}
             <div className="absolute inset-0 reel-scrim pointer-events-none" />
@@ -677,129 +610,7 @@ const Shorts = () => {
         <div className="hidden sm:flex absolute top-1/2 -right-16 flex-col gap-3"><Button variant="outline" size="icon" aria-label="Previous post" disabled={currentIndex === 0} onClick={() => handleScroll("up")}><ChevronUp /></Button><Button variant="outline" size="icon" aria-label="Next post" disabled={currentIndex >= visibleShorts.length - 1} onClick={() => handleScroll("down")}><ChevronDown /></Button></div>
       </div>
 
-      {/* Create Post Modal */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-card border-border rounded-2xl max-w-md w-[calc(100%-2rem)] mx-auto max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-foreground">Create Post</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { type: "text", icon: MessageCircle, label: "Text" },
-                { type: "image", icon: ImageIcon, label: "Image" },
-                { type: "video", icon: Video, label: "Video" },
-                { type: "poll", icon: BarChart3, label: "Poll" },
-              ].map(({ type, icon: Icon, label }) => (
-                <button
-                  key={type}
-                  onClick={() => setPostType(type as any)}
-                  className={`p-3 rounded-xl border transition-all text-center ${
-                    postType === type
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mx-auto mb-1" />
-                  <span className="text-xs font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            <Textarea
-              placeholder={postType === "poll" ? "Ask a question..." : "What's on your mind?"}
-              value={postContent}
-              onChange={(e) => setPostContent(e.target.value)}
-              className="min-h-[100px] bg-secondary/50 border-border rounded-xl"
-            />
-
-            {(postType === "image" || postType === "video") && (
-              <div>
-                {postMediaPreview ? (
-                  <div className="relative rounded-xl overflow-hidden">
-                    {postType === "video" ? (
-                      <video src={postMediaPreview} className="w-full h-48 object-cover" />
-                    ) : (
-                      <img src={postMediaPreview} className="w-full h-48 object-cover" alt="Preview" />
-                    )}
-                    <button
-                      onClick={() => { setPostMedia(null); setPostMediaPreview(null); }}
-                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
-                    <input
-                      type="file"
-                      accept={postType === "video" ? "video/*" : "image/*"}
-                      onChange={handleMediaSelect}
-                      className="hidden"
-                    />
-                    {postType === "video" ? (
-                      <Video className="w-8 h-8 text-muted-foreground mb-2" />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
-                    )}
-                    <span className="text-sm text-muted-foreground">
-                      Click to upload {postType}
-                    </span>
-                  </label>
-                )}
-              </div>
-            )}
-
-            {postType === "poll" && (
-              <div className="space-y-2">
-                {pollOptions.map((option, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      placeholder={`Option ${i + 1}`}
-                      value={option}
-                      onChange={(e) => {
-                        const newOptions = [...pollOptions];
-                        newOptions[i] = e.target.value;
-                        setPollOptions(newOptions);
-                      }}
-                      className="bg-secondary/50 border-border rounded-xl"
-                    />
-                    {i > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                {pollOptions.length < 4 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPollOptions(prev => [...prev, ""])}
-                    className="w-full"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Option
-                  </Button>
-                )}
-              </div>
-            )}
-
-            <Button
-              onClick={handleCreatePost}
-              disabled={isPosting}
-              className="w-full rounded-xl h-12"
-            >
-              {isPosting ? "Posting..." : "Share Post"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {createOpen && user && <CreatePostSheet userId={user.id} onClose={() => setCreateOpen(false)} onPosted={() => { setCreateOpen(false); loadShorts(); }} />}
 
       {/* Comments Modal with Replies */}
       <Dialog open={commentsOpen} onOpenChange={(open) => { setCommentsOpen(open); if (!open) setReplyingTo(null); }}>
