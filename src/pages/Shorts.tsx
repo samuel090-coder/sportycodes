@@ -83,12 +83,6 @@ const Shorts = () => {
   
   // Create post modal
   const [createOpen, setCreateOpen] = useState(false);
-  const [postContent, setPostContent] = useState("");
-  const [postMedia, setPostMedia] = useState<File | null>(null);
-  const [postMediaPreview, setPostMediaPreview] = useState<string | null>(null);
-  const [postType, setPostType] = useState<"text" | "image" | "video" | "poll">("text");
-  const [pollOptions, setPollOptions] = useState(["", ""]);
-  const [isPosting, setIsPosting] = useState(false);
   
   // Comments modal
   const [commentsOpen, setCommentsOpen] = useState(false);
