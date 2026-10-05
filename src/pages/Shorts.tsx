@@ -528,9 +528,10 @@ const Shorts = () => {
         video.play().catch(() => setIsPlaying(false));
       } else video.pause();
     });
-    if (current && user) {
-      seenIds.current.add(current.id);
-      try { localStorage.setItem(`reels-seen:${user.id}`, JSON.stringify([...seenIds.current].slice(-500))); } catch { /* storage optional */ }
+    // Photos and text count as watched after 2.5s on screen; videos after real playback (see markWatched).
+    if (current && user && current.media_type !== "video") {
+      const timer = setTimeout(() => markWatched(current.id), 2500);
+      return () => clearTimeout(timer);
     }
   }, [currentIndex, feedMode, shorts, commentsOpen, createOpen, user]);
 
@@ -620,8 +621,14 @@ const Shorts = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div className="reels-page h-dvh overflow-hidden relative" aria-busy="true" aria-label="Loading reels">
+        <div className="relative max-w-xl mx-auto reel-slide bg-card overflow-hidden">
+          <div className="absolute inset-0 reel-skeleton" />
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 flex gap-4"><div className="h-4 w-16 rounded bg-muted" /><div className="h-4 w-14 rounded bg-muted" /></div>
+          <div className="absolute bottom-8 left-4 space-y-3"><div className="h-4 w-32 rounded bg-muted" /><div className="h-3 w-56 rounded bg-muted" /><div className="h-3 w-40 rounded bg-muted" /></div>
+          <div className="absolute bottom-8 right-4 flex flex-col items-center gap-6"><div className="h-11 w-11 rounded-full bg-muted" />{[0, 1, 2, 3].map(i => <div key={i} className="h-8 w-8 rounded-full bg-muted" />)}</div>
+        </div>
+        <BottomNav />
       </div>
     );
   }
@@ -677,129 +684,7 @@ const Shorts = () => {
         <div className="hidden sm:flex absolute top-1/2 -right-16 flex-col gap-3"><Button variant="outline" size="icon" aria-label="Previous post" disabled={currentIndex === 0} onClick={() => handleScroll("up")}><ChevronUp /></Button><Button variant="outline" size="icon" aria-label="Next post" disabled={currentIndex >= visibleShorts.length - 1} onClick={() => handleScroll("down")}><ChevronDown /></Button></div>
       </div>
 
-      {/* Create Post Modal */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-card border-border rounded-2xl max-w-md w-[calc(100%-2rem)] mx-auto max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-foreground">Create Post</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { type: "text", icon: MessageCircle, label: "Text" },
-                { type: "image", icon: ImageIcon, label: "Image" },
-                { type: "video", icon: Video, label: "Video" },
-                { type: "poll", icon: BarChart3, label: "Poll" },
-              ].map(({ type, icon: Icon, label }) => (
-                <button
-                  key={type}
-                  onClick={() => setPostType(type as any)}
-                  className={`p-3 rounded-xl border transition-all text-center ${
-                    postType === type
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mx-auto mb-1" />
-                  <span className="text-xs font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            <Textarea
-              placeholder={postType === "poll" ? "Ask a question..." : "What's on your mind?"}
-              value={postContent}
-              onChange={(e) => setPostContent(e.target.value)}
-              className="min-h-[100px] bg-secondary/50 border-border rounded-xl"
-            />
-
-            {(postType === "image" || postType === "video") && (
-              <div>
-                {postMediaPreview ? (
-                  <div className="relative rounded-xl overflow-hidden">
-                    {postType === "video" ? (
-                      <video src={postMediaPreview} className="w-full h-48 object-cover" />
-                    ) : (
-                      <img src={postMediaPreview} className="w-full h-48 object-cover" alt="Preview" />
-                    )}
-                    <button
-                      onClick={() => { setPostMedia(null); setPostMediaPreview(null); }}
-                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
-                    <input
-                      type="file"
-                      accept={postType === "video" ? "video/*" : "image/*"}
-                      onChange={handleMediaSelect}
-                      className="hidden"
-                    />
-                    {postType === "video" ? (
-                      <Video className="w-8 h-8 text-muted-foreground mb-2" />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
-                    )}
-                    <span className="text-sm text-muted-foreground">
-                      Click to upload {postType}
-                    </span>
-                  </label>
-                )}
-              </div>
-            )}
-
-            {postType === "poll" && (
-              <div className="space-y-2">
-                {pollOptions.map((option, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      placeholder={`Option ${i + 1}`}
-                      value={option}
-                      onChange={(e) => {
-                        const newOptions = [...pollOptions];
-                        newOptions[i] = e.target.value;
-                        setPollOptions(newOptions);
-                      }}
-                      className="bg-secondary/50 border-border rounded-xl"
-                    />
-                    {i > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                {pollOptions.length < 4 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPollOptions(prev => [...prev, ""])}
-                    className="w-full"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Option
-                  </Button>
-                )}
-              </div>
-            )}
-
-            <Button
-              onClick={handleCreatePost}
-              disabled={isPosting}
-              className="w-full rounded-xl h-12"
-            >
-              {isPosting ? "Posting..." : "Share Post"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {createOpen && user && <CreatePostSheet userId={user.id} onClose={() => setCreateOpen(false)} onPosted={() => { setCreateOpen(false); loadShorts(); }} />}
 
       {/* Comments Modal with Replies */}
       <Dialog open={commentsOpen} onOpenChange={(open) => { setCommentsOpen(open); if (!open) setReplyingTo(null); }}>
