@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { mixReels } from "@/lib/reelsFeed";
+import CreatePostSheet from "@/components/shorts/CreatePostSheet";
 
 interface Short {
   id: string;
@@ -104,6 +105,11 @@ const Shorts = () => {
   const [progress, setProgress] = useState(0);
   const visibleShorts = feedMode === "following" ? shorts.filter(short => short.is_following) : shorts;
   const seenIds = useRef<Set<string>>(new Set());
+  const markWatched = (id: string) => {
+    if (!user || seenIds.current.has(id)) return;
+    seenIds.current.add(id);
+    try { localStorage.setItem(`reels-seen:${user.id}`, JSON.stringify([...seenIds.current].slice(-800))); } catch { /* storage optional */ }
+  };
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -431,80 +437,6 @@ const Shorts = () => {
     }
   };
 
-  const handleCreatePost = async () => {
-    if (!user) return;
-    if (!postContent.trim() && !postMedia && postType !== "poll") {
-      toast.error("Please add some content");
-      return;
-    }
-
-    setIsPosting(true);
-    try {
-      let mediaUrl = null;
-      let mediaType = null;
-
-      if (postMedia) {
-        const fileExt = postMedia.name.split(".").pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("shorts-media")
-          .upload(fileName, postMedia);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("shorts-media")
-          .getPublicUrl(fileName);
-
-        mediaUrl = publicUrl;
-        mediaType = postMedia.type.startsWith("video") ? "video" : "image";
-      }
-
-      const pollData = postType === "poll" && pollOptions.filter(o => o.trim()).length >= 2
-        ? { options: pollOptions.filter(o => o.trim()).map((text, i) => ({ text, votes: 0, index: i })) }
-        : null;
-
-      const { error } = await supabase.from("shorts").insert({
-        user_id: user.id,
-        content: postContent.trim() || null,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        poll_options: pollData
-      });
-
-      if (error) throw error;
-
-      toast.success("Post created! 🎉");
-      setCreateOpen(false);
-      resetCreateForm();
-      loadShorts();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create post");
-    } finally {
-      setIsPosting(false);
-    }
-  };
-
-  const resetCreateForm = () => {
-    setPostContent("");
-    setPostMedia(null);
-    setPostMediaPreview(null);
-    setPostType("text");
-    setPollOptions(["", ""]);
-  };
-
-  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPostMedia(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPostMediaPreview(reader.result as string);
-      reader.readAsDataURL(file);
-      setPostType(file.type.startsWith("video") ? "video" : "image");
-    }
-  };
-
   const handleScroll = (direction: "up" | "down") => {
     const root = containerRef.current;
     if (!root) return;
@@ -656,7 +588,7 @@ const Shorts = () => {
                 onClick={() => togglePlayPause(short.id)} onWaiting={() => { if (index === currentIndex) setBuffering(true); }}
                 onPlaying={() => { if (index === currentIndex) { setBuffering(false); setIsPlaying(true); } }}
                 onError={() => { if (index === currentIndex) { setBuffering(false); setIsPlaying(false); } }}
-                onTimeUpdate={event => { if (index === currentIndex) { const video = event.currentTarget; setProgress(video.duration ? video.currentTime / video.duration * 100 : 0); } }}
+                onTimeUpdate={event => { if (index === currentIndex) { const video = event.currentTarget; setProgress(video.duration ? video.currentTime / video.duration * 100 : 0); if (video.currentTime >= 3 || (video.duration && video.currentTime / video.duration >= 0.5)) markWatched(short.id); } }}
               /> : short.media_url ? <img src={short.media_url} alt={short.content || "Community post"} className="h-full w-full object-cover" loading={index === currentIndex ? "eager" : "lazy"} /> : <div className="bg-card w-full h-full flex items-center justify-center px-10"><p className="text-2xl font-bold text-center break-words">{short.content}</p></div>}
             </div>}
             <div className="absolute inset-0 reel-scrim pointer-events-none" />
