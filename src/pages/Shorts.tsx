@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ interface Short {
   content: string | null;
   media_url: string | null;
   media_type: string | null;
-  poll_options: any;
+  poll_options: { options: Array<{ text: string; votes: number; index?: number }> } | null;
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -73,7 +74,7 @@ interface Comment {
 
 const Shorts = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [shorts, setShorts] = useState<Short[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,13 +98,13 @@ const Shorts = () => {
   const [buffering, setBuffering] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
-  const visibleShorts = feedMode === "following" ? shorts.filter(short => short.is_following) : shorts;
+  const visibleShorts = useMemo(() => feedMode === "following" ? shorts.filter(short => short.is_following) : shorts, [feedMode, shorts]);
   const seenIds = useRef<Set<string>>(new Set());
-  const markWatched = (id: string) => {
+  const markWatched = useCallback((id: string) => {
     if (!user || seenIds.current.has(id)) return;
     seenIds.current.add(id);
     try { localStorage.setItem(`reels-seen:${user.id}`, JSON.stringify([...seenIds.current].slice(-800))); } catch { /* storage optional */ }
-  };
+  }, [user]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -127,7 +128,7 @@ const Shorts = () => {
         { event: "*", schema: "public", table: "shorts_comments", filter: `short_id=eq.${selectedShortId}` },
         async (payload) => {
           if (payload.eventType === "INSERT") {
-            const newComment = payload.new as any;
+            const newComment = payload.new as unknown as Comment;
             const { data: profile } = await supabase
               .from("profiles")
               .select("id, display_name, avatar_url")
@@ -305,8 +306,8 @@ const Shorts = () => {
         return next;
       });
       toast.success("Post deleted");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to delete post");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete post");
     }
   };
 
@@ -328,8 +329,8 @@ const Shorts = () => {
         s.id === selectedShortId ? { ...s, comments_count: Math.max(0, (s.comments_count || 1) - 1) } : s
       ));
       toast.success("Comment deleted");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to delete comment");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete comment");
     }
   };
 
@@ -459,7 +460,7 @@ const Shorts = () => {
       const timer = setTimeout(() => markWatched(current.id), 2500);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, feedMode, shorts, commentsOpen, createOpen, user]);
+  }, [currentIndex, visibleShorts, commentsOpen, createOpen, user, markWatched]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -494,7 +495,7 @@ const Shorts = () => {
     const postId = new URLSearchParams(window.location.search).get("post");
     const index = visibleShorts.findIndex(short => short.id === postId);
     if (index >= 0) { containerRef.current?.scrollTo({ top: index * containerRef.current.clientHeight }); setCurrentIndex(index); }
-  }, [isLoading, feedMode]);
+  }, [isLoading, feedMode, visibleShorts]);
 
   const handleVotePoll = async (shortId: string, optionIndex: number) => {
     if (!user) return;
@@ -521,7 +522,7 @@ const Shorts = () => {
       setShorts(prev => prev.map(s => {
         if (s.id === shortId && s.poll_options) {
           const newOptions = { ...s.poll_options };
-          newOptions.options = newOptions.options.map((opt: any, i: number) => 
+          newOptions.options = newOptions.options.map((opt, i) => 
             i === optionIndex ? { ...opt, votes: opt.votes + 1 } : opt
           );
           return { ...s, poll_options: newOptions };
@@ -586,8 +587,8 @@ const Shorts = () => {
               /> : short.media_url ? <img src={short.media_url} alt={short.content || "Community post"} className="h-full w-full object-cover" loading={index === currentIndex ? "eager" : "lazy"} /> : <div className="bg-card w-full h-full flex items-center justify-center px-10"><p className="text-2xl font-bold text-center break-words">{short.content}</p></div>}
             </div>}
             <div className="absolute inset-0 reel-scrim pointer-events-none" />
-            {short.poll_options && <div className="absolute inset-0 flex justify-center items-center px-7 pr-20"><div className="w-full space-y-3"><p className="font-bold text-xl mb-4">{short.content}</p>{short.poll_options.options.map((option: any, optionIndex: number) => {
-              const total = short.poll_options.options.reduce((sum: number, item: any) => sum + item.votes, 0);
+            {short.poll_options && <div className="absolute inset-0 flex justify-center items-center px-7 pr-20"><div className="w-full space-y-3"><p className="font-bold text-xl mb-4">{short.content}</p>{short.poll_options.options.map((option, optionIndex) => {
+              const total = short.poll_options.options.reduce((sum, item) => sum + item.votes, 0);
               return <Button key={optionIndex} variant="outline" className="w-full h-auto min-h-12 justify-between whitespace-normal bg-background/40 text-foreground" onClick={() => handleVotePoll(short.id, optionIndex)}><span className="text-left">{option.text}</span><span className="ml-2">{total ? Math.round(option.votes / total * 100) : 0}%</span></Button>;
             })}</div></div>}
             {index === currentIndex && short.media_type === "video" && (buffering || !isPlaying) && <Button variant="ghost" size="icon" aria-label={buffering ? "Video loading" : "Play video"} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 text-foreground bg-background/30 rounded-full" onClick={() => togglePlayPause(short.id)}>{buffering ? <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" /> : <Play className="w-8 h-8 fill-current" />}</Button>}
