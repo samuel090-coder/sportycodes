@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -98,7 +98,7 @@ const Shorts = () => {
   const [buffering, setBuffering] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
-  const visibleShorts = feedMode === "following" ? shorts.filter(short => short.is_following) : shorts;
+  const visibleShorts = useMemo(() => feedMode === "following" ? shorts.filter(short => short.is_following) : shorts, [feedMode, shorts]);
   const seenIds = useRef<Set<string>>(new Set());
   const markWatched = useCallback((id: string) => {
     if (!user || seenIds.current.has(id)) return;
@@ -460,7 +460,7 @@ const Shorts = () => {
       const timer = setTimeout(() => markWatched(current.id), 2500);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, feedMode, shorts, commentsOpen, createOpen, user]);
+  }, [currentIndex, visibleShorts, commentsOpen, createOpen, user, markWatched]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -495,7 +495,7 @@ const Shorts = () => {
     const postId = new URLSearchParams(window.location.search).get("post");
     const index = visibleShorts.findIndex(short => short.id === postId);
     if (index >= 0) { containerRef.current?.scrollTo({ top: index * containerRef.current.clientHeight }); setCurrentIndex(index); }
-  }, [isLoading, feedMode]);
+  }, [isLoading, feedMode, visibleShorts]);
 
   const handleVotePoll = async (shortId: string, optionIndex: number) => {
     if (!user) return;
