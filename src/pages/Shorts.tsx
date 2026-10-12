@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
+import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -71,6 +72,21 @@ interface Comment {
   };
   replies?: Comment[];
 }
+
+const parsePollOptions = (value: Json): Short["poll_options"] => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const rawOptions = value.options;
+  if (!Array.isArray(rawOptions)) return null;
+  const options = rawOptions.flatMap(option => {
+    if (!option || typeof option !== "object" || Array.isArray(option)) return [];
+    const text = option.text;
+    const votes = option.votes;
+    const index = option.index;
+    if (typeof text !== "string" || typeof votes !== "number") return [];
+    return [{ text, votes, ...(typeof index === "number" ? { index } : {}) }];
+  });
+  return { options };
+};
 
 const Shorts = () => {
   const navigate = useNavigate();
@@ -205,6 +221,7 @@ const Shorts = () => {
 
       const enrichedShorts = allShorts?.map(short => ({
         ...short,
+        poll_options: parsePollOptions(short.poll_options),
         profile: profiles?.find(p => p.id === short.user_id),
         is_liked: likesSet.has(short.id),
         is_following: followsSet.has(short.user_id)
