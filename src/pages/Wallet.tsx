@@ -67,6 +67,7 @@ const Wallet = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [manualDepositsEnabled, setManualDepositsEnabled] = useState(false);
   const [validInvites, setValidInvites] = useState(0);
   const [totalInvites, setTotalInvites] = useState(0);
   
@@ -162,12 +163,16 @@ const Wallet = () => {
       const brandingKeys = [
         "bank_name", "account_number", "account_name",
         "deposit_title", "deposit_generate_cta", "deposit_generating_text",
-        "deposit_revealed_text", "deposit_security_note", "deposit_brand_tag",
+        "deposit_revealed_text", "deposit_security_note", "deposit_brand_tag", "manual_deposits_enabled",
       ];
       const { data: bankData } = await supabase.from("app_settings").select("setting_key, setting_value").in("setting_key", brandingKeys);
       const details: any = {};
       const brand: any = { ...branding };
       bankData?.forEach(d => {
+        if (d.setting_key === "manual_deposits_enabled") {
+          setManualDepositsEnabled(d.setting_value === "true");
+          return;
+        }
         if (["bank_name", "account_number", "account_name"].includes(d.setting_key)) {
           details[d.setting_key] = d.setting_value;
         } else if (d.setting_key in brand) {
@@ -224,6 +229,7 @@ const Wallet = () => {
   };
 
   const handleDeposit = async () => {
+    if (!manualDepositsEnabled) { toast.error("Deposits are temporarily unavailable."); return; }
     if (!user || !depositAmount) { toast.error("Please enter an amount"); return; }
     if (!screenshot) { toast.error("Please upload payment screenshot"); return; }
     const amount = parseFloat(depositAmount);
@@ -301,6 +307,7 @@ const Wallet = () => {
   const handleWithdrawClick = () => {
     // No deposit yet → send them to deposit instead of showing requirements
     if (!hasDeposited || (wallet?.balance || 0) <= 0) {
+      if (!manualDepositsEnabled) { toast.error("Deposits are temporarily unavailable. Please try again later."); return; }
       promptDeposit({ context: "Fund your wallet before you can withdraw." });
       setDepositOpen(true);
       return;
@@ -392,13 +399,14 @@ const Wallet = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-6">
-              <Button onClick={() => setDepositOpen(true)} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl">
-                <ArrowDownLeft className="w-5 h-5 mr-2" /> Deposit
+              <Button onClick={() => setDepositOpen(true)} disabled={!manualDepositsEnabled} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl">
+                <ArrowDownLeft className="w-5 h-5 mr-2" /> {manualDepositsEnabled ? "Deposit" : "Deposits paused"}
               </Button>
               <Button onClick={handleWithdrawClick} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
                 <ArrowUpRight className="w-5 h-5 mr-2" /> Withdraw
               </Button>
             </div>
+            {!manualDepositsEnabled && <p className="mt-3 text-center text-xs text-muted-foreground">New deposits are temporarily paused. Existing wallet funds and payment history are unaffected.</p>}
           </div>
         </div>
 
@@ -538,7 +546,7 @@ const Wallet = () => {
 
       {/* Deposit Modal — Full-screen Sectioned Layout */}
       <Dialog
-        open={depositOpen}
+        open={depositOpen && manualDepositsEnabled}
         onOpenChange={(o) => {
           setDepositOpen(o);
           if (!o) {
