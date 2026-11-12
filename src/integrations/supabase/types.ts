@@ -2374,6 +2374,7 @@ export type Database = {
         }
         Returns: string
       }
+      manual_deposits_are_enabled: { Args: never; Returns: boolean }
       purchase_vip_with_wallet: {
         Args: { _expected_price: number; _request_id: string }
         Returns: Json
