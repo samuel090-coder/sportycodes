@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Settings, Save, Building2, Zap, Gift, Flame, MessageCircle, Smartphone } from "lucide-react";
+import { Settings, Save, Building2, Zap, Gift, Flame, MessageCircle, Smartphone, CreditCard } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import { BankAccountsSection } from "./BankAccountsSection";
 export const SettingsSection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [manualDepositsEnabled, setManualDepositsEnabled] = useState(false);
+  const [savingDepositToggle, setSavingDepositToggle] = useState(false);
   
   const [bankSettings, setBankSettings] = useState({
     bank_name: "",
@@ -86,6 +88,7 @@ export const SettingsSection = () => {
         setTapSettings(tap);
         setDepositBranding(branding);
         setApkSettings(apk);
+        setManualDepositsEnabled(data.find(item => item.setting_key === "manual_deposits_enabled")?.setting_value === "true");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -99,7 +102,7 @@ export const SettingsSection = () => {
     setIsSaving(true);
     try {
       // Combine all settings
-      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, ...apkSettings, whatsapp_number: whatsappNumber };
+      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, ...apkSettings, manual_deposits_enabled: manualDepositsEnabled ? "true" : "false", whatsapp_number: whatsappNumber };
       
       // Upsert each setting
       for (const [key, value] of Object.entries(allSettings)) {
@@ -120,6 +123,23 @@ export const SettingsSection = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const setManualDepositAvailability = async (enabled: boolean) => {
+    const previous = manualDepositsEnabled;
+    setManualDepositsEnabled(enabled);
+    setSavingDepositToggle(true);
+    const { error } = await supabase.from("app_settings").upsert(
+      { setting_key: "manual_deposits_enabled", setting_value: enabled ? "true" : "false" },
+      { onConflict: "setting_key" },
+    );
+    setSavingDepositToggle(false);
+    if (error) {
+      setManualDepositsEnabled(previous);
+      toast.error("Could not update deposit availability");
+      return;
+    }
+    toast.success(enabled ? "Manual deposits enabled" : "New manual deposits paused");
   };
 
   if (isLoading) {
@@ -230,6 +250,18 @@ export const SettingsSection = () => {
             Include country code without spaces (e.g., +234 for Nigeria)
           </p>
         </div>
+      </Card>
+
+      {/* Rotating deposit accounts */}
+      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2"><CreditCard className="w-5 h-5 text-primary" />Manual screenshot deposits</h3>
+            <p className="text-sm text-muted-foreground">Turn off new bank-transfer deposit submissions. Existing requests and payment history remain available for review.</p>
+          </div>
+          <Switch aria-label="Enable manual screenshot deposits" checked={manualDepositsEnabled} disabled={savingDepositToggle} onCheckedChange={setManualDepositAvailability} />
+        </div>
+        <p className="mt-3 text-xs font-medium text-muted-foreground">{manualDepositsEnabled ? "Enabled for users" : "Paused for users"}</p>
       </Card>
 
       {/* Rotating deposit accounts */}

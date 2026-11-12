@@ -36,6 +36,13 @@
       "when": 1791109675790,
       "tag": "0004_atomic_vip_purchase_and_cancellation",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794482408219,
+      "tag": "0005_pause_manual_deposits",
+      "breakpoints": true
     }
   ]
 }
