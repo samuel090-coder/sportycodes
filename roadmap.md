@@ -5,4 +5,5 @@
 - [x] Reels: skeleton loading state.
 - [x] Rebuild the video/photo/text posting flow in a TikTok-style Android experience.
 - [x] Disable new manual screenshot deposits while preserving existing requests and wallet history.
-- [ ] Confirm UfitPay live merchant availability and payment verification details before requesting credentials.
+- [x] Securely store UfitPay live credentials and verify authenticated access with a read-only endpoint.
+- [ ] Confirm live merchant payment-link availability and the documented verification endpoint before enabling wallet credits.
