@@ -169,10 +169,9 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get('action');
     const admin = getAdminClient();
 
-    if (action === 'webhook') {
+    if (url.searchParams.get('action') === 'webhook') {
       const expectedToken = Deno.env.get('UFITPAY_WEBHOOK_TOKEN');
       const suppliedToken = url.searchParams.get('token') || '';
       if (!expectedToken || !constantTimeEqual(expectedToken, suppliedToken)) return json({ error: 'Unauthorized.' }, 401);
@@ -187,6 +186,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'Please sign in to continue.' }, 401);
 
     const body = await req.json().catch(() => ({}));
+    const action = typeof body.action === 'string' ? body.action : '';
     if (action === 'create_intent') {
       if (await readSetting(admin, 'ufitpay_enabled') !== 'true') {
         return json({ error: 'UfitPay deposits are not enabled yet.' }, 403);
