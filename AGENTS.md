@@ -3,3 +3,4 @@
 - VIP renewal purchases retain history and extend the furthest active expiry; access checks prefer an unexpired active subscription over pending or historical rows.
 - Reels use native vertical scroll snapping with only the active video playing and adjacent media preloaded; existing social and upload flows remain in Shorts.
 - Feature-specific styling is scoped to the membership and reels pages so existing screens retain their design.
+- UfitPay deposits use server-created payment intents, provider-side verification, and one atomic idempotent wallet-credit function; checkout and automatic credits stay separately disabled until explicitly enabled because payment-provider response fields must be confirmed against live documentation.

@@ -6,4 +6,4 @@
 - [x] Rebuild the video/photo/text posting flow in a TikTok-style Android experience.
 - [x] Disable new manual screenshot deposits while preserving existing requests and wallet history.
 - [x] Securely store UfitPay live credentials and verify authenticated access with a read-only endpoint.
-- [ ] Confirm the live `wallet` service code and exact successful verification response fields before enabling UfitPay wallet credits.
+- [ ] Confirm UfitPay's exact successful verification response fields and live `wallet` service code before enabling automatic wallet credits.

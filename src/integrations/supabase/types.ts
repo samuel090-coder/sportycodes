@@ -1919,6 +1919,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ufitpay_deposits: {
+        Row: {
+          amount: number
+          created_at: string
+          credited_at: string | null
+          currency: string
+          failure_reason: string | null
+          id: string
+          provider_reference: string | null
+          provider_status: string | null
+          reference: string
+          status: string
+          user_id: string
+          verified_amount: number | null
+          verified_at: string | null
+          verified_currency: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credited_at?: string | null
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          provider_reference?: string | null
+          provider_status?: string | null
+          reference: string
+          status?: string
+          user_id: string
+          verified_amount?: number | null
+          verified_at?: string | null
+          verified_currency?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credited_at?: string | null
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          provider_reference?: string | null
+          provider_status?: string | null
+          reference?: string
+          status?: string
+          user_id?: string
+          verified_amount?: number | null
+          verified_at?: string | null
+          verified_currency?: string | null
+        }
+        Relationships: []
+      }
       ui_settings: {
         Row: {
           description: string | null
@@ -2331,6 +2382,15 @@ export type Database = {
         Returns: undefined
       }
       cancel_my_vip: { Args: never; Returns: number }
+      complete_ufitpay_deposit: {
+        Args: {
+          _currency: string
+          _provider_reference: string
+          _reference: string
+          _verified_amount: number
+        }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           _body?: string

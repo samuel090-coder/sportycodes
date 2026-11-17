@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Settings, Save, Building2, Zap, Gift, Flame, MessageCircle, Smartphone, CreditCard } from "lucide-react";
+import { Settings, Save, Building2, Zap, Gift, Flame, MessageCircle, Smartphone, CreditCard, ShieldCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,10 @@ export const SettingsSection = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [manualDepositsEnabled, setManualDepositsEnabled] = useState(false);
   const [savingDepositToggle, setSavingDepositToggle] = useState(false);
+  const [ufitpayEnabled, setUfitpayEnabled] = useState(false);
+  const [ufitpayAutoCredit, setUfitpayAutoCredit] = useState(false);
+  const [ufitpayServiceCode, setUfitpayServiceCode] = useState("");
+  const [savingUfitpay, setSavingUfitpay] = useState(false);
   
   const [bankSettings, setBankSettings] = useState({
     bank_name: "",
@@ -89,6 +93,9 @@ export const SettingsSection = () => {
         setDepositBranding(branding);
         setApkSettings(apk);
         setManualDepositsEnabled(data.find(item => item.setting_key === "manual_deposits_enabled")?.setting_value === "true");
+        setUfitpayEnabled(data.find(item => item.setting_key === "ufitpay_enabled")?.setting_value === "true");
+        setUfitpayAutoCredit(data.find(item => item.setting_key === "ufitpay_auto_credit_enabled")?.setting_value === "true");
+        setUfitpayServiceCode(data.find(item => item.setting_key === "ufitpay_service_code")?.setting_value || "");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -102,7 +109,7 @@ export const SettingsSection = () => {
     setIsSaving(true);
     try {
       // Combine all settings
-      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, ...apkSettings, manual_deposits_enabled: manualDepositsEnabled ? "true" : "false", whatsapp_number: whatsappNumber };
+      const allSettings = { ...bankSettings, ...tapSettings, ...depositBranding, ...apkSettings, manual_deposits_enabled: manualDepositsEnabled ? "true" : "false", ufitpay_enabled: ufitpayEnabled ? "true" : "false", ufitpay_auto_credit_enabled: ufitpayAutoCredit ? "true" : "false", ufitpay_service_code: ufitpayServiceCode.trim(), whatsapp_number: whatsappNumber };
       
       // Upsert each setting
       for (const [key, value] of Object.entries(allSettings)) {
@@ -140,6 +147,49 @@ export const SettingsSection = () => {
       return;
     }
     toast.success(enabled ? "Manual deposits enabled" : "New manual deposits paused");
+  };
+
+  const saveUfitpaySetting = async (key: string, value: string) => {
+    setSavingUfitpay(true);
+    const { error } = await supabase.from("app_settings").upsert(
+      { setting_key: key, setting_value: value },
+      { onConflict: "setting_key" },
+    );
+    setSavingUfitpay(false);
+    if (error) {
+      toast.error("Could not update UfitPay settings");
+      await loadSettings();
+      return false;
+    }
+    return true;
+  };
+
+  const updateUfitpayAvailability = async (enabled: boolean) => {
+    if (enabled && !ufitpayServiceCode.trim()) {
+      toast.error("Enter your UfitPay service code and save settings first");
+      return;
+    }
+    const previous = ufitpayEnabled;
+    setUfitpayEnabled(enabled);
+    if (!await saveUfitpaySetting("ufitpay_enabled", enabled ? "true" : "false")) {
+      setUfitpayEnabled(previous);
+      return;
+    }
+    toast.success(enabled ? "UfitPay checkout enabled" : "UfitPay checkout paused");
+  };
+
+  const updateUfitpayAutoCredit = async (enabled: boolean) => {
+    if (enabled && !ufitpayEnabled) {
+      toast.error("Enable UfitPay checkout first");
+      return;
+    }
+    const previous = ufitpayAutoCredit;
+    setUfitpayAutoCredit(enabled);
+    if (!await saveUfitpaySetting("ufitpay_auto_credit_enabled", enabled ? "true" : "false")) {
+      setUfitpayAutoCredit(previous);
+      return;
+    }
+    toast.success(enabled ? "Verified UfitPay payments will credit wallets" : "Automatic UfitPay credits paused");
   };
 
   if (isLoading) {
@@ -226,6 +276,50 @@ export const SettingsSection = () => {
             For example, a 5-day streak = ₦{(parseFloat(tapSettings.streak_bonus_multiplier) * 5).toFixed(2)} extra per tap.
           </p>
         </div>
+      </Card>
+
+      <Card className="bg-card/50 backdrop-blur-sm border-border p-6">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-foreground">UfitPay live payments</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Use your live merchant credentials already stored securely. Test credentials and test transactions are not used.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-2">
+          <Label className="text-foreground">UfitPay service code</Label>
+          <Input
+            value={ufitpayServiceCode}
+            onChange={(event) => setUfitpayServiceCode(event.target.value)}
+            placeholder="wallet"
+            maxLength={100}
+            className="bg-background border-border"
+          />
+          <p className="text-xs text-muted-foreground">Use the exact code shown under My Services in your merchant account.</p>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
+          <div>
+            <p className="font-semibold text-foreground">Enable UfitPay checkout</p>
+            <p className="text-xs text-muted-foreground">Show live payment-link checkout on the wallet page.</p>
+          </div>
+          <Switch aria-label="Enable UfitPay checkout" checked={ufitpayEnabled} disabled={savingUfitpay || (ufitpayEnabled && !ufitpayServiceCode.trim())} onCheckedChange={updateUfitpayAvailability} />
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
+          <div>
+            <p className="font-semibold text-foreground">Automatic wallet crediting</p>
+            <p className="text-xs text-muted-foreground">Credit only after server verification confirms completed status, matching reference, NGN currency, and amount.</p>
+          </div>
+          <Switch aria-label="Enable verified UfitPay wallet credits" checked={ufitpayAutoCredit} disabled={savingUfitpay || !ufitpayEnabled} onCheckedChange={updateUfitpayAutoCredit} />
+        </div>
+
+        <p className="mt-4 rounded-md border border-bet-warning/30 bg-bet-warning/5 p-3 text-xs text-muted-foreground">
+          The response structure available so far is an example, not a published UfitPay schema. Keep automatic crediting off until a real, low-value live payment confirms these exact fields.
+        </p>
       </Card>
 
       {/* WhatsApp Contact */}

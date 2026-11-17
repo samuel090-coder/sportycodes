@@ -68,10 +68,15 @@ const Wallet = () => {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [manualDepositsEnabled, setManualDepositsEnabled] = useState(false);
+  const [ufitpayEnabled, setUfitpayEnabled] = useState(false);
   const [validInvites, setValidInvites] = useState(0);
   const [totalInvites, setTotalInvites] = useState(0);
   
   const [depositOpen, setDepositOpen] = useState(false);
+  const [ufitpayOpen, setUfitpayOpen] = useState(false);
+  const [ufitpayBusy, setUfitpayBusy] = useState(false);
+  const [ufitpayReference, setUfitpayReference] = useState<string | null>(null);
+  const [ufitpayStatus, setUfitpayStatus] = useState<"idle" | "pending" | "credited" | "failed">("idle");
   const [depositAmount, setDepositAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -102,6 +107,18 @@ const Wallet = () => {
   const [withdrawBank, setWithdrawBank] = useState("");
   const [withdrawAccountName, setWithdrawAccountName] = useState("");
   const [withdrawAccountNumber, setWithdrawAccountNumber] = useState("");
+
+  const depositIsAvailable = manualDepositsEnabled || ufitpayEnabled;
+
+  const openDeposit = () => {
+    if (ufitpayEnabled) {
+      setUfitpayOpen(true);
+      setUfitpayStatus("idle");
+      return;
+    }
+    if (manualDepositsEnabled) setDepositOpen(true);
+    else toast.error("Deposits are temporarily unavailable.");
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -163,7 +180,7 @@ const Wallet = () => {
       const brandingKeys = [
         "bank_name", "account_number", "account_name",
         "deposit_title", "deposit_generate_cta", "deposit_generating_text",
-        "deposit_revealed_text", "deposit_security_note", "deposit_brand_tag", "manual_deposits_enabled",
+        "deposit_revealed_text", "deposit_security_note", "deposit_brand_tag", "manual_deposits_enabled", "ufitpay_enabled",
       ];
       const { data: bankData } = await supabase.from("app_settings").select("setting_key, setting_value").in("setting_key", brandingKeys);
       const details: any = {};
@@ -171,6 +188,10 @@ const Wallet = () => {
       bankData?.forEach(d => {
         if (d.setting_key === "manual_deposits_enabled") {
           setManualDepositsEnabled(d.setting_value === "true");
+          return;
+        }
+        if (d.setting_key === "ufitpay_enabled") {
+          setUfitpayEnabled(d.setting_value === "true");
           return;
         }
         if (["bank_name", "account_number", "account_name"].includes(d.setting_key)) {
@@ -225,6 +246,103 @@ const Wallet = () => {
       console.error("Error loading wallet data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const startUfitpayPayment = async () => {
+    const amount = Number(depositAmount);
+    if (!Number.isFinite(amount) || amount < 100 || amount > 10_000_000 || Math.round(amount * 100) !== amount * 100) {
+      toast.error("Enter an amount between ₦100 and ₦10,000,000.");
+      return;
+    }
+
+    setUfitpayBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ufitpay-payments", {
+        body: { action: "create_intent", amount },
+      });
+      if (error) throw error;
+      if (!data?.reference || !data?.embedKey || !data?.serviceCode) {
+        throw new Error(data?.error || "UfitPay checkout is not ready.");
+      }
+
+      setUfitpayReference(data.reference);
+      setUfitpayStatus("pending");
+      const scriptId = "ufitpay-inline-script";
+      let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+      if (script?.dataset.apiKey !== data.embedKey) {
+        script?.remove();
+        script = document.createElement("script");
+        script.id = scriptId;
+        script.src = `https://embed.ufitpay.com/${encodeURIComponent(data.embedKey)}`;
+        script.async = true;
+        script.dataset.apiKey = data.embedKey;
+        document.body.appendChild(script);
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        if (window.initializePayWithUfitPay && script?.dataset.loaded === "true") {
+          resolve();
+          return;
+        }
+        if (!script) {
+          reject(new Error("Could not open UfitPay checkout."));
+          return;
+        }
+        script.addEventListener("load", () => {
+          script.dataset.loaded = "true";
+          resolve();
+        }, { once: true });
+        script.addEventListener("error", () => reject(new Error("Could not load UfitPay checkout.")), { once: true });
+      });
+
+      if (!window.initializePayWithUfitPay) throw new Error("UfitPay checkout is unavailable.");
+      window.initializePayWithUfitPay({
+        resource: "paymentlink",
+        payer_name: data.payerName,
+        payer_email: data.payerEmail,
+        amount: data.amount,
+        customer_identifier: data.customerIdentifier,
+        reference: data.reference,
+        validity: "30",
+        service_code: data.serviceCode,
+        callback_url: data.callbackUrl,
+        return_url: data.returnUrl,
+        callback_function: "handleSportyUfitPayCallback",
+      });
+      setDepositAmount("");
+    } catch (error) {
+      setUfitpayStatus("failed");
+      toast.error(error instanceof Error ? error.message : "Could not start UfitPay checkout.");
+    } finally {
+      setUfitpayBusy(false);
+    }
+  };
+
+  const verifyUfitpayPayment = async (reference = ufitpayReference) => {
+    if (!reference || !user?.id) return;
+    setUfitpayBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ufitpay-payments", {
+        body: { action: "verify", reference },
+      });
+      if (error) throw error;
+      if (data?.credited) {
+        setUfitpayStatus("credited");
+        toast.success(data.alreadyCredited ? "This deposit was already credited." : "Your verified deposit has been credited.");
+        await loadData(user.id);
+      } else if (data?.error) {
+        setUfitpayStatus(data.error.includes("not confirmed") || data.error.includes("yet") ? "pending" : "failed");
+        toast.error(data.error);
+      } else {
+        setUfitpayStatus("pending");
+        toast.info("Payment received for verification. Wallet credit remains pending until confirmed.");
+      }
+    } catch (error) {
+      setUfitpayStatus("pending");
+      toast.error(error instanceof Error ? error.message : "Could not check payment status.");
+    } finally {
+      setUfitpayBusy(false);
     }
   };
 
@@ -399,14 +517,15 @@ const Wallet = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-6">
-              <Button onClick={() => setDepositOpen(true)} disabled={!manualDepositsEnabled} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-white font-bold rounded-xl">
-                <ArrowDownLeft className="w-5 h-5 mr-2" /> {manualDepositsEnabled ? "Deposit" : "Deposits paused"}
+              <Button onClick={openDeposit} disabled={!depositIsAvailable} className="h-14 bg-gradient-to-r from-bet-success to-bet-success/80 hover:from-bet-success/90 hover:to-bet-success/70 text-primary-foreground font-bold rounded-xl">
+                <ArrowDownLeft className="w-5 h-5 mr-2" /> {depositIsAvailable ? "Deposit" : "Deposits paused"}
               </Button>
               <Button onClick={handleWithdrawClick} className="h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold rounded-xl">
                 <ArrowUpRight className="w-5 h-5 mr-2" /> Withdraw
               </Button>
             </div>
-            {!manualDepositsEnabled && <p className="mt-3 text-center text-xs text-muted-foreground">New deposits are temporarily paused. Existing wallet funds and payment history are unaffected.</p>}
+            {!depositIsAvailable && <p className="mt-3 text-center text-xs text-muted-foreground">New deposits are temporarily paused. Existing wallet funds and payment history are unaffected.</p>}
+            {manualDepositsEnabled && ufitpayEnabled && <Button variant="outline" onClick={() => setDepositOpen(true)} className="mt-3 w-full">Bank transfer with screenshot</Button>}
           </div>
         </div>
 
@@ -543,6 +662,49 @@ const Wallet = () => {
           </div>
         </div>
       </main>
+
+      <Dialog open={ufitpayOpen && ufitpayEnabled} onOpenChange={(open) => {
+        setUfitpayOpen(open);
+        if (!open) {
+          setUfitpayReference(null);
+          setUfitpayStatus("idle");
+        }
+      }}>
+        <DialogContent className="bg-background border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" />Secure UfitPay deposit</DialogTitle>
+            <DialogDescription>Pay through UfitPay’s live payment link. Your wallet is updated only after the payment is verified.</DialogDescription>
+          </DialogHeader>
+          {!ufitpayReference ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ufitpay-amount">Deposit amount (₦)</Label>
+                <Input id="ufitpay-amount" type="number" inputMode="decimal" min="100" max="10000000" step="0.01" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} placeholder="Enter amount" />
+                <p className="text-xs text-muted-foreground">Minimum ₦100 · NGN payments only</p>
+              </div>
+              <Button onClick={startUfitpayPayment} disabled={ufitpayBusy || Number(depositAmount) < 100} className="w-full">
+                {ufitpayBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting…</> : <>Continue to UfitPay <ArrowRight className="ml-2 h-4 w-4" /></>}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className={`rounded-md border p-4 ${ufitpayStatus === "credited" ? "border-bet-success/40 bg-bet-success/5" : "border-border bg-card/50"}`}>
+                <div className="flex items-center gap-3">
+                  {ufitpayStatus === "credited" ? <CheckCircle2 className="h-5 w-5 text-bet-success" /> : ufitpayStatus === "failed" ? <XCircle className="h-5 w-5 text-destructive" /> : <Clock className="h-5 w-5 text-bet-warning" />}
+                  <div>
+                    <p className="font-semibold text-foreground">{ufitpayStatus === "credited" ? "Deposit credited" : ufitpayStatus === "failed" ? "Payment needs attention" : "Waiting for payment verification"}</p>
+                    <p className="text-xs text-muted-foreground">Reference: {ufitpayReference}</p>
+                  </div>
+                </div>
+              </div>
+              {ufitpayStatus !== "credited" && <Button onClick={() => verifyUfitpayPayment()} disabled={ufitpayBusy} className="w-full">
+                {ufitpayBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Checking…</> : "Check payment status"}
+              </Button>}
+              <p className="text-center text-xs text-muted-foreground">Do not pay again if you have already completed this payment.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Deposit Modal — Full-screen Sectioned Layout */}
       <Dialog
